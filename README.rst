@@ -9,6 +9,9 @@ interfacea
    :target: https://ci.appveyor.com/project/JoaoRodrigues/interfacea
    :alt: Appveyor Continuous Integration
 
+.. image:: https://travis-ci.com/JoaoRodrigues/interfacea.svg?branch=master
+   :target: https://travis-ci.com/JoaoRodrigues/interfacea
+   :alt: Travis Continuous Integration
 
 interfacea (interface energy analysis) is a Python library written to facilitate the analysis of
 the energetics of protein interactions. It leverages the high-performance of OpenMM to calculate
@@ -17,8 +20,7 @@ pairwise energies between atoms, residues, or chains under popular force fields.
 Quick Example
 =============
 
-To use interfacea you need OpenMM (see http://openmm.org) and PDBFixer (see https://github.com/pandegroup/pdbfixer/) 
-installed ::
+::
 
     import interfacea as ia
 
@@ -27,3 +29,12 @@ installed ::
     mol.add_missing_atoms()
 
 
+Software Dependencies
+=====================
+
+interfacea runs on **Python 3.x** only and depends on the following packages:
+- `OpenMM <http://openmm.org>`
+- `PDBFixer <https://github.com/pandegroup/pdbfixer>`
+
+Dependencies can be installed via ``conda`` following instructions on their
+websites.

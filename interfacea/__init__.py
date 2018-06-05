@@ -63,7 +63,7 @@ def read(fpath, ftype=None):
             logger.debug('Successfully parsed file as PDB')
         except Exception as e:
             emsg = 'Failed parsing file {} as \'PDB\' format'.format(fullpath)
-            raise StructureError(emsg, e)
+            raise StructureError(emsg) from e
 
     elif ftype in _cif_formats:
         try:
@@ -71,7 +71,7 @@ def read(fpath, ftype=None):
             logger.debug('Successfully parsed file as mmCIF')
         except Exception as e:
             emsg = 'Failed parsing file {} as \'mmCIF\' format'.format(fullpath)
-            raise StructureError(emsg, e)
+            raise StructureError(emsg) from e
     else:
         emsg = '\'{}\' is not one of the supported types: {}'.format(ftype, _formats_str)
         raise StructureError(emsg)

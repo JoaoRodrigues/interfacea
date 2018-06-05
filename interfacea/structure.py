@@ -10,6 +10,7 @@ molecular structures.
 from __future__ import print_function
 
 import logging
+import io
 import os
 import tempfile
 import warnings
@@ -26,26 +27,14 @@ import simtk.unit as units
 _logger = logging.getLogger(__name__)
 _logger.addHandler(logging.NullHandler())
 
-# Write mmCIF
-# Write PDB
-
-# .forcefield()
+# .set_forcefield()
 # .minimize([posre=True, nsteps=50])
 
 
 class StructureError(Exception):
     """Dummy catch-all class for all exceptions related to `Structure` objects.
-
-    Allows re-raising of exceptions, since exception chaining is not supported
-    in Python 2.x.
     """
-
-    def __init__(self, message, cause=None):
-        if cause is not None:
-            super(StructureError, self).__init__(message + u', caused by ' + repr(cause))
-            self.cause = cause
-        else:
-            super(StructureError, self).__init__(message)
+    pass
 
 
 class Structure(object):
@@ -89,8 +78,9 @@ class Structure(object):
         """
 
         if self._pdbfixer is None:
-            with tempfile.TemporaryFile() as handle:
+            with tempfile.TemporaryFile(mode='r+') as handle:
                 app.PDBFile.writeFile(self.topology, self.positions, handle, keepIds=True)
+                
                 handle.seek(0)  # rewind
                 s = pf.PDBFixer(pdbfile=handle)
 
@@ -269,7 +259,7 @@ class Structure(object):
                 chain, name, idx = ori.split('-')
             except Exception as e:
                 emsg = 'Wrong format in mutation: \'{}\''.format(mutation)
-                raise StructureError(emsg, e)
+                raise StructureError(emsg) from e
 
             if new not in _supported_resnames:
                 emsg = 'Residue not supported for mutation: {}'.format(new)
@@ -292,7 +282,7 @@ class Structure(object):
                 s.applyMutations(muts, chain)
             except (KeyError, ValueError) as e:
                 emsg = 'There was an error when applying mutations to the structure'
-                raise StructureError(emsg, e)
+                raise StructureError(emsg) from e
 
             s.findMissingResidues()
             for res in list(s.missingResidues.keys()):
@@ -315,7 +305,7 @@ class Structure(object):
         warnings.warn(('Residue mutated but atom positions are not optimized. '
                        'Make sure to minimize the structure before doing any analysis'))
 
-    def write(self, fname, ftype='cif', overwrite=False):
+    def write(self, output, ftype='cif', overwrite=False):
         """Method to write `Structure` object to file.
 
         Uses OpenMM PDBFile or PDBxFile methods to write the `Structure` to a file on disk in
@@ -324,7 +314,7 @@ class Structure(object):
 
 
         Args:
-            fname (str): name to use when creating the new file on disk.
+            output (file/str): file object or name to create the new file on disk.
             ftype (str): format to use when writing the file. Must be either 'pdb' or 'cif'.
             overwrite(bool, optional): write file even if it already exists. Defaults to False.
 
@@ -341,13 +331,22 @@ class Structure(object):
             emsg = 'Unsupported file type \'{}\'. Choose from {}'.format(ftype, _fmt_str)
             raise StructureError(emsg)
 
-        if os.path.isfile(fname) and not overwrite:
-            emsg = 'File already exists. Use overwrite=True or remove file.'
-            raise OSError(emsg)
+        if isinstance(output, str):
+            if os.path.isfile(output) and not overwrite:
+                emsg = 'File already exists. Use overwrite=True or remove file.'
+                raise OSError(emsg)
+            handle = open(output, 'w')
+
+        elif isinstance(output, io.IOBase) or (hasattr(output, 'file') and 
+                                               isinstance(output.file, io.IOBase)):
+            handle = output
+        else:
+            raise TypeError('\'output\' argument must be \'str\' or a file-like object')
+
 
         try:
-            with open(fname, 'w') as handle:
+            with handle:
                 writer(self.topology, self.positions, handle, keepIds=True)
         except Exception as e:
-            emsg = 'Error when writing Structure to file: {}'.format(fname)
-            raise StructureError(emsg, e)
+            emsg = 'Error when writing Structure to file: {}'.format(handle.name)
+            raise StructureError(emsg) from e
