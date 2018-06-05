@@ -6,14 +6,18 @@ Unit tests for Structure class and methods
 
 import copy
 import os
+import tempfile
 import unittest
+import warnings
 
 import interfacea as ia
 
 TESTDIR = os.path.dirname(os.path.abspath(__file__))
 
 
-class TestStructure(unittest.TestCase):
+class TestTermini(unittest.TestCase):
+    """Tests for add_termini() method
+    """
 
     def setUp(self):
         fpath = os.path.join(TESTDIR, 'data', 'mini.pdb')
@@ -94,3 +98,134 @@ class TestStructure(unittest.TestCase):
         # Assert method did not add any other atoms
         n_atoms = s.topology.getNumAtoms()
         self.assertEqual(n_atoms, 112)
+
+
+class TestAddAtoms(unittest.TestCase):
+    """Tests for add_missing_atoms() method
+    """
+
+    def setUp(self):
+        self.s_allatom = ia.read(os.path.join(TESTDIR, 'data', 'mini.pdb'))
+        self.s_missing = ia.read(os.path.join(TESTDIR, 'data', 'mini_incomplete.pdb'))
+
+    def test_addToCompleteStructure(self):
+        """Test adding atoms to structure not missing any.
+        """
+
+        s = copy.deepcopy(self.s_allatom)  # copy initial structure
+        s.add_missing_atoms()
+
+        n_ini_atoms = self.s_allatom.topology.getNumAtoms()
+        n_end_atoms = s.topology.getNumAtoms()
+        self.assertEqual(n_ini_atoms, n_end_atoms)
+
+    def test_addToIncompleteStructure(self):
+        """Test adding atoms to structure missing 1 side-chain atom.
+        """
+
+        s = copy.deepcopy(self.s_missing)  # copy initial structure
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            s.add_missing_atoms()
+
+        n_ini_atoms = self.s_missing.topology.getNumAtoms()
+        n_end_atoms = s.topology.getNumAtoms()
+        self.assertEqual(n_end_atoms - n_ini_atoms, 1)
+
+
+class TestMutate(unittest.TestCase):
+    """Tests for mutate() method
+    """
+
+    def setUp(self):
+        self.struct = ia.read(os.path.join(TESTDIR, 'data', 'mini_noH.pdb'))
+
+    def test_single_mutation(self):
+        """Test performing a single mutation.
+        """
+
+        s = copy.deepcopy(self.struct)  # copy initial structure
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            s.mutate([('A-ASN-1', 'ALA')])
+
+        self.assertEqual(list(s.topology.residues())[0].name, 'ALA')
+
+        n_ini_atoms = self.struct.topology.getNumAtoms()
+        n_end_atoms = s.topology.getNumAtoms()
+        self.assertEqual(n_end_atoms - n_ini_atoms, -3)
+
+    def test_multiple_mutations(self):
+        """Test performing multiple mutations at once.
+        """
+
+        s = copy.deepcopy(self.struct)  # copy initial structure
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            s.mutate([('A-ASN-1', 'ALA'), ('B-ALA-6', 'PHE')])
+
+        reslist = [r.name for r in s.topology.residues()]
+        self.assertEqual(reslist[0], 'ALA')
+        self.assertEqual(reslist[-1], 'PHE')
+
+        n_ini_atoms = self.struct.topology.getNumAtoms()
+        n_end_atoms = s.topology.getNumAtoms()
+        self.assertEqual(n_end_atoms - n_ini_atoms, 3)
+
+    def test_mutateNonExistentChain(self):
+        """Test throwing exception on mutating a residue on a non-existent chain.
+        """
+
+        s = copy.deepcopy(self.struct)  # copy initial structure
+        with self.assertRaises(ia.structure.StructureError):
+            s.mutate([('C-ASN-1', 'ALA')])
+
+
+class TestWriter(unittest.TestCase):
+    """Tests for write() method.
+    """
+
+    def setUp(self):
+        self.pdb = os.path.join(TESTDIR, 'data', 'mini.pdb')
+        self.cif = os.path.join(TESTDIR, 'data', 'mini.cif')
+
+        self.struct = ia.read(self.pdb)
+
+    def test_write_PDB(self):
+        """Test writing a Structure in PDB format.
+        """
+
+        s = self.struct
+        with tempfile.NamedTemporaryFile() as handle:
+            s.write(handle.name, ftype='pdb', overwrite=True)
+            handle.seek(0)
+            new = handle.read()
+
+        with open(self.pdb) as handle:
+            ori = handle.read()
+
+        self.assertEqual(new, ori)
+
+    def test_write_mmCIF(self):
+        """Test writing a Structure in mmCIF format.
+        """
+
+        s = self.struct
+        with tempfile.NamedTemporaryFile() as handle:
+            s.write(handle.name, ftype='cif', overwrite=True)
+            handle.seek(0)
+            new = handle.read()
+
+        with open(self.cif) as handle:
+            ori = handle.read()
+
+        self.assertEqual(new, ori)
+
+    def test_writeToExistingFile(self):
+        """Test writing a Structure to an existing file.
+        """
+
+        s = self.struct
+        with self.assertRaises(OSError):
+            with tempfile.NamedTemporaryFile() as handle:
+                s.write(handle.name)
