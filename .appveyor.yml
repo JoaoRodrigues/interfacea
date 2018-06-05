@@ -5,10 +5,6 @@ os: Visual Studio 2015
 
 environment:
   matrix:
-    # - PY_MAJOR_VER: 2
-    #   PYTHON_ARCH: "x86_64"
-    #   PYTHON: "C:\\Miniconda-x64"
-
     - PY_MAJOR_VER: 3
       PYTHON_ARCH: "x86_64"
       PYTHON: "C:\\Miniconda36-x64"
@@ -27,14 +23,7 @@ install:
   - conda config --set always_yes yes
   - conda config --add channels omnia --add channels conda-forge
   - conda update --yes --all
-  - conda install openmm
-  - if "PY_MAJOR_VER"=="2" conda install unittest2
-
-  - ps: wget https://github.com/pandegroup/pdbfixer/archive/master.zip -OutFile pdbfixer.zip
-  - 7z x pdbfixer.zip
-  - cd pdbfixer-master
-  - python setup.py build
-  - python setup.py install
+  - conda install openmm pdbfixer
 
   - cd %APPVEYOR_BUILD_FOLDER%
 
@@ -45,4 +34,3 @@ test_script:
   - python -c "import sys; print(sys.version)"
   - cd tests
   - python run_tests.py
-  - cd ..
