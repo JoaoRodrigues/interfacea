@@ -196,30 +196,40 @@ class TestWriter(unittest.TestCase):
         """
 
         s = self.struct
-        with tempfile.NamedTemporaryFile() as handle:
-            s.write(handle.name, ftype='pdb', overwrite=True)
-            handle.seek(0)
-            new = handle.read()
+
+        filenumber, filename = tempfile.mkstemp()
+        os.close(filenumber)
+
+        s.write(filename, ftype='pdb', overwrite=True)
+        with open(filename, 'r') as handle:
+            new = handle.readlines()
+
+        # os.remove(filename)
 
         with open(self.pdb) as handle:
-            ori = handle.read()
+            ori = handle.readlines()
 
-        self.assertEqual(new, ori)
+        self.assertEqual(new[1:], ori[1:])  # remove remark line w/ date.
 
     def test_write_mmCIF(self):
         """Test writing a Structure in mmCIF format.
         """
 
         s = self.struct
-        with tempfile.NamedTemporaryFile() as handle:
-            s.write(handle.name, ftype='cif', overwrite=True)
-            handle.seek(0)
-            new = handle.read()
+
+        filenumber, filename = tempfile.mkstemp()
+        os.close(filenumber)
+
+        s.write(filename, ftype='cif', overwrite=True)
+        with open(filename, 'r') as handle:
+            new = handle.readlines()
+
+        # os.remove(filename)
 
         with open(self.cif) as handle:
-            ori = handle.read()
+            ori = handle.readlines()
 
-        self.assertEqual(new, ori)
+        self.assertEqual(new[2:], ori[2:])  # remove lines w/ date.
 
     def test_writeToExistingFile(self):
         """Test writing a Structure to an existing file.
