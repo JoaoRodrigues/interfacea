@@ -1,5 +1,3 @@
-interfacea
-======================================
 
 .. image:: https://landscape.io/github/JoaoRodrigues/interfacea/master/landscape.svg?style=flat
    :target: https://landscape.io/github/JoaoRodrigues/interfacea/master
@@ -12,6 +10,15 @@ interfacea
 .. image:: https://travis-ci.com/JoaoRodrigues/interfacea.svg?branch=master
    :target: https://travis-ci.com/JoaoRodrigues/interfacea
    :alt: Travis Continuous Integration
+
+
+.. image:: https://api.codeclimate.com/v1/badges/ca054443ee84f96d748a/maintainability
+   :target: https://codeclimate.com/github/JoaoRodrigues/interfacea/maintainability
+   :alt: Maintainability
+
+
+interfacea
+======================================
 
 interfacea (interface energy analysis) is a Python library written to facilitate the analysis of
 the energetics of protein interactions. It leverages the high-performance of OpenMM to calculate
