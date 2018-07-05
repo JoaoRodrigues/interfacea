@@ -87,7 +87,7 @@ class Structure(object):
             self._pdbfixer = s
 
         sequences = []
-        for chain in s.topology.chains():
+        for chain in self._pdbfixer.topology.chains():
             chain_reslist = [r.name for r in chain.residues()]
             sequences.append(Sequence(chain.id, chain_reslist))
 
