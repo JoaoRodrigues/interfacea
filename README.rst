@@ -12,11 +12,6 @@
    :alt: Travis Continuous Integration
 
 
-.. image:: https://api.codeclimate.com/v1/badges/ca054443ee84f96d748a/maintainability
-   :target: https://codeclimate.com/github/JoaoRodrigues/interfacea/maintainability
-   :alt: Maintainability
-
-
 interfacea
 ======================================
 
@@ -24,25 +19,45 @@ interfacea (interface energy analysis) is a Python library written to facilitate
 the energetics of protein interactions. It leverages the high-performance of OpenMM to calculate
 pairwise energies between atoms, residues, or chains under popular force fields.
 
-Quick Example
+Quick Example(s)
 =============
 
 ::
 
     import interfacea as ia
 
+    # Load molecule
     mol = ia.read('tests/data/mini.pdb')
+    
+    # Add missing atoms and cap termini with ACE/NME groups
     mol.add_termini()
     mol.add_missing_atoms()
+    
+    # Parameterize the molecule using the Amber14 FF in OpenMM
+    # Add protons using the definition of the forcefield.
+    mol.parameterize(forcefield='amber14-all.xml')
+    mol.protonate(ph=7.0)
+    
+    # Analyze and categorize residue interactions based on geometric criteria
+    analyzer = ia.InteractionAnalyzer(mol)
+    analyzer.find_salt_bridges()
+
+    # Find phosphate groups in molecule
+    import ia.functional_groups as fgs
+    phosphate = fgs.Phosphate()
+    for residue in mol.topology.residues():
+        if phosphate.match(residue):
+            print('Residue {} contains phosphate(s)')
 
 
 Software Dependencies
 =====================
 
 interfacea runs on **Python 3.x** only and depends on the following packages:
-- `OpenMM <http://openmm.org>`
-- `PDBFixer <https://github.com/pandegroup/pdbfixer>`
-- `networkx <>`
+
+- OpenMM (<http://openmm.org>
+- PDBFixer (<https://github.com/pandegroup/pdbfixer>)
+- networkx (<https://networkx.github.io>)
 
 Dependencies can be installed via ``conda`` following instructions on their
 websites.
