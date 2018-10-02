@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Energy Evaluation of Biomolecular Interfaces.
+Analysis of Biomolecular Interfaces.
 
 Module containing parsing and setup routines for
 molecular structures.
@@ -15,6 +15,8 @@ import os
 import tempfile
 import warnings
 
+import networkx as nx
+
 import pdbfixer as pf
 from pdbfixer.pdbfixer import Sequence
 
@@ -27,7 +29,6 @@ import simtk.unit as units
 _logger = logging.getLogger(__name__)
 _logger.addHandler(logging.NullHandler())
 
-# .set_forcefield()
 # .minimize([posre=True, nsteps=50])
 
 
@@ -64,11 +65,34 @@ class Structure(object):
         self.positions = structure.positions
 
         self.sequences = None
-        self.forcefield = None
+        self.forcefield = None  # forcefield name (str)
+        self._forcefield = None  # forcefield object
+
+        self._system = None
 
         self._pdbfixer = None  # cache PDBFixer structure if we need it.
 
+        self._bonds_per_atom = False  # flag set when _bonded_atoms is called
+        self._residue_graphs = False  # flag set when _make_res_graphs is called
+
         _logger.debug('Created Structure from \'{}\''.format(name))
+
+    def __repr__(self):
+        """Print pretty things when called.
+        """
+
+        rep_str = 'Structure created from {}'.format(os.path.basename(self.name))
+
+        n_chain = self.topology.getNumChains()
+        n_resid = self.topology.getNumResidues()
+        n_atoms = self.topology.getNumAtoms()
+
+        rep_str += ' with {} chain, {} residues, and {} atoms'.format(n_chain, n_resid, n_atoms)
+
+        if self._forcefield:
+            rep_str += ' (ff={})'.format(self.forcefield)
+
+        return rep_str
 
     def _load_to_pdbfixer(self):
         """Utility class to write a temporary PDB file and reload using PDBFixer.
@@ -80,7 +104,6 @@ class Structure(object):
         if self._pdbfixer is None:
             with tempfile.TemporaryFile(mode='r+') as handle:
                 app.PDBFile.writeFile(self.topology, self.positions, handle, keepIds=True)
-                
                 handle.seek(0)  # rewind
                 s = pf.PDBFixer(pdbfile=handle)
 
@@ -194,7 +217,7 @@ class Structure(object):
     def add_missing_atoms(self):
         """Method to add missing atoms to a `Structure` object.
 
-        Uses PDBFixer to analyze structure and add missing atoms.
+        Uses PDBFixer to analyze structure and add missing heavy atoms.
         """
 
         # Save as PDB and re-read.
@@ -219,8 +242,42 @@ class Structure(object):
             warnings.warn(('Atoms added but their positions are not optimized. '
                            'Make sure to minimize the structure before doing any analysis'))
 
+    def protonate(self, forcefield='amber14-all.xml', pH=7.0):
+        """Method to add hydrogen atoms to a `Structure` object.
+
+        Uses the `Modeller` class from OpenMM to add hydrogen atoms to the structure.
+        Removes existing hydrogen atoms (to avoid naming issues) before adding them
+        again with naming and topology matching the force field and chosen pH.
+
+
+        Args:
+            forcefield (str): name of file defining the force field.
+            pH (float): numerical value of the pH to check protonation states
+                of ionizable groups.
+        """
+
+        if self._forcefield is None:
+            self._load_forcefield(forcefield)
+
+        model = app.Modeller(self.topology, self.positions)
+
+        # Remove existing hydrogens first, just in case
+        _elem_H = app.element.hydrogen
+        existing_H = [a for a in model.topology.atoms() if a.element == _elem_H]
+        model.delete(existing_H)
+
+        _logger.debug('Protonating structure at pH {}'.format(pH))
+        model.addHydrogens(forcefield=self._forcefield, pH=pH)
+
+        self.topology = model.topology
+        self.positions = model.positions
+
+        # Issue warning about atom positions
+        warnings.warn(('Protons added but their positions are not optimized. '
+                       'Make sure to minimize the structure before doing any analysis'))
+
     def mutate(self, mutation_list):
-        """Method to mutate residues in the molecule using PDBFixer.
+        """Mutates residues in the molecule using PDBFixer.
 
         This is a very crude method of deleting/adding atoms, so most useful (or reasonable)
         for single mutations. Mutations of multiple residues at once might yield a
@@ -306,7 +363,7 @@ class Structure(object):
                        'Make sure to minimize the structure before doing any analysis'))
 
     def write(self, output, ftype='cif', overwrite=False):
-        """Method to write `Structure` object to file.
+        """Writes `Structure` object to file.
 
         Uses OpenMM PDBFile or PDBxFile methods to write the `Structure` to a file on disk in
         PDB or mmCIF format, respectively. The output format is guessed from the user-provided
@@ -337,12 +394,11 @@ class Structure(object):
                 raise OSError(emsg)
             handle = open(output, 'w')
 
-        elif isinstance(output, io.IOBase) or (hasattr(output, 'file') and 
+        elif isinstance(output, io.IOBase) or (hasattr(output, 'file') and
                                                isinstance(output.file, io.IOBase)):
             handle = output
         else:
             raise TypeError('\'output\' argument must be \'str\' or a file-like object')
-
 
         try:
             with handle:
@@ -350,3 +406,110 @@ class Structure(object):
         except Exception as e:
             emsg = 'Error when writing Structure to file: {}'.format(handle.name)
             raise StructureError(emsg) from e
+
+    #
+    # MM Functions
+    #
+
+    def _load_forcefield(self, forcefield='amber14-all.xml'):
+        """Utility private method to load forcefield definitions.
+        """
+
+        try:
+            loaded_forcefield = app.ForceField(forcefield)
+            _logger.debug('Loaded forcefield definitions from: {}'.format(forcefield))
+
+        except ValueError as e:
+            emsg = 'Error when loading forcefield XML file: {}'.format(forcefield)
+            raise StructureError(emsg) from e
+
+        self._forcefield = loaded_forcefield
+        self.forcefield = forcefield
+
+    def parameterize(self, forcefield='amber14-all.xml'):
+        """Wrapper function to create an OpenMM system from the Structure.
+
+        By default, does not use a cutoff (nor I plan to change this).
+
+        Args:
+            forcefield (str): name of 'xml' file containing forcefield definitions.
+        """
+
+        if self._forcefield is None:
+            self._load_forcefield(forcefield)
+
+        system = self._forcefield.createSystem(self.topology, nonbondedMethod=app.NoCutoff)
+        self._system = system
+        _logger.debug('Successfully created new OpenMM System for structure')
+
+    def _get_bonded_atoms(self):
+        """Creates a dictionary of bonds per atom.
+        """
+
+        bond_dict = {}
+        for residue in self.topology.residues():
+            for b in residue.bonds():
+
+                bond_dict.setdefault(b.atom1, [])
+                bond_dict.setdefault(b.atom2, [])
+
+                bond_dict[b.atom1].append(b.atom2)
+                bond_dict[b.atom2].append(b.atom1)
+
+            residue.bonds_per_atom = bond_dict
+
+        _logger.debug('Created per-atom bonding dictionary from topology')
+        self._bonds_per_atom = True
+
+    def _make_residue_graphs(self):
+        """Creates a networkx.Graph representation of a `Residue`.
+
+        Uses the atom elements as node attributes and the topology bonds
+        as edges.
+        """
+
+        for residue in self.topology.residues():
+            at_to_idx = {at: idx for idx, at in enumerate(residue.atoms())}
+
+            # Make graph of residue
+            res_g = nx.Graph()
+            for atom, idx in at_to_idx.items():
+                res_g.add_node(idx, element=atom.element.atomic_number)
+
+            for b in residue.bonds():
+                a1, a2 = b.atom1, b.atom2
+                a1_idx, a2_idx = at_to_idx.get(a1), at_to_idx.get(a2)
+                if a1_idx is not None and a2_idx is not None:
+                    res_g.add_edge(a1_idx, a2_idx)
+
+            residue._g = res_g
+
+        _logger.debug('Converted residue topologies to graph representation')
+        self._residue_graphs = True
+
+    #
+    # Energy-related functions
+    #
+
+    def add_energy(self, ene_term):
+        """Method to couple an energy term to a `Structure` object
+
+        Args:
+            ene_term (:obj:`BaseEnergyTerm`): instance of `BaseEnergyTerm`.
+
+        Raises:
+            KeyError: if the energy term is not found.
+            EnergyError: if energy term cannot be coupled to this `Structure`.
+        """
+        pass
+
+    def remove_energy(self, eterm_name):
+        """Method to remove a previously coupled energy term from a `Structure`.
+
+        Args:
+            eterm_name (str): name of the energy term, as defined in its class.
+
+        Raises:
+            KeyError: if the energy term is not coupled to the `Structure`.
+        """
+        pass

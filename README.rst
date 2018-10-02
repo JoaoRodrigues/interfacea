@@ -42,6 +42,7 @@ Software Dependencies
 interfacea runs on **Python 3.x** only and depends on the following packages:
 - `OpenMM <http://openmm.org>`
 - `PDBFixer <https://github.com/pandegroup/pdbfixer>`
+- `networkx <>`
 
 Dependencies can be installed via ``conda`` following instructions on their
 websites.

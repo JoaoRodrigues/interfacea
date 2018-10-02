@@ -13,6 +13,7 @@ import simtk.openmm.app as app
 from .structure import Structure
 from .structure import StructureError
 
+from .interactions import InteractionAnalyzer
 
 # Setup logger
 # This is the parent logger since the library is supposed
