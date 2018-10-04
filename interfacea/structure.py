@@ -505,6 +505,47 @@ class Structure(object):
         self._system = system
         logging.debug('Successfully created new OpenMM System for structure')
 
+    def minimize(self, iterations=500, hydrogen_only=False, ha_xyz_restraints=True):
+        """Perform energy minimization using OpenMM.
+
+        Args:
+            iterations (int): number of steps taken by the minimizer (or 0 until convergence)
+            hydrogen_only (bool): minimize positions of hydrogen atoms only. Default is False.
+            ha_xyz_restraints (bool): apply position restraints (1000 kJ/A^2) to heavy atoms.
+        """
+
+        if self._system is None:
+            emsg = 'Structure is not parameterized yet. Use `parameterize()`.'
+            raise StructureError(emsg)
+
+        # Set integrator
+        integrator = mm.LangevinIntegrator(300 * units.kelvin, 1.0 / units.picosecond,
+                                           2.0 * units.femtosecond)
+        integrator.setRandomNumberSeed(self.seed)
+        integrator.setConstraintTolerance(0.00001)
+
+        # Add position restraints?
+
+        # Perform minimization
+        context = mm.Context(self._system, integrator)
+        context.setPositions(self.positions)
+
+        state = context.getState(getEnergy=True)
+        initial_energy = state.getPotentialEnergy().value_in_unit_system(units.md_unit_system)
+        logging.debug('Energy before minimization: {:10.3f}'.format(initial_energy))
+
+        mm.LocalEnergyMinimizer.minimize(context, maxIterations=iterations)
+
+        state = context.getState(getPositions=True, getEnergy=True)
+        final_energy = state.getPotentialEnergy().value_in_unit_system(units.md_unit_system)
+        logging.debug('Energy after minimization: {:10.3f}'.format(final_energy))
+
+        if final_energy > 10.0:  # arbitrary value
+            warnings.warn(('Potential energy of the minimized structure is high. '
+                           'Initial structure might have some issues.'))
+
+        self.positions = state.getPositions()
+
     #
     # Energy-related functions
     #
