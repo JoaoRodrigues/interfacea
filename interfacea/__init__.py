@@ -19,12 +19,9 @@ from .interactions import InteractionAnalyzer
 # This is the parent logger since the library is supposed
 # to be loaded from here. Hence, configs set here apply to
 # all module-level loggers
-logger = logging.getLogger(__name__)
-logger.addHandler(logging.NullHandler())
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 # Methods
-
-
 def read(fpath, ftype=None):
     """Creates a `Structure` instance from a PDB/mmCIF file.
 
@@ -47,7 +44,7 @@ def read(fpath, ftype=None):
     _formats = _pdb_formats | _cif_formats
     _formats_str = ','.join(_formats)
 
-    logger.debug('Reading file: {}'.format(fpath))
+    logging.debug('Reading file: {}'.format(fpath))
 
     fullpath = os.path.abspath(fpath)
     if not os.path.isfile(fullpath):
@@ -56,12 +53,12 @@ def read(fpath, ftype=None):
 
     fname, fext = os.path.splitext(fullpath)
     ftype = ftype if ftype is not None else fext[1:]
-    logger.debug('Assigning file type: {}'.format(ftype))
+    logging.debug('Assigning file type: {}'.format(ftype))
 
     if ftype in _pdb_formats:
         try:
             struct = app.PDBFile(fullpath)
-            logger.debug('Successfully parsed file as PDB')
+            logging.debug('Successfully parsed file as PDB')
         except Exception as e:
             emsg = 'Failed parsing file {} as \'PDB\' format'.format(fullpath)
             raise StructureError(emsg) from e
@@ -69,7 +66,7 @@ def read(fpath, ftype=None):
     elif ftype in _cif_formats:
         try:
             struct = app.PDBxFile(fullpath)
-            logger.debug('Successfully parsed file as mmCIF')
+            logging.debug('Successfully parsed file as mmCIF')
         except Exception as e:
             emsg = 'Failed parsing file {} as \'mmCIF\' format'.format(fullpath)
             raise StructureError(emsg) from e

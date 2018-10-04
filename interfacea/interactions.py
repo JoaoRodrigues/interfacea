@@ -12,10 +12,12 @@ from __future__ import print_function
 import collections
 import logging
 import itertools
+import os
 import warnings
 
 import mdtraj as md 
 import numpy as np
+import pandas as pd
 
 import simtk.unit as units
 
@@ -23,8 +25,7 @@ from . import functional_groups as fgs
 
 # Setup logger
 # _private name to prevent collision/confusion with parent logger
-_logger = logging.getLogger(__name__)
-_logger.addHandler(logging.NullHandler())
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
 # Namedtuple to represent interactions
@@ -52,9 +53,22 @@ class InteractionAnalyzer(object):
         neighbors (:obj:`list(tuple)`): 2-item tuples with Residue objects.
     """
 
-    def __init__(self, structure):
+    def __init__(self, structure, itable=None):
 
         self.structure = structure
+
+        if itable is None:
+            logging.debug('Creating new InteractionTable')
+            _name = 'interactions_{}'.format(os.path.basename(structure.name))
+            self.itable = InteractionTable(name=_name)
+        else:
+            if isinstance(itable, InteractionTable):
+                _name = itable.name
+                logging.debug('Using existing InteractionTable: {}'.format(_name))
+                self.itable = itable
+            else:
+                emsg = '\'table\' argument should be an InteractionTable() instance'
+                raise InteractionAnalyzerError(emsg)
 
         self.atom_neighbors = None
         self.neighbors = None
@@ -69,7 +83,7 @@ class InteractionAnalyzer(object):
         self._positions = np.asarray(_xyz_list, dtype=np.float32)
         del _xyz_list
 
-        _logger.debug('New InteractionAnalyzer for structure: \'{}\''.format(structure.name))
+        logging.debug('New InteractionAnalyzer for structure: \'{}\''.format(structure.name))
 
     #
     # Neighbor Search Functions
@@ -103,7 +117,7 @@ class InteractionAnalyzer(object):
         del atom_neighbors, d_mtx, gram_matrix, h_matrix
         self.atom_neighbors = sorted(_unique)
 
-        _logger.debug('Found {} pairs of neighboring atoms at cutoff of {:3.1f}A'.format(len(_unique), cutoff))
+        logging.debug('Found {} pairs of neighboring atoms at cutoff of {:3.1f}A'.format(len(_unique), cutoff))
 
     def get_neighboring_residues(self, cutoff=5.0, skip_intra=True):
         """Calculates neighboring residues using minimum atom distances.
@@ -150,7 +164,7 @@ class InteractionAnalyzer(object):
 
         self.neighbors = neighbors
 
-        _logger.debug('Propagated atom neighbors to residue level')
+        logging.debug('Propagated atom neighbors to residue level')
 
     #
     # Interaction Calculators
@@ -187,8 +201,6 @@ class InteractionAnalyzer(object):
         atoms_in_rings = set()
         parent_dict = {}  # Associates an atom with its parent atom
 
-        if not self.structure._bonds_per_atom:
-            self.structure._get_bonded_atoms()
         neighbors = residue.bonds_per_atom
 
         for root in residue.atoms():
@@ -229,11 +241,9 @@ class InteractionAnalyzer(object):
         N/O atoms within, by default, 4 Angstrom of each other (Barlow & Thorton, 1983).
         """
 
-        salt_bridges = []  # tuple of residues
-
         # Instantiate ionizable functional groups
         # Anionic
-        if anions is not None:
+        if anions is None:
             _c = fgs.Carboxylate()
             _p = fgs.Phosphate()
             _ph = fgs.HydrogenPhosphate()
@@ -242,47 +252,44 @@ class InteractionAnalyzer(object):
             anions = (_c, _p, _ph, _s)
 
         # Cationic
-        if cations is not None:
+        if cations is None:
             _a = fgs.QuaternaryAmine()
             _g = fgs.Guanidinium()
             _i = fgs.Imidazolium()
 
             cations = (_a, _g, _i)
 
-        for fg in (anions + cations):
-            _logger.debug('Searching structure for functional group: {}'.format(fg.name))
-
         # Run methods if necessary
         if self.neighbors is None:
             self.get_neighboring_residues()
 
-        if not self.structure._bonds_per_atom:
-            self.structure._get_bonded_atoms()
-
-        if not self.structure._residue_graphs:
-            self.structure._make_residue_graphs()
-
         # Iterate over residues and find ionizable groups
         res_pos, res_neg = {}, {}
         for res in self.structure.topology.residues():
+
             for ifg in anions:
                 match = ifg.match(res)
                 if match:
-                    res_neg[res] = match
+                    if res not in res_neg:
+                        res_neg[res] = set()
+                    res_neg[res].update(match)
 
             for ifg in cations:
                 match = ifg.match(res)
                 if match:
-                    res_pos[res] = match
+                    if res not in res_pos:
+                        res_pos[res] = set()
+                    res_pos[res].update(match)
 
-        _logger.debug('Matched {} anionic groups'.format(len(res_neg)))
-        _logger.debug('Matched {} cationic groups'.format(len(res_pos)))
+        logging.debug('Matched {} anionic groups'.format(len(res_neg)))
+        logging.debug('Matched {} cationic groups'.format(len(res_pos)))
 
         # Find pairs that are close in space.
         # Use threshold of 4A between N/O atoms
         _get_sq_dij = self._calc_sq_atomic_distance
         _sq_cutoff = cutoff * cutoff
         _n_or_o = (7, 8)
+        _nsb = 0  # number of salt-bridges
         for res_i, cation in res_pos.items():
             neighbors = self.neighbors[res_i]
             i_n_and_o = [a for a in cation if a.element.atomic_number in _n_or_o]
@@ -295,17 +302,66 @@ class InteractionAnalyzer(object):
                 pairs = itertools.product(i_n_and_o, j_n_and_o)
                 for ai, aj in pairs:
                     sq_d = _get_sq_dij(ai, aj)
+                    logging.debug('({})[+] = ({})[-] == {}'.format(res_i, res_j, sq_d))
                     if sq_d <= _sq_cutoff:
-                        # InteractionTable.add()
-                        salt_bridges.append((res_i, res_j))
+                        self.itable.add(res_i, res_j, 'salt-bridge')
+                        _nsb += 1
                         break
 
-        self.salt_bridges = salt_bridges
-        _logger.debug('Found {} salt-bridges in structure'.format(len(salt_bridges)))
+        # self.salt_bridges = salt_bridges
+        logging.debug('Found {} salt-bridge(s) in structure'.format(_nsb))
 
 
 class InteractionTable(object):
-    """Container class to store and allow search of interactions.
+    """Container class to store and allow search of pairwise interactions.
+
+    Essentially interfaces with a pandas `DataFrame` object, providing utility
+    methods to change the content of the `InteractionTable` or query/filter it.
     """
 
-    pass
+    def __init__(self, name=None):
+        self.name = name
+
+        # Setup DataFrame
+        _col = ['itype',
+                'chain_a', 'chain_b', 'resname_a', 'resname_b',
+                'resid_a', 'resid_b', 'energy']
+
+        self._table = pd.DataFrame(columns=_col)
+
+    def add(self, res_a, res_b, itype=None, ienergy=None):
+        """Appends an interaction type to the table.
+
+        Args:
+            res_a (:obj:`Residue`): `Residue` object involved in the interaction.
+            res_b (:obj:`Residue`): Other `Residue` object involved in the interaction.
+
+            itype (str): name of the interaction type (e.g. salt-bridge)
+            ienergy (float): energy value of the interaction.
+        """
+
+        # Sort residues by chain/number
+        res_a, res_b = sorted((res_a, res_b), key=lambda r: (r.chain.id, r.id))
+
+        chain_a, chain_b = res_a.chain.id, res_b.chain.id
+        resname_a, resname_b = res_a.name, res_b.name
+        resid_a, resid_b = res_a.id, res_b.id
+
+        df = self._table
+        df.loc[len(df)] = [itype,
+                           chain_a, chain_b, resname_a, resname_b,
+                           resid_a, resid_b, ienergy]
+
+        logging.debug('InteractionTable now contains {} entries'.format(len(df)))
+
+    def sort(self):
+        pass
+
+    def remove(self):
+        pass
+
+    def filter(self):
+        pass
+
+    def to_json(self):
+        pass

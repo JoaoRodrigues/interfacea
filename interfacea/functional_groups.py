@@ -16,8 +16,7 @@ import networkx.algorithms.isomorphism as iso
 
 # Setup logger
 # _private name to prevent collision/confusion with parent logger
-_logger = logging.getLogger(__name__)
-_logger.addHandler(logging.NullHandler())
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
 class FunctionalGroup(object):
@@ -60,7 +59,7 @@ class FunctionalGroup(object):
 
         self._element_set = set(elements)
         self._build_graph_representation()
-        _logger.debug('Successfully setup functional group \'{}\''.format(name))
+        logging.debug('Successfully setup functional group \'{}\''.format(name))
 
     def _build_graph_representation(self):
         """Builds a graph representation of the fragment.
@@ -114,6 +113,20 @@ class FunctionalGroup(object):
             return matched_atoms  # return the atoms matching the functional group
 
         return []
+
+    def search(self, structure):
+        """Utility function to search an entire structure matches of the functional group.
+
+        Returns a dictionary with `Residue` objects as keys and the matched atoms as values.
+        """
+
+        matches = {}
+        for res in structure.topology.residues():
+            matched_atoms = self.match(res)
+            if matched_atoms:
+                matches[res] = matched_atoms
+
+        return matches
 
 
 # Common functional groups

@@ -26,8 +26,7 @@ import simtk.unit as units
 
 # Setup logger
 # _private name to prevent collision/confusion with parent logger
-_logger = logging.getLogger(__name__)
-_logger.addHandler(logging.NullHandler())
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 # .minimize([posre=True, nsteps=50])
 
@@ -58,10 +57,12 @@ class Structure(object):
             defined at runtime.
     """
 
-    def __init__(self, name, structure):
+    def __init__(self, name, structure, random_seed=917):
+
+        self.seed = random_seed  # to allow reproducibility of results across the library
 
         self.name = name
-        self.topology = structure.topology
+        self._set_topology(structure.topology)
         self.positions = structure.positions
 
         self.sequences = None
@@ -72,10 +73,7 @@ class Structure(object):
 
         self._pdbfixer = None  # cache PDBFixer structure if we need it.
 
-        self._bonds_per_atom = False  # flag set when _bonded_atoms is called
-        self._residue_graphs = False  # flag set when _make_res_graphs is called
-
-        _logger.debug('Created Structure from \'{}\''.format(name))
+        logging.debug('Created Structure from \'{}\''.format(name))
 
     def __repr__(self):
         """Print pretty things when called.
@@ -93,6 +91,19 @@ class Structure(object):
             rep_str += ' (ff={})'.format(self.forcefield)
 
         return rep_str
+
+    #
+    # Private Methods
+    #
+
+    def _set_topology(self, topology):
+        """Utility method to apply changes on topology changes.
+        """
+
+        self.topology = topology
+
+        self._get_bonded_atoms()
+        self._make_residue_graphs()
 
     def _load_to_pdbfixer(self):
         """Utility class to write a temporary PDB file and reload using PDBFixer.
@@ -119,6 +130,120 @@ class Structure(object):
         self._pdbfixer.missingResidues = {}
         self._pdbfixer.missingTerminals = {}
 
+    def _get_bonded_atoms(self):
+        """Creates a dictionary of bonds per atom.
+        """
+
+        for residue in self.topology.residues():
+            bond_dict = {}
+            for b in residue.bonds():
+
+                bond_dict.setdefault(b.atom1, [])
+                bond_dict.setdefault(b.atom2, [])
+
+                bond_dict[b.atom1].append(b.atom2)
+                bond_dict[b.atom2].append(b.atom1)
+
+            residue.bonds_per_atom = bond_dict
+
+        logging.debug('Created per-atom bonding dictionary from topology')
+
+    def _make_residue_graphs(self):
+        """Creates a networkx.Graph representation of a `Residue`.
+
+        Uses the atom elements as node attributes and the topology bonds
+        as edges.
+        """
+
+        for residue in self.topology.residues():
+            at_to_idx = {at: idx for idx, at in enumerate(residue.atoms())}
+
+            # Make graph of residue
+            res_g = nx.Graph()
+            for atom, idx in at_to_idx.items():
+                res_g.add_node(idx, element=atom.element.atomic_number)
+
+            for b in residue.bonds():
+                a1, a2 = b.atom1, b.atom2
+                a1_idx, a2_idx = at_to_idx.get(a1), at_to_idx.get(a2)
+                if a1_idx is not None and a2_idx is not None:
+                    res_g.add_edge(a1_idx, a2_idx)
+
+            residue._g = res_g
+
+        logging.debug('Converted residue topologies to graph representation')
+
+    def _load_forcefield(self, forcefield='amber14-all.xml'):
+        """Utility private method to load forcefield definitions.
+        """
+
+        try:
+            loaded_forcefield = app.ForceField(forcefield)
+            logging.debug('Loaded forcefield definitions from: {}'.format(forcefield))
+
+        except ValueError as e:
+            emsg = 'Error when loading forcefield XML file: {}'.format(forcefield)
+            raise StructureError(emsg) from e
+
+        self._forcefield = loaded_forcefield
+        self.forcefield = forcefield
+
+    #
+    # Public Methods
+    #
+
+    # IO
+    def write(self, output, ftype=None, overwrite=False):
+        """Writes `Structure` object to file.
+
+        Uses OpenMM PDBFile or PDBxFile methods to write the `Structure` to a file on disk in
+        PDB or mmCIF format, respectively. The output format is guessed from the user-provided
+        file name or by the optional argument `format`.
+
+
+        Args:
+            output (file/str): file object or name to create the new file on disk.
+            ftype (str): format to use when writing the file. Must be either 'pdb' or 'cif'.
+            overwrite(bool, optional): write file even if it already exists. Defaults to False.
+
+        Raises:
+            StructureError: if file type is not supported.
+            OSError: if file already exists and overwrite is set to False.
+        """
+
+        _writers = {'cif': app.PDBxFile.writeFile, 'pdb': app.PDBFile.writeFile}
+        _fmt_str = ','.join(_writers.keys())
+
+        if ftype is None:  # read from filename
+            _, ext = os.path.splitext(output)
+            ftype = ext[1:]  # removes the dot
+
+        writer = _writers.get(ftype)
+        if writer is None:
+            emsg = 'Unsupported file type \'{}\'. Choose from {}'.format(ftype, _fmt_str)
+            raise StructureError(emsg)
+
+        if isinstance(output, str):
+            if os.path.isfile(output) and not overwrite:
+                emsg = 'File already exists. Use overwrite=True or remove file.'
+                raise OSError(emsg)
+            handle = open(output, 'w')
+
+        elif isinstance(output, io.IOBase) or (hasattr(output, 'file') and
+                                               isinstance(output.file, io.IOBase)):
+            handle = output
+        else:
+            raise TypeError('\'output\' argument must be \'str\' or a file-like object')
+
+        try:
+            with handle:
+                writer(self.topology, self.positions, handle, keepIds=True)
+        except Exception as e:
+            emsg = 'Error when writing Structure to file: {}'.format(handle.name)
+            raise StructureError(emsg) from e
+
+    # Structure manipulation
+
     def add_termini(self, ends=None):
         """Method to add missing terminal atoms to (all) chains in the `Structure`.
 
@@ -140,7 +265,7 @@ class Structure(object):
 
         chains = list(self.topology.chains())
         num_chains = len(chains)
-        _logger.debug('Adding termini to {} chains'.format(num_chains))
+        logging.debug('Adding termini to {} chains'.format(num_chains))
 
         if ends is not None:
             num_ends = len(ends)
@@ -187,10 +312,10 @@ class Structure(object):
             n_cap, c_cap = ends[chain_idx]
             if n_cap and n_ter != n_cap:
                 chain_reslist.insert(0, n_cap)
-                _logger.debug('Capping chain {} N-ter with \'{}\''.format(chain.id, n_cap))
+                logging.debug('Capping chain {} N-ter with \'{}\''.format(chain.id, n_cap))
             if c_cap and c_ter != c_cap:
                 chain_reslist.append(c_cap)
-                _logger.debug('Capping chain {} C-ter with \'{}\''.format(chain.id, c_cap))
+                logging.debug('Capping chain {} C-ter with \'{}\''.format(chain.id, c_cap))
 
             sequences.append(Sequence(chain.id, chain_reslist))
 
@@ -209,9 +334,9 @@ class Structure(object):
                 del s.missingAtoms[res]
 
         # Add missing terminal atoms/residues
-        s.addMissingAtoms()
+        s.addMissingAtoms(seed=self.seed)
 
-        self.topology = s.topology
+        self._set_topology(s.topology)
         self.positions = s.positions
 
     def add_missing_atoms(self):
@@ -231,11 +356,11 @@ class Structure(object):
         s.missingTerminals = {}  # do not add missing terminals here.
 
         n_added_atoms = len(s.missingAtoms)
-        _logger.debug('Adding {} missing atoms'.format(n_added_atoms))
+        logging.debug('Adding {} missing atoms'.format(n_added_atoms))
 
         if n_added_atoms:
-            s.addMissingAtoms()
-            self.topology = s.topology
+            s.addMissingAtoms(seed=self.seed)
+            self._set_topology(s.topology)
             self.positions = s.positions
 
             # Issue warning about atom positions
@@ -266,10 +391,10 @@ class Structure(object):
         existing_H = [a for a in model.topology.atoms() if a.element == _elem_H]
         model.delete(existing_H)
 
-        _logger.debug('Protonating structure at pH {}'.format(pH))
+        logging.debug('Protonating structure at pH {}'.format(pH))
         model.addHydrogens(forcefield=self._forcefield, pH=pH)
 
-        self.topology = model.topology
+        self._set_topology(model.topology)
         self.positions = model.positions
 
         # Issue warning about atom positions
@@ -333,7 +458,7 @@ class Structure(object):
         # Mutate on each chain at a time
         for chain in mut_per_chain:
             muts = mut_per_chain[chain]
-            _logger.debug('Making {} mutations on chain {}'.format(len(muts), chain))
+            logging.debug('Making {} mutations on chain {}'.format(len(muts), chain))
 
             try:
                 s.applyMutations(muts, chain)
@@ -353,7 +478,7 @@ class Structure(object):
 
             s.missingTerminals = {}
 
-            s.addMissingAtoms()
+            s.addMissingAtoms(seed=self.seed)
 
         self.topology = s.topology
         self.positions = s.positions
@@ -362,69 +487,7 @@ class Structure(object):
         warnings.warn(('Residue mutated but atom positions are not optimized. '
                        'Make sure to minimize the structure before doing any analysis'))
 
-    def write(self, output, ftype='cif', overwrite=False):
-        """Writes `Structure` object to file.
-
-        Uses OpenMM PDBFile or PDBxFile methods to write the `Structure` to a file on disk in
-        PDB or mmCIF format, respectively. The output format is guessed from the user-provided
-        file name or by the optional argument `format`.
-
-
-        Args:
-            output (file/str): file object or name to create the new file on disk.
-            ftype (str): format to use when writing the file. Must be either 'pdb' or 'cif'.
-            overwrite(bool, optional): write file even if it already exists. Defaults to False.
-
-        Raises:
-            StructureError: if file type is not supported.
-            OSError: if file already exists and overwrite is set to False.
-        """
-
-        _writers = {'cif': app.PDBxFile.writeFile, 'pdb': app.PDBFile.writeFile}
-        _fmt_str = ','.join(_writers.keys())
-
-        writer = _writers.get(ftype)
-        if writer is None:
-            emsg = 'Unsupported file type \'{}\'. Choose from {}'.format(ftype, _fmt_str)
-            raise StructureError(emsg)
-
-        if isinstance(output, str):
-            if os.path.isfile(output) and not overwrite:
-                emsg = 'File already exists. Use overwrite=True or remove file.'
-                raise OSError(emsg)
-            handle = open(output, 'w')
-
-        elif isinstance(output, io.IOBase) or (hasattr(output, 'file') and
-                                               isinstance(output.file, io.IOBase)):
-            handle = output
-        else:
-            raise TypeError('\'output\' argument must be \'str\' or a file-like object')
-
-        try:
-            with handle:
-                writer(self.topology, self.positions, handle, keepIds=True)
-        except Exception as e:
-            emsg = 'Error when writing Structure to file: {}'.format(handle.name)
-            raise StructureError(emsg) from e
-
-    #
     # MM Functions
-    #
-
-    def _load_forcefield(self, forcefield='amber14-all.xml'):
-        """Utility private method to load forcefield definitions.
-        """
-
-        try:
-            loaded_forcefield = app.ForceField(forcefield)
-            _logger.debug('Loaded forcefield definitions from: {}'.format(forcefield))
-
-        except ValueError as e:
-            emsg = 'Error when loading forcefield XML file: {}'.format(forcefield)
-            raise StructureError(emsg) from e
-
-        self._forcefield = loaded_forcefield
-        self.forcefield = forcefield
 
     def parameterize(self, forcefield='amber14-all.xml'):
         """Wrapper function to create an OpenMM system from the Structure.
@@ -440,52 +503,7 @@ class Structure(object):
 
         system = self._forcefield.createSystem(self.topology, nonbondedMethod=app.NoCutoff)
         self._system = system
-        _logger.debug('Successfully created new OpenMM System for structure')
-
-    def _get_bonded_atoms(self):
-        """Creates a dictionary of bonds per atom.
-        """
-
-        bond_dict = {}
-        for residue in self.topology.residues():
-            for b in residue.bonds():
-
-                bond_dict.setdefault(b.atom1, [])
-                bond_dict.setdefault(b.atom2, [])
-
-                bond_dict[b.atom1].append(b.atom2)
-                bond_dict[b.atom2].append(b.atom1)
-
-            residue.bonds_per_atom = bond_dict
-
-        _logger.debug('Created per-atom bonding dictionary from topology')
-        self._bonds_per_atom = True
-
-    def _make_residue_graphs(self):
-        """Creates a networkx.Graph representation of a `Residue`.
-
-        Uses the atom elements as node attributes and the topology bonds
-        as edges.
-        """
-
-        for residue in self.topology.residues():
-            at_to_idx = {at: idx for idx, at in enumerate(residue.atoms())}
-
-            # Make graph of residue
-            res_g = nx.Graph()
-            for atom, idx in at_to_idx.items():
-                res_g.add_node(idx, element=atom.element.atomic_number)
-
-            for b in residue.bonds():
-                a1, a2 = b.atom1, b.atom2
-                a1_idx, a2_idx = at_to_idx.get(a1), at_to_idx.get(a2)
-                if a1_idx is not None and a2_idx is not None:
-                    res_g.add_edge(a1_idx, a2_idx)
-
-            residue._g = res_g
-
-        _logger.debug('Converted residue topologies to graph representation')
-        self._residue_graphs = True
+        logging.debug('Successfully created new OpenMM System for structure')
 
     #
     # Energy-related functions
