@@ -21,7 +21,31 @@ from .interactions import InteractionAnalyzer
 # all module-level loggers
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
+
 # Methods
+def set_log_level(level='none'):
+    """Enables logging to a certain level.
+
+    Useful for interactive/debugging applications.
+
+    Args:
+        level (str): verbosity/type of logging. Can be either
+            'none', 'minimal', or 'verbose'.
+    """
+
+    if level == 'none':
+        pass
+    elif level == 'minimal':
+        # Add timestamp
+        logging.basicConfig(format='%(module)s :: %(message)s', level=logging.INFO)
+    elif level == 'verbose':
+        logging.basicConfig(format='%(module)s :: %(message)s', level=logging.INFO)
+    else:
+        raise ValueError('Logging level must be: \'none\', \'minimal\', or \'verbose\'')
+
+    logging.info('Logging enable and set to \'{}\''.format(level))
+
+
 def read(fpath, ftype=None):
     """Creates a `Structure` instance from a PDB/mmCIF file.
 
@@ -57,16 +81,16 @@ def read(fpath, ftype=None):
 
     if ftype in _pdb_formats:
         try:
+            logging.debug('Detected file as PDB')
             struct = app.PDBFile(fullpath)
-            logging.debug('Successfully parsed file as PDB')
         except Exception as e:
             emsg = 'Failed parsing file {} as \'PDB\' format'.format(fullpath)
             raise StructureError(emsg) from e
 
     elif ftype in _cif_formats:
         try:
+            logging.debug('Detected file as mmCIF')
             struct = app.PDBxFile(fullpath)
-            logging.debug('Successfully parsed file as mmCIF')
         except Exception as e:
             emsg = 'Failed parsing file {} as \'mmCIF\' format'.format(fullpath)
             raise StructureError(emsg) from e
@@ -74,4 +98,5 @@ def read(fpath, ftype=None):
         emsg = '\'{}\' is not one of the supported types: {}'.format(ftype, _formats_str)
         raise StructureError(emsg)
 
+    logging.info('Successfully parsed file into Structure: {}'.format(fullpath))
     return Structure(fullpath, struct)
