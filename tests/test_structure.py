@@ -226,8 +226,11 @@ class TestWriter(unittest.TestCase):
 
         # os.remove(filename)
 
-        with open(self.cif) as handle:
+        with open(self.cif, 'r') as handle:
             ori = handle.readlines()
+
+        with open('test.cif', 'w') as handle:
+            handle.write(''.join(new))
 
         self.assertEqual(new[2:], ori[2:])  # remove lines w/ date.
 
@@ -238,4 +241,4 @@ class TestWriter(unittest.TestCase):
         s = self.struct
         with self.assertRaises(OSError):
             with tempfile.NamedTemporaryFile() as handle:
-                s.write(handle.name)
+                s.write(handle.name, ftype='pdb')

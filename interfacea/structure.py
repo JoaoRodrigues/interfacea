@@ -279,6 +279,9 @@ class Structure(object):
         if ftype is None:  # read from filename
             _, ext = os.path.splitext(output)
             ftype = ext[1:]  # removes the dot
+            if not ftype.strip():  # empty (no extension?)
+                emsg = 'You must either provide an extension or a filename with one.'
+                raise StructureError(emsg)
 
         writer = _writers.get(ftype)
         if writer is None:
@@ -295,7 +298,7 @@ class Structure(object):
                                                isinstance(output.file, io.IOBase)):
             handle = output
         else:
-            raise TypeError('\'output\' argument must be \'str\' or a file-like object')
+            raise TypeError('\'output\' argument must be a file name or a file-like object')
 
         try:
             with handle:
