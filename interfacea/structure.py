@@ -50,6 +50,9 @@ class Structure(object):
         name (str): path to file used to create Structure instance.
         structure (:obj:`OpenMM Class`): OpenMM `PDB(x)File` object.
         random_seed (int): integer to use as a random number seed.
+            Default is 917.
+        build_kdtree (bool): automatically build KDTree on instantiation.
+            Default is True.
 
     Attributes:
         topology (:obj:`OpenMM Topology`): OpenMM topology.
@@ -64,7 +67,7 @@ class Structure(object):
             the forcefield parameters.
     """
 
-    def __init__(self, name, structure, random_seed=917):
+    def __init__(self, name, structure, random_seed=917, build_kdtree=True):
 
         self.seed = random_seed  # to allow reproducibility of results across the library
 
@@ -87,7 +90,8 @@ class Structure(object):
         del _xyz_list
 
         # Build KDTree
-        self._build_kdtree()
+        if build_kdtree:
+            self._build_kdtree()
 
         logging.debug('Created Structure from \'{}\''.format(name))
 
@@ -107,6 +111,28 @@ class Structure(object):
             rep_str += ' (ff={})'.format(self.forcefield)
 
         return rep_str
+
+    # Pickling/Copying methods
+    def copy(self):
+        """Returns a (deep) copy of the Structure.
+        """
+
+        newstruct = self.__class__(self.name, self, build_kdtree=False)
+        return newstruct
+
+    def __copy__(self, *args):
+        """Shallow Copy Override
+        """
+
+        c = self.copy()
+        return c
+
+    def __deepcopy__(self, *args):
+        """Deepcopy override
+        """
+
+        c = self.copy()
+        return c
 
     #
     # Private Methods
