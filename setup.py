@@ -77,35 +77,12 @@ class build_extensions(build_ext):
         build_ext.run(self)
 
 
-class run_tests(Command):
-    """Run all of the tests for the package.
-    """
+# class run_tests(Command):
+#     """Run all of the tests for the package.
+#     """
 
-    description = "Automatically run the test suite (in test/)"
-    user_options = []
-
-    def initialize_options(self):
-        """No-op, initialise options."""
-        pass
-
-    def finalize_options(self):
-        """No-op, finalise options."""
-        pass
-
-    def run(self):
-        """Run the tests."""
-
-        this_dir = os.getcwd()
-
-        # change to the test dir and run the tests
-        os.chdir("tests")
-        sys.path.insert(0, '')
-
-        import run_tests
-        run_tests.main([])
-
-        # change back to the current directory
-        os.chdir(this_dir)
+#     description = "Automatically run the test suite (in test/)"
+#     user_options = []
 
 
 setup(name='interfacea',
@@ -132,7 +109,7 @@ setup(name='interfacea',
           "install": install_library,
           "build_py": build_py_modules,
           "build_ext": build_extensions,
-          "test": run_tests,
+          # "test": run_tests,
       },
       packages=PACKAGES,
       ext_modules=EXTENSIONS,
