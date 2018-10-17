@@ -69,25 +69,20 @@ class Structure(object):
 
     def __init__(self, name, structure, random_seed=917, build_kdtree=True):
 
+        self.sequences = None
+        self.forcefield = None  # forcefield name (str)
+        self.potential_energy = None
+
+        self._forcefield = None  # forcefield object
+        self._system = None
+        self._pdbfixer = None  # cache PDBFixer structure if we need it.
+        self._kdt = None
+
         self.seed = random_seed  # to allow reproducibility of results across the library
 
         self.name = name
         self._set_topology(structure.topology)
-        self.positions = structure.positions
-
-        self.sequences = None
-        self.forcefield = None  # forcefield name (str)
-        self._forcefield = None  # forcefield object
-
-        self._system = None
-        self.potential_energy = None
-
-        self._pdbfixer = None  # cache PDBFixer structure if we need it.
-
-        # Convert positions to numpy array
-        _xyz_list = structure.positions.value_in_unit(units.angstrom)
-        self._np_positions = np.asarray(_xyz_list, dtype="d")  # double precision needed for kdtree
-        del _xyz_list
+        self._set_positions(structure.positions)
 
         # Build KDTree
         if build_kdtree:
@@ -166,6 +161,20 @@ class Structure(object):
         self._get_bonded_atoms()
         self._make_residue_graphs()
 
+    def _set_positions(self, positions):
+        """Utility method to apply changes on atom addition/deletion.
+        """
+
+        self.positions = positions
+
+        # Convert positions to numpy array
+        _xyz_list = positions.value_in_unit(units.angstrom)
+        self._np_positions = np.asarray(_xyz_list, dtype="d")  # double precision needed for kdtree
+        del _xyz_list
+
+        if self._kdt is not None:
+            self._build_kdtree()
+
     def _load_to_pdbfixer(self):
         """Utility class to write a temporary PDB file and reload using PDBFixer.
 
@@ -195,9 +204,13 @@ class Structure(object):
 
     def _get_bonded_atoms(self):
         """Creates a dictionary of bonds per atom.
+
+        Somewhat a performance bottleneck for large structures.
+        Should we optimize? How?
         """
 
-        for residue in self.topology.residues():
+        reslist = list(self.topology.residues())
+        for residue in reslist:
             bond_dict = {}
             for b in residue.bonds():
 
@@ -216,21 +229,22 @@ class Structure(object):
 
         Uses the atom elements as node attributes and the topology bonds
         as edges.
+
+        Somewhat a performance bottleneck for large structures.
+        Should we optimize? How?
         """
 
-        for residue in self.topology.residues():
+        reslist = list(self.topology.residues())
+        for residue in reslist:
             at_to_idx = {at: idx for idx, at in enumerate(residue.atoms())}
 
             # Make graph of residue
             res_g = nx.Graph()
             for atom, idx in at_to_idx.items():
                 res_g.add_node(idx, element=atom.element.atomic_number)
-
-            for b in residue.bonds():
-                a1, a2 = b.atom1, b.atom2
-                a1_idx, a2_idx = at_to_idx.get(a1), at_to_idx.get(a2)
-                if a1_idx is not None and a2_idx is not None:
-                    res_g.add_edge(a1_idx, a2_idx)
+                for bonded in residue.bonds_per_atom[atom]:
+                    if bonded in at_to_idx:
+                        res_g.add_edge(idx, at_to_idx[bonded])
 
             residue._g = res_g
 
@@ -425,7 +439,7 @@ class Structure(object):
         s.addMissingAtoms(seed=self.seed)
 
         self._set_topology(s.topology)
-        self.positions = s.positions
+        self._set_positions(s.positions)
 
     def add_missing_atoms(self):
         """Method to add missing atoms to a `Structure` object.
@@ -449,7 +463,7 @@ class Structure(object):
             logging.info('Found missing heavy atoms: {}'.format(n_added_atoms))
             s.addMissingAtoms(seed=self.seed)
             self._set_topology(s.topology)
-            self.positions = s.positions
+            self._set_positions(s.positions)
 
             # Issue warning about atom positions
             warnings.warn(('Atoms added but their positions are not optimized. '
@@ -483,10 +497,10 @@ class Structure(object):
             model.delete(existing_H)
 
         logging.info('Protonating structure at pH {}'.format(pH))
-        model.addHydrogens(forcefield=self._forcefield, pH=pH) \
+        model.addHydrogens(forcefield=self._forcefield, pH=pH)
 
         self._set_topology(model.topology)
-        self.positions = model.positions
+        self._set_positions(model.positions)
 
         # Issue warning about atom positions
         warnings.warn(('Protons added but their positions are not optimized. '
@@ -571,8 +585,8 @@ class Structure(object):
 
             s.addMissingAtoms(seed=self.seed)
 
-        self.topology = s.topology
-        self.positions = s.positions
+        self._set_topology(s.topology)
+        self._set_positions(s.positions)
 
         # Issue warning about atom positions
         warnings.warn(('Residue mutated but atom positions are not optimized. '
@@ -698,7 +712,7 @@ class Structure(object):
             emsg = 'Minimization failed. Minimized energy is still very high: {:8.3f} kJ/mol'
             raise StructureError(emsg.format(final_e))
 
-        self.positions = state.getPositions()
+        self._set_positions(state.getPositions())
 
         # Remove restraint force from system (LIFO)
         self._system.removeForce(self._system.getNumForces() - 1)
