@@ -9,27 +9,21 @@ analyzers.
 
 from __future__ import print_function
 
-import collections
 import logging
-import itertools
 import os
 import warnings
 
-import mdtraj as md 
-import numpy as np
+import mdtraj as md
 import pandas as pd
 
 import simtk.unit as units
 
 from . import functional_groups as fgs
+from .constants import vdw_radii
 
 # Setup logger
 # _private name to prevent collision/confusion with parent logger
 logging.getLogger(__name__).addHandler(logging.NullHandler())
-
-
-# Namedtuple to represent interactions
-Interaction = collections.namedtuple('Interaction', ['a', 'b', 'type'])
 
 
 class InteractionAnalyzerError(Exception):
@@ -49,8 +43,7 @@ class InteractionAnalyzer(object):
         structure (:obj:`OpenMM Class`): OpenMM `PDB(x)File` object.
 
     Attributes:
-        atom_neighbors (:obj:`list(tuple)`): 2-item tuples with Atom objects.
-        neighbors (:obj:`list(tuple)`): 2-item tuples with Residue objects.
+        itable (:obj:`InteractionTable`): queriable table for interactions.
     """
 
     def __init__(self, structure, itable=None):
@@ -150,52 +143,61 @@ class InteractionAnalyzer(object):
                 Default is True.
         """
 
+        logging.info('Finding contacts between charged groups')
+
         # Instantiate ionizable functional groups
         # Anionic
         if anions is None:
-            _c = fgs.Carboxylate()
-            _p = fgs.Phosphate()
-            _ph = fgs.HydrogenPhosphate()
-            _s = fgs.Sulfate()
-
-            anions = (_c, _p, _ph, _s)
+            anions = [fg() for fg in fgs.anionic]
+        else:
+            if not isinstance(anions, list):
+                raise TypeError('Argument \'anions\' must be of type list')
+            is_not_fg = [not isinstance(g, fgs.FunctionalGroup) for g in anions]
+            if any(is_not_fg):
+                emsg = 'All items of \'anions\' must be of type \'FunctionalGroup\''
+                raise TypeError(emsg)
+            anions = [fg() for fg in anions]
 
         # Cationic
         if cations is None:
-            _a = fgs.QuaternaryAmine()
-            _g = fgs.Guanidinium()
-            _i = fgs.Imidazolium()
-
-            cations = (_a, _g, _i)
+            cations = [fg() for fg in fgs.cationic]
+        else:
+            if not isinstance(cations, list):
+                raise TypeError('Argument \'cations\' must be of type list')
+            is_not_fg = [not isinstance(g, fgs.FunctionalGroup) for g in cations]
+            if any(is_not_fg):
+                emsg = 'All items of \'cations\' must be of type \'FunctionalGroup\''
+                raise TypeError(emsg)
+            cations = [fg() for fg in cations]
 
         # Iterate over residues and find ionizable groups
         res_pos, res_neg = {}, {}
         for res in self.structure.topology.residues():
-
+            # returns a list of lists now
             for ifg in anions:
-                match = ifg.match(res)
-                if match:
+                match_list = ifg.match(res)
+                if match_list:
                     if res not in res_neg:
-                        res_neg[res] = set()
-                    res_neg[res].update(match)
+                        res_neg[res] = []
+                    res_neg[res].extend(match_list)
 
             for ifg in cations:
-                match = ifg.match(res)
-                if match:
+                match_list = ifg.match(res)
+                if match_list:
                     if res not in res_pos:
-                        res_pos[res] = set()
-                    res_pos[res].update(match)
+                        res_pos[res] = []
+                    res_pos[res].extend(match_list)
 
         logging.debug('Matched {} anionic groups'.format(len(res_neg)))
         logging.debug('Matched {} cationic groups'.format(len(res_pos)))
 
         # Find pairs that are close in space.
         # Use threshold of 4A between N/O atoms
-        _n_or_o = (7, 8)
+        _n_or_o = {7, 8}
         _num = 0  # number of interactions for logging
-        for res_i, cation in res_pos.items():
+        for res_i, cation_list in res_pos.items():
             chain_i = res_i.chain.id
-            n_and_o = [a for a in cation if a.element.atomic_number in _n_or_o]
+            n_and_o = [at for c in cation_list for at in c if at.element.atomic_number in _n_or_o]
             _c, _n, _i, _num_no = chain_i, res_i.name, res_i.id, len(n_and_o)
             logging.debug('Searching neighbors of {}:{}{} ({} N/O)'.format(_c, _n, _i, _num_no))
 
@@ -210,7 +212,8 @@ class InteractionAnalyzer(object):
                    (not intermolecular and chain_i != chain_j)):
                     continue
 
-                j_n_and_o = {a for a in res_neg[res_j] if a.element.atomic_number in _n_or_o}
+                anion_list = res_neg[res_j]
+                j_n_and_o = {at for a in anion_list for at in a if at.element.atomic_number in _n_or_o}
 
                 if n in j_n_and_o:
                     logging.debug('({})[+] = ({})[-]'.format(res_i, res_j))
@@ -219,6 +222,90 @@ class InteractionAnalyzer(object):
                     _seen.add(res_j)
 
         logging.info('Found {} ionic interaction(s) in structure'.format(_num))
+
+    def get_van_der_waals(self):
+        pass
+
+    def get_hydrophobic(self, groups=None, cutoff=4.4, intramolecular=False, intermolecular=True):
+        """Finds interactions between hydrophobic groups.
+
+        A contact is considered between two hydrophobic groups if the minimum distance
+        between any pair of non-polar heavy-atoms in the groups is below 4.4 Angstrom,
+        as per Table 2 in the reference below:
+            Bissantz et al. Journal of Medicinal Chemistry, 2010, vol 53, num 14
+        """
+
+        logging.info('Finding contacts between hydrophobic groups')
+
+        # Define hydrophobic groups
+        if groups is None:
+            groups = [fg() for fg in fgs.hydrophobic]
+        else:
+            if not isinstance(groups, list):
+                raise TypeError('Argument \'groups\' must be of type list')
+            is_not_fg = [not isinstance(g, fgs.FunctionalGroup) for g in groups]
+            if any(is_not_fg):
+                emsg = 'All items of \'groups\' must be of type \'FunctionalGroup\''
+                raise TypeError(emsg)
+
+            groups = [fg() for fg in groups]
+
+        # Match groups to residues in the structure
+        matched_residues = {}
+        for res in self.structure.topology.residues():
+            for ifg in groups:
+                match_list = ifg.match(res)
+                if match_list:
+                    if res not in matched_residues:
+                        matched_residues[res] = []
+                    matched_residues[res].extend(match_list)
+
+        # Prune matching subsets/supersets (Phenyl & Indole)
+        # in the same residue. Keep largest matched group.
+        for res in matched_residues:
+            to_del = []
+            matched_groups = matched_residues[res]
+            for i in range(0, len(matched_groups)):
+                for j in range(i + 1, len(matched_groups)):
+                    if set(matched_groups[i]) <= set(matched_groups[j]):
+                        logging.debug('Residue {}: group {} is a subset of group {}'.format(res, i, j))
+                        to_del.append(i)
+                        break
+
+            matched_residues[res] = [mg for idx, mg in enumerate(matched_groups) if idx not in to_del]
+
+        # Unpack residue to atoms into big set
+        logging.debug('Matched {} hydrophobic groups'.format(len(matched_residues)))
+
+        # Calculate distances between non-polar heavy-atoms in groups
+        _excl_elem = {1, 7, 8}
+        _num = 0  # number of interactions for logging
+        for res_i, group_list in matched_residues.items():
+            chain_i = res_i.chain.id
+
+            res_npha = [at for c in group_list for at in c if at.element.atomic_number not in _excl_elem]
+
+            _c, _n, _i, _num_npha = chain_i, res_i.name, res_i.id, len(res_npha)
+            logging.debug('Searching neighbors of {}:{}{} ({} apolar)'.format(_c, _n, _i, _num_npha))
+
+            neighbors = self.structure.get_neighbors(res_npha, radius=cutoff, level='atom')
+
+            _seen = set()
+            for atom_j in neighbors:
+                res_j = atom_j.residue
+                if res_i == res_j or res_j not in matched_residues or res_j in _seen:
+                    continue
+
+                chain_j = res_j.chain.id
+                if ((not intramolecular and chain_i == chain_j) or (not intermolecular and chain_i != chain_j)):
+                    continue
+
+                logging.debug('({})[+] = ({})[-]'.format(res_i, res_j))
+                self.itable.add(res_i, res_j, 'hydrophobic')
+                _num += 1
+                _seen.add(res_j)
+
+        logging.info('Found {} hydrophobic interaction(s) in structure'.format(_num))
 
 
 class ResidueTable(object):

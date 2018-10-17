@@ -375,13 +375,25 @@ class QuaternaryAmine(FunctionalGroup):
                          bonds=[(0, 1), (0, 2), (0, 3), (0, 4)])
 
 
+class Sulfonium(FunctionalGroup):
+    """Sulfonium.
+    """
+
+    def __init__(self):
+        super().__init__(name='sulfonium',
+                         charge=1,
+                         elements=[16, (6, 1), (6, 1), (6, 1)],
+                         bonds=[(0, 1), (0, 2), (0, 3)],
+                         max_bonds=[3, 4, 4, 4])
+
+
 class Sulfate(FunctionalGroup):
     """Sulfate.
     """
 
     def __init__(self):
         super().__init__(name='sulfate',
-                         charge=1,
+                         charge=-1,
                          elements=[16, 8, 8, 8],
                          bonds=[(0, 1), (0, 2), (0, 3)],
                          max_bonds=[4, 1, 1, 1])
@@ -412,15 +424,39 @@ class DivalentSulphur(FunctionalGroup):
                          max_bonds=[2, 4, 4])
 
 
-class AliphaticCarbon(FunctionalGroup):
-    """Aliphatic Chain.
+class AlkaneCarbon(FunctionalGroup):
+    """Alkanes - Aliphatic Saturated Carbon Chain.
     """
 
     def __init__(self):
-        super().__init__(name='aliphatic-carbon',
+        super().__init__(name='alkane',
                          charge=0,
                          elements=[6, (1, 6), (1, 6), (1, 6), (1, 6)],
                          bonds=[(0, 1), (0, 2), (0, 3), (0, 4)])
+
+
+class AlkeneCarbon(FunctionalGroup):
+    """Alkene - Aliphatic Unsaturated Carbon Chain.
+    """
+
+    def __init__(self):
+        super().__init__(name='alkene',
+                         charge=0,
+                         elements=[6, (1, 6), (1, 6), (1, 6)],
+                         bonds=[(0, 1), (0, 2), (0, 3)],
+                         max_bonds=[3, 4, 4, 4])
+
+
+class AlkyneCarbon(FunctionalGroup):
+    """Alkyne - Aliphatic Unsaturated Carbon Chain.
+    """
+
+    def __init__(self):
+        super().__init__(name='alkene',
+                         charge=0,
+                         elements=[6, (1, 6), (1, 6)],
+                         bonds=[(0, 1), (0, 2), (0, 3)],
+                         max_bonds=[2, 4, 4])
 
 
 class Phenyl(FunctionalGroup):
@@ -430,12 +466,27 @@ class Phenyl(FunctionalGroup):
     def __init__(self):
         super().__init__(name='phenyl',
                          charge=0,
-                         elements=[6, 6, 6, 6, 6, 6, 1, 1, 1, 1, 1, 0],
+                         elements=[6, 6, 6, 6, 6, 6, 0, 0, 0, 0, 0, 0],
                          bonds=[(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 0),
                                 (0, 6), (1, 7), (2, 8), (3, 9), (4, 10), (5, 11)])
 
 
+class Indole(FunctionalGroup):
+    """Indole Group.
+    """
+
+    def __init__(self):
+        super().__init__(name='indole',
+                         charge=0,
+                         elements=[7, 6, 6, 6, 6, 6, 6, 6, 6, 1, 1, 0, 1, 1, 1, 1],
+                         bonds=[(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 0), (3, 8),
+                                (0, 9), (1, 10), (2, 11), (4, 12), (5, 13), (6, 14), (7, 15)])
+
+
 # Lists for easier access
 anionic = [Carboxylate, Phosphate, HydrogenPhosphate, Sulfate]
-cationic = [Guanidinium, Imidazolium, QuaternaryAmine]
+cationic = [Guanidinium, Imidazolium, QuaternaryAmine, Sulfonium]
 charged = anionic + cationic
+
+hydrophobic = [AlkaneCarbon, Phenyl, Indole, DivalentSulphur]
+aromatic = [Phenyl, Indole]
