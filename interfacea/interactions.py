@@ -233,6 +233,16 @@ class InteractionAnalyzer(object):
         between any pair of non-polar heavy-atoms in the groups is below 4.4 Angstrom,
         as per Table 2 in the reference below:
             Bissantz et al. Journal of Medicinal Chemistry, 2010, vol 53, num 14
+
+        Args:
+            groups (list(:obj: `FunctionalGroup`)): list of hydrophobic groups to match in
+                the structure.
+            cutoff (float): maximum distance for non-polar heavy-atom pairs in matched
+                groups, in Angstrom. Default is 4.4 Angstrom
+            intramolecular (bool): find interactions *within* the same chain.
+                Default is False.
+            intermolecular (bool): find interactions only between different chains.
+                Default is True.
         """
 
         logging.info('Finding contacts between hydrophobic groups')
