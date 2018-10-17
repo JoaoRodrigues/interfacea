@@ -154,6 +154,7 @@ class Structure(object):
         a bit like Biopython does it.
         """
 
+        logging.debug('Building KDTree (this might take a minute or two)')
         self._kdt = kdtrees.KDTree(self._np_positions)
 
     def _set_topology(self, topology):
