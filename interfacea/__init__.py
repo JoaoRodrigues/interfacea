@@ -39,7 +39,7 @@ def set_log_level(level='none'):
         # Add timestamp
         logging.basicConfig(format='%(module)s :: %(message)s', level=logging.INFO)
     elif level == 'verbose':
-        logging.basicConfig(format='%(module)s :: %(message)s', level=logging.INFO)
+        logging.basicConfig(format='%(module)s :: %(message)s', level=logging.DEBUG)
     else:
         raise ValueError('Logging level must be: \'none\', \'minimal\', or \'verbose\'')
 
