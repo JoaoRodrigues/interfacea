@@ -23,20 +23,19 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
 # Methods
-def set_log_level(level='none'):
+def set_log_level(level='minimal'):
     """Enables logging to a certain level.
 
     Useful for interactive/debugging applications.
 
     Args:
         level (str): verbosity/type of logging. Can be either
-            'none', 'minimal', or 'verbose'.
+            'none', 'minimal', or 'verbose'. Default is 'minimal'.
     """
 
     if level == 'none':
         pass
     elif level == 'minimal':
-        # Add timestamp
         logging.basicConfig(format='[%(asctime)s] %(message)s',
                             datefmt='%H:%M:%S',
                             level=logging.INFO)
