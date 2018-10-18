@@ -97,7 +97,7 @@ class FunctionalGroup(object):
 
     __slots__ = ['name', 'charge', 'elements',
                  'bonds', 'max_bonds',
-                 '_element_set', '_g']
+                 '_g']
 
     def __init__(self, name=None, charge=None, elements=None, bonds=None, max_bonds=None):
 
@@ -141,9 +141,6 @@ class FunctionalGroup(object):
 
         self.elements = _elements
 
-        # Make element set to discard easily residues not containing elements
-        self._element_set = {subitem for item in self.elements for subitem in item}
-
         self._build_graph_representation()
         logging.debug('Successfully setup functional group \'{}\''.format(name))
 
@@ -183,8 +180,12 @@ class FunctionalGroup(object):
         # Match atoms/elements first
         atomlist = list(residue.atoms())
         elemlist = {a.element.atomic_number for a in atomlist}
-        if not ((self._element_set - {0}) <= elemlist):
-            return matched_groups  # not all atoms are in the Residue
+
+        # Fix this
+        # Make element set to discard easily residues not containing elements
+        self._element_set = {subitem for item in self.elements for subitem in item}
+        # if not ((self._element_set - {0}) & elemlist):
+        #     return matched_groups  # not all atoms are in the Residue
 
         # Match fg subgraph to residue graph
         def _node_match(n1, n2):
@@ -482,6 +483,17 @@ class Indole(FunctionalGroup):
                          bonds=[(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 0), (3, 8),
                                 (0, 9), (1, 10), (2, 11), (4, 12), (5, 13), (6, 14), (7, 15)])
 
+
+class HBondDonor(FunctionalGroup):
+    """Hydrogen Bond Donor.
+    """
+
+    def __init__(self):
+        super().__init__(name='hbond-donor',
+                         charge=0,
+                         elements=[(7, 8, 9, 16), 1],
+                         bonds=[(0, 1)],
+                         max_bonds=[99, 1])
 
 # Lists for easier access
 anionic = [Carboxylate, Phosphate, HydrogenPhosphate, Sulfate]
