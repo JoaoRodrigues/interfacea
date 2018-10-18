@@ -13,7 +13,7 @@ import logging
 import os
 import warnings
 
-import mdtraj as md
+import numpy as np
 import pandas as pd
 
 import simtk.unit as units
@@ -66,7 +66,7 @@ class InteractionAnalyzer(object):
         logging.debug('New InteractionAnalyzer for structure: \'{}\''.format(structure.name))
 
     #
-    # Interaction Calculators
+    # Auxiliary Functions
     #
 
     def _detect_rings(self, residue):
@@ -117,7 +117,25 @@ class InteractionAnalyzer(object):
 
         return atoms_in_rings
 
-    def get_ionic(self, anions=None, cations=None, cutoff=4.0, intramolecular=False, intermolecular=True):
+    def _get_angle(self, a1, a2, a3):
+        """Returns the angle between 3 atoms in degrees.
+
+        a1 - a2 - a3 (a2 is the central atom)
+        """
+
+        s_xyz = self.structure._np_positions
+        vect1 = s_xyz[a2.index] - s_xyz[a1.index]
+        vect2 = s_xyz[a2.index] - s_xyz[a3.index]
+        l1 = np.sqrt(np.dot(vect1, vect1))
+        l2 = np.sqrt(np.dot(vect2, vect2))
+        cosa = np.dot(vect1, vect2) / (l1 * l2)
+        return np.degrees(np.arccos(cosa))
+
+    #
+    # Interaction Typers/Finders
+    #
+
+    def get_ionic(self, anions=None, cations=None, cutoff=4.0, intra=False, inter=True):
         """Method to detect ionic interactions/salt bridges in the structure.
 
         Finds potentially charged groups using a list of pre-defined or
@@ -137,9 +155,9 @@ class InteractionAnalyzer(object):
             cations (list(:obj: `FunctionalGroup`)): list of cationic groups to match in structure.
             cutoff (float): maximum distance for N/O pairs in matched groups, in Angstrom.
                 Default is 4.0 Angstrom
-            intramolecular (bool): find ionic interactions *within* the same chain.
+            intra (bool): find ionic interactions *within* the same chain.
                 Default is False.
-            intermolecular (bool): find ionic interactions only between different chains.
+            inter (bool): find ionic interactions only between different chains.
                 Default is True.
         """
 
@@ -208,8 +226,8 @@ class InteractionAnalyzer(object):
                 res_j = n.residue
                 chain_j = res_j.chain.id
                 if ((res_j not in res_neg) or (res_j in _seen) or
-                   (not intramolecular and chain_i == chain_j) or
-                   (not intermolecular and chain_i != chain_j)):
+                   (not intra and chain_i == chain_j) or
+                   (not inter and chain_i != chain_j)):
                     continue
 
                 anion_list = res_neg[res_j]
@@ -226,7 +244,8 @@ class InteractionAnalyzer(object):
     def get_van_der_waals(self):
         pass
 
-    def get_hydrophobic(self, groups=None, cutoff=4.4, intramolecular=False, intermolecular=True):
+    # Add entity keyword to allow narrowing search on a set of atoms
+    def get_hydrophobic(self, groups=None, cutoff=4.4, intra=False, inter=True):
         """Finds interactions between hydrophobic groups.
 
         A contact is considered between two hydrophobic groups if the minimum distance
@@ -239,9 +258,9 @@ class InteractionAnalyzer(object):
                 the structure.
             cutoff (float): maximum distance for non-polar heavy-atom pairs in matched
                 groups, in Angstrom. Default is 4.4 Angstrom
-            intramolecular (bool): find interactions *within* the same chain.
+            intra (bool): find interactions *within* the same chain.
                 Default is False.
-            intermolecular (bool): find interactions only between different chains.
+            inter (bool): find interactions only between different chains.
                 Default is True.
         """
 
@@ -307,7 +326,7 @@ class InteractionAnalyzer(object):
                     continue
 
                 chain_j = res_j.chain.id
-                if ((not intramolecular and chain_i == chain_j) or (not intermolecular and chain_i != chain_j)):
+                if ((not intra and chain_i == chain_j) or (not inter and chain_i != chain_j)):
                     continue
 
                 logging.debug('({})[+] = ({})[-]'.format(res_i, res_j))
@@ -316,6 +335,70 @@ class InteractionAnalyzer(object):
                 _seen.add(res_j)
 
         logging.info('Found {} hydrophobic interaction(s) in structure'.format(_num))
+
+    def get_hydrogen_bonds(self, max_distance=2.5, max_angle=120.0, intra=False, inter=True):
+        """Finds hydrogen bonds in the structure.
+
+        Defines acceptors as any N/O/F/S connected to a hydrogen atom and
+        donors as any N/O/F/S within 2.5 Angstrom of the hydrogen. It then
+        filters the matches for D-H-A triplets with an angle > 120 degrees
+        and some heuristics to avoid positively charged nitrogens that do
+        not have available lone pairs.
+
+        Similar definitions to those in:
+            Baker, E. N., and R. E. Hubbard.
+            "Hydrogen bonding in globular proteins."
+            Progress in Biophysics and Molecular Biology 44.2 (1984): 97-179
+        """
+
+        get_angle = self._get_angle
+        s = self.structure
+
+        donor_fg = fgs.HBondDonor()
+
+        _nofs = {7, 8, 9, 16}
+        _num = 0
+        for res in s.topology.residues():
+
+            donor_chain = res.chain.id
+            _seen = set()
+
+            # Find donors
+            matches = donor_fg.match(res)
+            if not matches:
+                continue
+
+            for donor_match in matches:
+
+                # Find acceptors within range
+                ha, hydro = donor_match
+
+                _c, _n, _i, _dn = res.chain.id, res.name, res.id, ha.name
+                logging.debug('Searching acceptors for {}:{}{}:{}'.format(_c, _n, _i, _dn))
+                putative_acceptors = s.get_neighbors(hydro, radius=max_distance, level='atom')
+
+                # Filter acceptors
+                # 1. Same residue
+                # 2. Chains
+                # 3. NOFS
+                # 4. Angle
+                for a in putative_acceptors:
+                    donor_res = a.residue
+                    # 1 & 3
+                    if donor_res == res or a.element.atomic_number not in _nofs:
+                        continue
+                    # 2
+                    acc_chain = donor_res.chain.id
+                    if ((intra and donor_chain != acc_chain) or (inter and donor_chain == acc_chain)):
+                        continue
+                    # 4
+                    theta = get_angle(ha, hydro, a)
+                    if theta >= 120.0:
+                        self.itable.add(res, donor_res, 'hbond')
+                        _num += 1
+                        _seen.add(a.residue)  # gotta fix this to allow recording multiple hbonds
+
+        logging.info('Found {} hydrogen bonds in structure'.format(_num))
 
 
 class ResidueTable(object):
