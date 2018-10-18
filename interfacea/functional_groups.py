@@ -97,7 +97,7 @@ class FunctionalGroup(object):
 
     __slots__ = ['name', 'charge', 'elements',
                  'bonds', 'max_bonds',
-                 '_g']
+                 '_g', '_fixed_elem', '_fuzzy_elem']
 
     def __init__(self, name=None, charge=None, elements=None, bonds=None, max_bonds=None):
 
@@ -141,6 +141,11 @@ class FunctionalGroup(object):
 
         self.elements = _elements
 
+        # Build list of fixed/fuzzy elements for matching
+        # more efficiently when mathcing.
+        self._fixed_elem = {next(iter(s)) for s in self.elements if len(s) == 1} - {0}
+        self._fuzzy_elem = {e for s in self.elements for e in s if len(s) > 1} - {0}
+
         self._build_graph_representation()
         logging.debug('Successfully setup functional group \'{}\''.format(name))
 
@@ -179,13 +184,14 @@ class FunctionalGroup(object):
 
         # Match atoms/elements first
         atomlist = list(residue.atoms())
-        elemlist = {a.element.atomic_number for a in atomlist}
+        elemset = {a.element.atomic_number for a in atomlist}
 
-        # Fix this
-        # Make element set to discard easily residues not containing elements
-        self._element_set = {subitem for item in self.elements for subitem in item}
-        # if not ((self._element_set - {0}) & elemlist):
-        #     return matched_groups  # not all atoms are in the Residue
+        # Ensure all fixed elements are in the residue
+        # and at least one fuzzy element is there too.
+        no_fixed = not (elemset >= self._fixed_elem)  # subset
+        no_fuzzy = bool(self._fuzzy_elem) and self._fuzzy_elem.isdisjoint(elemset)
+        if no_fixed or no_fuzzy:
+            return matched_groups
 
         # Match fg subgraph to residue graph
         def _node_match(n1, n2):
