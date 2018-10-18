@@ -124,11 +124,14 @@ class InteractionAnalyzer(object):
         """
 
         s_xyz = self.structure._np_positions
+
         vect1 = s_xyz[a2.index] - s_xyz[a1.index]
         vect2 = s_xyz[a2.index] - s_xyz[a3.index]
+
         l1 = np.sqrt(np.dot(vect1, vect1))
         l2 = np.sqrt(np.dot(vect2, vect2))
         cosa = np.dot(vect1, vect2) / (l1 * l2)
+
         return np.degrees(np.arccos(cosa))
 
     #
@@ -351,6 +354,18 @@ class InteractionAnalyzer(object):
             Progress in Biophysics and Molecular Biology 44.2 (1984): 97-179
         """
 
+        def is_cation(atom):
+            """Returns True if the atom is part of a cation.
+            """
+
+            cation_list = [fg() for fg in fgs.cationic]
+            res = atom.residue
+            for g in cation_list:
+                m = {at for c in g.match(res) for at in c}
+                if atom in m:
+                    return True
+            return False
+
         get_angle = self._get_angle
         s = self.structure
 
@@ -361,7 +376,7 @@ class InteractionAnalyzer(object):
         for res in s.topology.residues():
 
             donor_chain = res.chain.id
-            _seen = set()
+            # _seen = set()
 
             # Find donors
             matches = donor_fg.match(res)
@@ -373,6 +388,10 @@ class InteractionAnalyzer(object):
                 # Find acceptors within range
                 ha, hydro = donor_match
 
+                # Filter cationic donors
+                if is_cation(ha):
+                    continue
+
                 _c, _n, _i, _dn = res.chain.id, res.name, res.id, ha.name
                 logging.debug('Searching acceptors for {}:{}{}:{}'.format(_c, _n, _i, _dn))
                 putative_acceptors = s.get_neighbors(hydro, radius=max_distance, level='atom')
@@ -381,7 +400,8 @@ class InteractionAnalyzer(object):
                 # 1. Same residue
                 # 2. Chains
                 # 3. NOFS
-                # 4. Angle
+                # 4. N+
+                # 5. Angle
                 for a in putative_acceptors:
                     donor_res = a.residue
                     # 1 & 3
@@ -392,11 +412,14 @@ class InteractionAnalyzer(object):
                     if ((intra and donor_chain != acc_chain) or (inter and donor_chain == acc_chain)):
                         continue
                     # 4
+                    if is_cation(a):
+                        continue
+                    # 5
                     theta = get_angle(ha, hydro, a)
                     if theta >= 120.0:
-                        self.itable.add(res, donor_res, 'hbond')
+                        self.itable.add(res, donor_res, 'hbond', donor=ha, acceptor=a)
                         _num += 1
-                        _seen.add(a.residue)  # gotta fix this to allow recording multiple hbonds
+                        # _seen.add(donor_res)  # gotta fix this to allow recording multiple hbonds
 
         logging.info('Found {} hydrogen bonds in structure'.format(_num))
 
@@ -425,18 +448,21 @@ class InteractionTable(object):
 
         _col = ['itype',
                 'chain_a', 'chain_b', 'resname_a', 'resname_b',
-                'resid_a', 'resid_b']
+                'resid_a', 'resid_b', 'donor', 'acceptor']
 
         self._table = pd.DataFrame(columns=_col)
 
-    def add(self, res_a, res_b, itype=None):
+    def add(self, res_a, res_b, itype, **kwargs):
         """Appends an interaction type to the table.
 
-        Args:
+        Arguments:
             res_a (:obj:`Residue`): `Residue` object involved in the interaction.
             res_b (:obj:`Residue`): Other `Residue` object involved in the interaction.
-
             itype (str): name of the interaction type (e.g. ionic)
+
+        Optional Arguments:
+            donor  (:obj:`Atom`): donor atom participating in a hydrogen bond
+            acceptor (:obj:`Atom`): acceptor atom participating in a hydrogen bond
         """
 
         # Sort residues by chain/number
@@ -446,10 +472,21 @@ class InteractionTable(object):
         resname_a, resname_b = res_a.name, res_b.name
         resid_a, resid_b = res_a.id, res_b.id
 
+        # For H Bonding
+        if kwargs.get('donor'):
+            donor = kwargs.get('donor').name
+        else:
+            donor = None
+
+        if kwargs.get('acceptor'):
+            acceptor = kwargs.get('acceptor').name
+        else:
+            acceptor = None
+
         df = self._table
         df.loc[len(df)] = [itype,
                            chain_a, chain_b, resname_a, resname_b,
-                           resid_a, resid_b]
+                           resid_a, resid_b, donor, acceptor]
 
         logging.debug('InteractionTable now contains {} entries'.format(len(df)))
 
