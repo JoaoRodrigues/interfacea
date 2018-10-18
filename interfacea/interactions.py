@@ -354,13 +354,15 @@ class InteractionAnalyzer(object):
             Progress in Biophysics and Molecular Biology 44.2 (1984): 97-179
         """
 
+        cation_list = [fg() for fg in fgs.cationic]
+
         def is_cation(atom):
             """Returns True if the atom is part of a cation.
             """
 
-            cation_list = [fg() for fg in fgs.cationic]
+            cl = cation_list  # put in scope
             res = atom.residue
-            for g in cation_list:
+            for g in cl:
                 m = {at for c in g.match(res) for at in c}
                 if atom in m:
                     return True
@@ -376,7 +378,6 @@ class InteractionAnalyzer(object):
         for res in s.topology.residues():
 
             donor_chain = res.chain.id
-            # _seen = set()
 
             # Find donors
             matches = donor_fg.match(res)
@@ -400,7 +401,7 @@ class InteractionAnalyzer(object):
                 # 1. Same residue
                 # 2. Chains
                 # 3. NOFS
-                # 4. N+
+                # 4. Cations
                 # 5. Angle
                 for a in putative_acceptors:
                     donor_res = a.residue
@@ -419,7 +420,6 @@ class InteractionAnalyzer(object):
                     if theta >= 120.0:
                         self.itable.add(res, donor_res, 'hbond', donor=ha, acceptor=a)
                         _num += 1
-                        # _seen.add(donor_res)  # gotta fix this to allow recording multiple hbonds
 
         logging.info('Found {} hydrogen bonds in structure'.format(_num))
 
