@@ -25,7 +25,7 @@ import simtk.openmm.app as app
 import simtk.openmm as mm
 import simtk.unit as units
 
-from src import kdtrees
+from .src import kdtrees
 
 # Setup logger
 # _private name to prevent collision/confusion with parent logger
@@ -242,7 +242,7 @@ class Structure(object):
             res_g = nx.Graph()
             for atom, idx in at_to_idx.items():
                 res_g.add_node(idx, element=atom.element.atomic_number)
-                for bonded in residue.bonds_per_atom[atom]:
+                for bonded in residue.bonds_per_atom.get(atom, []):
                     if bonded in at_to_idx:
                         res_g.add_edge(idx, at_to_idx[bonded])
 
@@ -414,10 +414,10 @@ class Structure(object):
             n_cap, c_cap = ends[chain_idx]
             if n_cap and n_ter != n_cap:
                 chain_reslist.insert(0, n_cap)
-                logging.info('Adding \'{}\' capping group to chain {} N-terminus'.format(n_cap, chain.id))
+                logging.debug('Adding \'{}\' capping group to chain {} N-terminus'.format(n_cap, chain.id))
             if c_cap and c_ter != c_cap:
                 chain_reslist.append(c_cap)
-                logging.info('Adding \'{}\' capping group to chain {} C-terminus'.format(c_cap, chain.id))
+                logging.debug('Adding \'{}\' capping group to chain {} C-terminus'.format(c_cap, chain.id))
 
             sequences.append(Sequence(chain.id, chain_reslist))
 
@@ -496,7 +496,7 @@ class Structure(object):
             existing_H = [a for a in model.topology.atoms() if a.element == _elem_H]
             model.delete(existing_H)
 
-        logging.info('Protonating structure at pH {}'.format(pH))
+        logging.debug('Protonating structure at pH {}'.format(pH))
         model.addHydrogens(forcefield=self._forcefield, pH=pH)
 
         self._set_topology(model.topology)
@@ -613,7 +613,7 @@ class Structure(object):
         system = self._forcefield.createSystem(self.topology, nonbondedMethod=app.NoCutoff)
         self._system = system
 
-        logging.info('Structure parameterized using \'{}\''.format(forcefield))
+        logging.debug('Structure parameterized using \'{}\''.format(forcefield))
 
     def calculate_energy(self):
         """Calculates the potential energy of the system.
