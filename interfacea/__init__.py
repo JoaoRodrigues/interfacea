@@ -34,19 +34,27 @@ def set_log_level(level='minimal'):
     """
 
     if level == 'none':
-        pass
-    elif level == 'minimal':
-        logging.basicConfig(format='[%(asctime)s] %(message)s',
-                            datefmt='%H:%M:%S',
-                            level=logging.INFO)
+        return
+
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter(fmt='[%(asctime)s] %(message)s',
+                                  datefmt='%H:%M:%S')
+    handler.setFormatter(formatter)
+
+    # We override the root logger here, assuming this function is only called
+    # interactively ...
+    root_logger = logging.getLogger()
+    root_logger.handlers = []  # clear handler list
+    root_logger.addHandler(handler)
+
+    if level == 'minimal':
+        root_logger.setLevel(logging.INFO)
     elif level == 'verbose':
-        logging.basicConfig(format='[%(asctime)s] %(module)s :: %(message)s',
-                            datefmt='%H:%M:%S',
-                            level=logging.DEBUG)
+        root_logger.setLevel(logging.DEBUG)
     else:
         raise ValueError('Logging level must be: \'none\', \'minimal\', or \'verbose\'')
 
-    logging.info('Logging enable and set to \'{}\''.format(level))
+    logging.info('Logging enabled and set to \'{}\''.format(level))
 
 
 def read(fpath, ftype=None):
@@ -102,4 +110,4 @@ def read(fpath, ftype=None):
         raise StructureError(emsg)
 
     logging.info('Successfully parsed file into Structure: {}'.format(fullpath))
-    return Structure(fullpath, struct)
+    return Structure(os.path.basename(fname), struct)
