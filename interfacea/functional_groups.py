@@ -501,6 +501,7 @@ class HBondDonor(FunctionalGroup):
                          bonds=[(0, 1)],
                          max_bonds=[99, 1])
 
+
 # Lists for easier access
 anionic = [Carboxylate, Phosphate, HydrogenPhosphate, Sulfate]
 cationic = [Guanidinium, Imidazolium, QuaternaryAmine, Sulfonium]
