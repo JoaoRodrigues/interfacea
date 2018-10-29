@@ -13,6 +13,7 @@ import logging
 import io
 import os
 import tempfile
+import sys
 import warnings
 
 import numpy as np
@@ -140,14 +141,19 @@ class Structure(object):
         KDTree in C and Python bindings by Michiel de Hoon, taken from Biopython.
         For details, read the source code at src/kdtrees.c
 
-        The module implements a KDTree class that takes a Nx3 numpy array of doubles.
-        The class exposes three methods:
-            search: returns indices of atoms within a radius (in Angstrom) around a central point.
-            neighbor_search: returns all point pairs within a certain radius of each other.
-            neighbor_search_simple: same as above, slow implementation for test purposes.
+        The module implements a KDTree class that takes a Nx3 numpy array of
+        doubles.
 
-        In interfacea, we will expose only search but wrap it to return either Atom, Residue, or Chain objects,
-        a bit like Biopython does it.
+        The class exposes three methods:
+            search: returns indices of atoms within a radius (in Angstrom)
+                    around a central point.
+            neighbor_search: returns all point pairs within a certain radius of
+                             each other.
+            neighbor_search_simple: same as above, slow implementation for test
+                                    purposes.
+
+        In interfacea, we will expose search and neighbor_search but wrap them
+        to return either Atom, Residue, or Chain objects, a bit like Biopython.
         """
 
         logging.debug('Building KDTree (this might take a minute or two)')
@@ -769,11 +775,12 @@ class Structure(object):
         logging.debug(msg)
 
         if method not in ('centroid', 'exhaustive'):
-            emsg = '\'method\' argument must be either: \'centroid\' or \'exhaustive\''
+            emsg = '\'method\' must be either: \'centroid\' or \'exhaustive\''
             raise ValueError(emsg)
 
         if level.lower() not in ('atom', 'residue', 'chain'):
-            emsg = '\'level\' argument must be one of: \'atom\', \'residue\', or \'chain\''
+            emsg = '\'level\' must be one of: \'atom\', \'residue\', or \'chain\''
+            raise ValueError(emsg)
         else:
             level = level.lower()
 
@@ -873,6 +880,96 @@ class Structure(object):
                 if atomlist & neighbor_idx:
                     result.append(chain)
             return result
+
+    def get_neighboring_pairs(self, radius=5.0, level='atom'):
+        """Returns all pairs of entities within a given radius of each other.
+        """
+
+        # Utility functions to retrieve parent objects
+        def get_residue(atomdict, atom_idx):
+            """Returns the Residue object associated with the atom index.
+
+            Waives checking of index == None for performance. Assumes the
+            output comes from the KDtree search so it should be fine.
+            """
+            atom = atomdict.get(atom_idx)
+            return atom.residue
+
+        def get_chain(atomdict, atom_idx):
+            """Returns the Chain object associated with the atom index.
+
+            Waives checking of index == None for performance. Assumes the
+            output comes from the KDtree search so it should be fine.
+            """
+            atom = atomdict.get(atom_idx)
+            return atom.residue.chain
+
+        if level.lower() not in ('atom', 'residue', 'chain'):
+            emsg = '\'level\' must be one of: \'atom\', \'residue\', or \'chain\''
+            raise ValueError(emsg)
+        else:
+            level = level.lower()
+            if level == 'residue':
+                get_parent = get_residue
+            elif level == 'chain':
+                get_parent = get_chain
+
+        try:
+            radius = float(radius)
+        except ValueError as e:
+            vt = type(radius)
+            emsg = '\'radius\' should be a float, not {}'
+            raise ValueError(emsg.format(vt)) from e
+
+        if radius <= 0:
+            raise ValueError('Distance threshold must be a positive number ...')
+
+        msg = 'Searching all \'{}\' neighbor pairs within {} Angstrom'
+        logging.debug(msg.format(level, radius))
+
+        # Build KDTree if not there
+        if self._kdt is None:
+            self.build_kdtree()
+
+        raw_neighbors = self._kdt.neighbor_search(radius)
+
+        # Filter according to requested level
+        atomdict = {a.index: a for a in self.topology.atoms()}
+        pairs_of_neighbors = []
+
+        if level == 'atom':
+            # Unpack structure to 3-item tuple
+            unpacked = [(atomdict.get(n.index1),
+                         atomdict.get(n.index2),
+                         n.radius) for n in raw_neighbors]
+
+        else:
+            MAX_D = sys.maxsize
+            min_distances = {}  # stores minimum distances between pairs
+            for p in raw_neighbors:
+                # Indices come sorted (p.index1 < p.index2)
+                obj_i = get_parent(atomdict, p.index1)
+                obj_j = get_parent(atomdict, p.index2)
+
+                # exclude self-self
+                if obj_i == obj_j:
+                    continue
+
+                obj_pair = (obj_i, obj_j)
+                d_ij = p.radius
+
+                cur_d = min_distances.get(obj_pair, MAX_D)
+                if d_ij < cur_d:
+                    min_distances[obj_pair] = d_ij
+
+            unpacked = [(i, j, d) for (i, j), d in min_distances.items()]
+
+        pairs_of_neighbors = unpacked
+
+        # Return neighbors
+        msg = 'Search returned {} pairs of neighbors'
+        logging.debug(msg.format(len(pairs_of_neighbors)))
+        return pairs_of_neighbors
 
     #
     # Energy-related functions
