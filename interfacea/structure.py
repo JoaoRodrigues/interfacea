@@ -88,7 +88,7 @@ class Structure(object):
         if build_kdtree:
             self._build_kdtree()
 
-        logging.debug('Created Structure from \'{}\''.format(name))
+        logging.info('Created Structure from \'{}\''.format(name))
 
     def __repr__(self):
         """Print pretty things when called.
@@ -436,7 +436,16 @@ class Structure(object):
                 del s.missingAtoms[res]
 
         # Add missing terminal atoms/residues
-        s.addMissingAtoms(seed=self.seed)
+        try:
+            s.addMissingAtoms(seed=self.seed)
+        except TypeError as err:
+            msg = 'OpenMM does not add missing atoms at reproducible positions.'
+            msg += ' Consider installing the latest OpenMM from git'
+            msg += ' to minimize this effect. This is just a warning, nothing'
+            msg += ' is wrong with your structure or added atoms.'
+            logging.warning(msg)
+
+            s.addMissingAtoms()
 
         self._set_topology(s.topology)
         self._set_positions(s.positions)
@@ -461,7 +470,18 @@ class Structure(object):
 
         if n_added_atoms:
             logging.info('Found missing heavy atoms: {}'.format(n_added_atoms))
-            s.addMissingAtoms(seed=self.seed)
+
+            try:
+                s.addMissingAtoms(seed=self.seed)
+            except TypeError as err:
+                msg = 'OpenMM does not add missing atoms at reproducible positions.'
+                msg += ' Consider installing the latest OpenMM from git'
+                msg += ' to minimize this effect. This is just a warning, nothing'
+                msg += ' is wrong with your structure or added atoms.'
+                logging.warning(msg)
+
+                s.addMissingAtoms()
+
             self._set_topology(s.topology)
             self._set_positions(s.positions)
 
@@ -583,7 +603,16 @@ class Structure(object):
 
             s.missingTerminals = {}
 
-            s.addMissingAtoms(seed=self.seed)
+            try:
+                s.addMissingAtoms(seed=self.seed)
+            except TypeError as err:
+                msg = 'OpenMM does not add missing atoms at reproducible positions.'
+                msg += ' Consider installing the latest OpenMM from git'
+                msg += ' to minimize this effect. This is just a warning, nothing'
+                msg += ' is wrong with your structure or added atoms.'
+                logging.warning(msg)
+
+                s.addMissingAtoms()
 
         self._set_topology(s.topology)
         self._set_positions(s.positions)
