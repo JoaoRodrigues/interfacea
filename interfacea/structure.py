@@ -825,6 +825,11 @@ class Structure(object):
             raise TypeError(emsg)
 
         logging.debug('Search object comprises {} atoms'.format(len(coords)))
+
+        # Build KDTree if not there
+        if self._kdt is None:
+            self.build_kdtree()
+
         # Perform search
         if method == 'centroid':
             logging.debug('Using \'centroid\' method to search')
