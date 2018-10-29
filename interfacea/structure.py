@@ -86,7 +86,7 @@ class Structure(object):
 
         # Build KDTree
         if build_kdtree:
-            self._build_kdtree()
+            self.build_kdtree()
 
         logging.info('Created Structure from \'{}\''.format(name))
 
@@ -113,6 +113,7 @@ class Structure(object):
         """
 
         newstruct = self.__class__(self.name, self, build_kdtree=False)
+        logging.warning('Copy does not have forcefield or neighbor information.')
         return newstruct
 
     def __copy__(self, *args):
@@ -133,7 +134,7 @@ class Structure(object):
     # Private Methods
     #
 
-    def _build_kdtree(self):
+    def build_kdtree(self):
         """Builds a KDTree for fast neighbor lookup.
 
         KDTree in C and Python bindings by Michiel de Hoon, taken from Biopython.
@@ -173,7 +174,7 @@ class Structure(object):
         del _xyz_list
 
         if self._kdt is not None:
-            self._build_kdtree()
+            self.build_kdtree()
 
     def _load_to_pdbfixer(self):
         """Utility class to write a temporary PDB file and reload using PDBFixer.
