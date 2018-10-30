@@ -3,8 +3,7 @@
 """
 Analysis of Biomolecular Interfaces.
 
-Module containing interaction type categories and 
-analyzers.
+Module containing interaction type categories and analyzers.
 """
 
 from __future__ import print_function
@@ -12,18 +11,15 @@ from __future__ import print_function
 import collections
 import logging
 import itertools
-import os
-import warnings
 
 import networkx as nx
 import numpy as np
 import pandas as pd
 
 import simtk.openmm.app.topology as openmm_topology
-import simtk.unit as units
 
 from . import functional_groups as fgs
-from .constants import vdw_radii
+from . import constants
 
 # Setup logger
 # _private name to prevent collision/confusion with parent logger
@@ -496,9 +492,20 @@ class InteractionAnalyzer(object):
 
         logging.info('Found {} ionic interaction(s) in structure'.format(_num))
 
-    def get_clashes(self, subset=None, include_intra=False):
-        """Finds clashes between atoms in the structure.
+    def get_clashes(self, subset=None, include_intra=False, cutoff=1.0):
+        """Finds clashes between heavy atoms in the structure.
 
+        Algorithm to find clashes is similar to that used by Chimera's findclash
+        tool. Two atoms are considered clashing if their overlap is above a
+        certain cutoff value:
+            overlap(i, j) = vdw(i) + vdw(j) - d(i,j)
+            if overlap(i, j) >= 0.6 the atoms are considered to be clashing.
+
+        This implementation ignores hydrogens, assuming that clashing hydrogens
+        can be cleared with a simple minimization and that a clash involving
+        heavy atoms is already bad enough. The cutoff is set to 1.0A by default,
+        instead of findclash's 0.6, to avoid considering atoms of the peptide
+        bond as clashing.
 
         Args:
             subset (:obj:`list(object)`): Residue or Chain objects or list of to
@@ -506,8 +513,61 @@ class InteractionAnalyzer(object):
                 residue in the structure.
             include_intra (bool): includes intramolecular residue pairs in the
                 search. By default, False.
+            cutoff (float): threshold value in Angstrom to consider that two
+                atoms are clashing. It is not a simple distance, see formula
+                above. Default is 1.0 Angstrom.
         """
-        pass
+
+        s = self.structure
+
+        def is_hydrogen(atom):
+            """Returns True if the atom is a hydrogen.
+            """
+            return atom.element.atomic_number == 1
+
+        # Determine maximum clash radius
+        vdw_radii = constants.vdw_radii
+        max_radius = max(vdw_radii.values())
+
+        # Search all neighbors within a maximum distance of 2*max_radius
+        # of vdw_radius(atom) + max_radius and then use the actual neighbor
+        # vdw_radius to screen for clashes.
+        clashes = set()
+        neighbors = s.get_neighboring_pairs(2.0 * max_radius, level='atom')
+        for pair in neighbors:
+            atom_i, atom_j, d_ij = pair
+
+            # Ignore same residue interactions
+            res_i, res_j = atom_i.residue, atom_j.residue
+            if res_i == res_j:
+                continue
+
+            # Ignore hydrogens
+            if is_hydrogen(atom_i) or is_hydrogen(atom_j):
+                continue
+
+            # Get vdw(i) + vdw(j)
+            vdw_i = vdw_radii.get(atom_i.element.atomic_number)
+            vdw_j = vdw_radii.get(atom_j.element.atomic_number)
+            overlap = vdw_i + vdw_j - d_ij
+            if overlap >= cutoff:
+
+                # Ignore bonded atoms
+                if atom_j in res_i.bonds_per_atom[atom_i]:
+                    continue
+
+                if (atom_i.residue, atom_j.residue) in clashes:
+                    continue
+
+                clashes.add((atom_i.residue, atom_j.residue))
+                self.itable.add(res_i, res_j, 'clash', atom_a=atom_i, atom_b=atom_j)
+
+        msg = 'Found {} clashing residues in the structure'
+        logging.info(msg.format(len(clashes)))
+
+        # for r_pair in clashes:
+            # res_i, res_j = r_pair
+            # self.itable.add(res_i, res_j, 'clash', atom_a=)
 
     def get_hydrophobic(self, subset=None, include_intra=False, max_distance=4.4):
         """Finds interactions between hydrophobic groups.
@@ -637,7 +697,7 @@ class InteractionAnalyzer(object):
                     theta = get_angle(donor, hydro, acc)
                     if theta >= min_t:
                         self.itable.add(res, other, 'hbond',
-                                        donor=donor, acceptor=acc)
+                                        atom_a=donor, atom_b=acc)
                         _num += 1
                         break  # donor can only donate once (X-H pair)
 
@@ -779,22 +839,22 @@ class InteractionTable(object):
         resid_a, resid_b = res_a.id, res_b.id
 
         # For H Bonding
-        if kwargs.get('donor'):
-            donor = kwargs.get('donor').name
+        if kwargs.get('atom_a'):
+            atom_a = kwargs.get('atom_a').name
         else:
-            donor = None
+            atom_a = None
 
-        if kwargs.get('acceptor'):
-            acceptor = kwargs.get('acceptor').name
+        if kwargs.get('atom_b'):
+            atom_b = kwargs.get('atom_b').name
         else:
-            acceptor = None
+            atom_b = None
 
         energy = kwargs.get('energy')
 
         df = self._table
         df.loc[len(df)] = [itype,
                            chain_a, chain_b, resname_a, resname_b,
-                           resid_a, resid_b, donor, acceptor, energy]
+                           resid_a, resid_b, atom_a, atom_b, energy]
 
         logging.debug('InteractionTable now contains {} entries'.format(len(df)))
 
