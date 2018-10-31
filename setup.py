@@ -43,10 +43,10 @@ EXTENSIONS = [
 ]
 
 REQUIRES = [
-    'mdtraj',
     'networkx',
     'numpy',
     'openmm',
+    'pandas',
     'pdbfixer',
 ]
 
