@@ -10,7 +10,6 @@ fundamental manipulation/parameterization functions.
 from __future__ import print_function
 
 import logging
-import io
 import os
 import tempfile
 import sys
@@ -59,7 +58,7 @@ class Structure(object):
 
         sequences (:obj:`list(`PDBFixer Sequence`)`: list of sequences described
             in the `Structure` object.
-        forcefield (str): name of the forcefield used to parameterize the 
+        forcefield (str): name of the forcefield used to parameterize the
             structure. Default is None - the structure is not parameterized.
         potential_energy (float): potential energy (in kJ/mol) calculated using
             the forcefield parameters.
@@ -290,7 +289,7 @@ class Structure(object):
 
         Args:
             output (str): name of file to write Structure to disk.
-            ftype (str): file format to use when writing the file. Must be 
+            ftype (str): file format to use when writing the file. Must be
                 either 'pdb' or 'cif'. If None, tries guessing from output file
                 extension.
             overwrite(bool, optional): write file even if it already exists. Defaults to False.
@@ -354,9 +353,9 @@ class Structure(object):
     def add_termini(self, ends=None):
         """Adds missing terminal atoms to protein chains in the `Structure`.
 
-        Uses PDBFixer to modify structure. By default, adds acetyl (ACE) and 
-        N-methyl (NME) caps to N- and C- termini of protein molecules. Other 
-        caps can be specified using the `ends` option, as long as they are 
+        Uses PDBFixer to modify structure. By default, adds acetyl (ACE) and
+        N-methyl (NME) caps to N- and C- termini of protein molecules. Other
+        caps can be specified using the `ends` option, as long as they are
         supported by PDBFixer and OpenMM.
 
         Args:
@@ -524,7 +523,7 @@ class Structure(object):
         def is_hydrogen(atom):
             """Returns True if the atom is a hydrogen atom.
             """
-            return a.element.atomic_number == 1
+            return atom.element.atomic_number == 1
 
         if self._forcefield is None:
             self.__load_forcefield(forcefield)
@@ -532,7 +531,6 @@ class Structure(object):
         model = app.Modeller(self.topology, self.positions)
 
         if not keep_existing:
-            _elem_H = app.element.hydrogen
             existing_H = [a for a in model.topology.atoms() if is_hydrogen(a)]
             model.delete(existing_H)
             msg = 'Removed {} existing hydrogen atoms'
@@ -561,7 +559,7 @@ class Structure(object):
                 containing the id of the residue to mutate as a string with
                 'chain-resname-resid' and the resname of the mutated residue.
                 Residue names should always be in three-letter code to avoid
-                ambiguities: 
+                ambiguities:
                     e.g. ('A-ASN-1', 'ALA') mutates ASN1 of chain A to alanine.
 
         Raises:
@@ -569,9 +567,9 @@ class Structure(object):
         """
 
         # Build list of valid residues to mutate to
-        _supported_resnames = set(pf.pdbfixer.proteinResidues +
-                                  pf.pdbfixer.dnaResidues +
-                                  pf.pdbfixer.rnaResidues)
+        _pf = pf.pdbfixer
+        resnames = _pf.proteinResidues + _pf.dnaResidues + _pf.rnaResidues
+        _supported_resnames = set(resnames)
 
         # Sanity check on mutation list
         mut_per_chain = {}
@@ -689,7 +687,7 @@ class Structure(object):
             raise StructureError(emsg)
 
         # Set integrator
-        integrator = mm.LangevinIntegrator(300 * units.kelvin, 
+        integrator = mm.LangevinIntegrator(300 * units.kelvin,
                                            1.0 / units.picosecond,
                                            2.0 * units.femtosecond)
         integrator.setRandomNumberSeed(internal.RANDOM_SEED)

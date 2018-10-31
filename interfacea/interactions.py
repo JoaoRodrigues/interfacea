@@ -518,7 +518,7 @@ class InteractionAnalyzer(object):
             return atom.element.atomic_number == 1
 
         # Determine maximum clash radius
-        vdw_radii = constants.vdw_radii
+        vdw_radii = data.vdw_radii
         max_radius = max(vdw_radii.values())
 
         # Search all neighbors within a maximum distance of 2*max_radius
@@ -881,5 +881,3 @@ class InteractionTable(object):
         """Show rows only in this table
         """
         pass
-
-

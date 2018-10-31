@@ -18,7 +18,7 @@ import os
 import sys
 
 from setuptools import setup
-from setuptools import Command
+# from setuptools import Command
 from setuptools import Extension
 
 from setuptools.command.install import install
