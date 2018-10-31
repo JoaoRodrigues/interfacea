@@ -51,7 +51,7 @@ REQUIRES = [
 ]
 
 # For long description
-with open("README.rst", "rb") as handle:
+with open("README.md", "rb") as handle:
     readme = handle.read().decode("ascii")
 
 #
