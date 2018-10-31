@@ -31,41 +31,29 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
 class InteractionAnalyzerError(Exception):
-    """Dummy catch-all class for all exceptions related to `InteractionAnalyzer` objects.
+    """Catch-all class for exceptions related to `InteractionAnalyzer` objects.
     """
     pass
 
 
 class InteractionAnalyzer(object):
-    """Class to analyze and categorize residue interactions in a Structure object.
+    """Class to analyze and categorize atomic interactions in Structure objects.
 
-    Initialized by providing a parsed structure using one of the OpenMM
-    parser classes that provide a `topology` and `positions`.
+    Initialized by providing a `Structure` object.
 
     Args:
-        name (str): path to file used to create Structure instance.
-        structure (:obj:`OpenMM Class`): OpenMM `PDB(x)File` object.
+        structure (:obj:`Structure`): interfacea `Structure` object.
 
     Attributes:
         itable (:obj:`InteractionTable`): queriable table for interactions.
     """
 
-    def __init__(self, structure, itable=None):
+    def __init__(self, structure):
 
         self.structure = structure
 
-        if itable is None:
-            logging.debug('Creating new InteractionTable')
-            _name = 'interactions_{}'.format(structure.name)
-            self.itable = InteractionTable(name=_name)
-        else:
-            if isinstance(itable, InteractionTable):
-                _name = itable.name
-                logging.debug('Using existing InteractionTable: {}'.format(_name))
-                self.itable = itable
-            else:
-                emsg = '\'table\' argument should be an InteractionTable() instance'
-                raise InteractionAnalyzerError(emsg)
+        t_name = 'interactions_{}'.format(structure.name)
+        self.itable = InteractionTable(name=t_name)
 
         # Initialize a few variables that we will need later on
         self.anions = None
@@ -74,7 +62,8 @@ class InteractionAnalyzer(object):
         self.hbdonors = None
         self.hydrophobics = None
 
-        logging.info('Created InteractionAnalyzer for structure: \'{}\''.format(structure.name))
+        msg = 'Created InteractionAnalyzer for structure: \'{}\''
+        logging.info(msg.format(structure.name))
 
     #
     # Private Auxiliary Functions
@@ -442,7 +431,7 @@ class InteractionAnalyzer(object):
 
         max_d = max_distance
 
-        logging.info('Searching structure for interacting charged groups (+/-)')
+        logging.info('Searching structure for interacting charged groups')
 
         if self.cations is None:
             self.find_cations(subset=subset)
@@ -521,6 +510,7 @@ class InteractionAnalyzer(object):
         """
 
         s = self.structure
+        t = self.itable
 
         def is_hydrogen(atom):
             """Returns True if the atom is a hydrogen.
@@ -564,7 +554,7 @@ class InteractionAnalyzer(object):
                     continue
 
                 clashes.add((atom_i.residue, atom_j.residue))
-                self.itable.add(res_i, res_j, 'clash', atom_a=atom_i, atom_b=atom_j)
+                t.add(res_i, res_j, 'clash', atom_a=atom_i, atom_b=atom_j)
 
         msg = 'Found {} clashing residues in the structure'
         logging.info(msg.format(len(clashes)))
@@ -608,8 +598,11 @@ class InteractionAnalyzer(object):
 
             for idx_i, hp_atoms in enumerate(hydrophobic_list):
                 # Find neighbors of atoms in group
-                n_list = s.get_neighbors(list(hp_atoms), radius=max_d, level='atom')
-
+                hp_list = list(hp_atoms)
+                n_list = s.get_neighbors(hp_list, radius=max_d, level='atom')
+                #
+                # Make same trick as in cations to save comparisons
+                #
                 _seen = set()
                 for atom in n_list:
                     other = atom.residue
@@ -631,7 +624,8 @@ class InteractionAnalyzer(object):
                             _seen.add(pair_id)
                             break
 
-        logging.info('Found {} hydrophobic interaction(s) in structure'.format(_num))
+        msg = 'Found {} hydrophobic interaction(s) in structure'
+        logging.info(msg.format(_num))
 
     def get_hbonds(self, subset=None, include_intra=False, max_distance=2.5, min_angle=120.0):
         """Finds hydrogen bonds in the structure using.
