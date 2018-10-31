@@ -7,8 +7,6 @@ Module containing Structure class to represent 3D molecular objects and allow
 fundamental manipulation/parameterization functions.
 """
 
-from __future__ import print_function
-
 import logging
 import os
 import tempfile
@@ -328,6 +326,16 @@ class Structure(object):
             raise TypeError('\'output\' argument must be a string.')
 
     # Structure manipulation
+    def remove_solvent(self):
+        """Removes solvent molecules from the structure.
+        """
+
+        solvent = set(('HOH', 'WAT'))
+        m = app.Modeller(self.topology, self.positions)
+        m.delete((r for r in m.topology.residues() if r.name in solvent))
+        self.__set_topology(m.topology)
+        self.__set_positions(m.positions)
+
     def prepare(self, cap_termini=True, forcefield='amber14-all.xml', minimize=True, pH=7.0):
         """Utility function to complete a structure and minimize it.
 
@@ -425,10 +433,19 @@ class Structure(object):
                 chain_reslist.insert(0, n_cap)
                 msg = 'Adding \'{}\' capping group to chain {} N-terminus'
                 logging.debug(msg.format(n_cap, chain.id))
+            else:
+                msg = 'Ignoring caps on chain {}'
+                logging.debug(msg.format(chain.id))
+                continue
+
             if c_cap and c_ter != c_cap and c_ter in protein_aa:
                 chain_reslist.append(c_cap)
                 msg = 'Adding \'{}\' capping group to chain {} C-terminus'
                 logging.debug(msg.format(c_cap, chain.id))
+            else:
+                msg = 'Ignoring caps on chain {}'
+                logging.debug(msg.format(chain.id))
+                continue
 
             sequences.append(Sequence(chain.id, chain_reslist))
 
@@ -525,7 +542,7 @@ class Structure(object):
             """
             return atom.element.atomic_number == 1
 
-        if self._forcefield is None:
+        if self._forcefield is None or self.forcefield != forcefield:
             self.__load_forcefield(forcefield)
 
         model = app.Modeller(self.topology, self.positions)
