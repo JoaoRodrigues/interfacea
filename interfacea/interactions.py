@@ -691,7 +691,7 @@ class InteractionAnalyzer(object):
 
                     if res.chain.id == other.chain.id and not include_intra:
                         continue
-                    elif donor.element.atomic_number not in nofs_set:
+                    elif acc.element.atomic_number not in nofs_set:
                         continue
 
                     theta = get_angle(donor, hydro, acc)
