@@ -423,7 +423,6 @@ class InteractionAnalyzer(object):
     #
     # Interaction Typers/Finders
     #
-
     def get_ionic(self, subset=None, include_intra=False, max_distance=4.0):
         """Searches structure for interacting groups with opposing charges.
 
@@ -459,36 +458,39 @@ class InteractionAnalyzer(object):
         def is_nitro_or_oxy(atom):
             return atom.element.atomic_number in {7, 8}
 
+        # Unpack anionic atoms to make it faster to rule out neighbors
+        anionic_atoms = {a: (idx_gl, idx_g) for idx_gl, gl in enumerate(anions_dict.values())
+                         for idx_g, g in enumerate(gl) for a in g if is_nitro_or_oxy(a)}
+        anionic_atoms_set = set(anionic_atoms.keys())
+
         s = self.structure
+        t = self.itable
         _num = 0  # number of interactions for logging
-        for res, cation_list in cation_dict.items():
-            _seen = set()  # pairs of cation/anion
+        _seen = set()  # avoid double counting same cat/anion pairs.
+        for idx_i, (res, cation_list) in enumerate(cation_dict.items()):
+            for idx_ii, cation in enumerate(cation_list):
+                cation_no_atoms = filter(is_nitro_or_oxy, cation)
 
-            # Iterate over each cation
-            for idx_i, cation in enumerate(cation_list):
-                cat_no = [at for at in cation if is_nitro_or_oxy(at)]
-                n_list = s.get_neighbors(cat_no, radius=max_d, level='atom')
+                for at_a in cation_no_atoms:
+                    neighbors = s.get_neighbors(at_a, radius=max_d, level='atom')
+                    no_list = set(neighbors) & anionic_atoms_set
 
-                for atom in n_list:
-                    other = atom.residue
+                    for at_b in no_list:
+                        other = at_b.residue
 
-                    if res.chain.id == other.chain.id and not include_intra:
-                        continue
-                    elif other not in anions_dict or not is_nitro_or_oxy(atom):
-                        continue
+                        if res.chain.id == other.chain.id and not include_intra:
+                            continue
 
-                    other_groups = anions_dict[other]
-                    for idx_j, group in enumerate(other_groups):
-                        pair_id = (idx_i, idx_j)
+                        # idx_j: anion idx, idx_jj: anionic group within anion
+                        idx_j, idx_jj = anionic_atoms.get(at_b)
+                        pair_id = (idx_i, idx_ii, idx_j, idx_jj)
                         if pair_id in _seen:
                             continue
 
-                        if atom in group:
-                            logging.debug('[+] {} - [-] {}'.format(res, other))
-                            self.itable.add(res, other, 'ionic')
-                            _seen.add(pair_id)
-                            _num += 1
-                            break
+                        logging.debug('[+] {} - [-] {}'.format(res, other))
+                        t.add(res, other, 'ionic', atom_a=at_a, atom_b=at_b)
+                        _seen.add(pair_id)
+                        _num += 1
 
         logging.info('Found {} ionic interaction(s) in structure'.format(_num))
 
@@ -537,9 +539,11 @@ class InteractionAnalyzer(object):
         for pair in neighbors:
             atom_i, atom_j, d_ij = pair
 
-            # Ignore same residue interactions
+            # Ignore same residue and same chain interactions
             res_i, res_j = atom_i.residue, atom_j.residue
             if res_i == res_j:
+                continue
+            elif (res_i.chain.id == res_j.chain.id) and not include_intra:
                 continue
 
             # Ignore hydrogens
@@ -564,10 +568,6 @@ class InteractionAnalyzer(object):
 
         msg = 'Found {} clashing residues in the structure'
         logging.info(msg.format(len(clashes)))
-
-        # for r_pair in clashes:
-            # res_i, res_j = r_pair
-            # self.itable.add(res_i, res_j, 'clash', atom_a=)
 
     def get_hydrophobic(self, subset=None, include_intra=False, max_distance=4.4):
         """Finds interactions between hydrophobic groups.
@@ -814,7 +814,7 @@ class InteractionTable(object):
         # of interaction: cation, anion, etc.
         _col = ['itype',
                 'chain_a', 'chain_b', 'resname_a', 'resname_b',
-                'resid_a', 'resid_b', 'donor', 'acceptor', 'energy']
+                'resid_a', 'resid_b', 'atom_a', 'atom_b', 'energy']
 
         self._table = pd.DataFrame(columns=_col)
 
@@ -838,16 +838,8 @@ class InteractionTable(object):
         resname_a, resname_b = res_a.name, res_b.name
         resid_a, resid_b = res_a.id, res_b.id
 
-        # For H Bonding
-        if kwargs.get('atom_a'):
-            atom_a = kwargs.get('atom_a').name
-        else:
-            atom_a = None
-
-        if kwargs.get('atom_b'):
-            atom_b = kwargs.get('atom_b').name
-        else:
-            atom_b = None
+        atom_a = getattr(kwargs.get('atom_a', None), 'name', None)
+        atom_b = getattr(kwargs.get('atom_b', None), 'name', None)
 
         energy = kwargs.get('energy')
 
