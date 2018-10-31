@@ -756,6 +756,7 @@ class Structure(object):
         self.potential_energy = final_e
 
     # Neighbor Search
+    # Thanks Xavier Martinez (IBPC, FR) for the KDTree suggestion.
     def get_neighbors(self, entity, radius=5.0, level='atom', method='exhaustive'):
         """Returns [A]toms, [R]esidues, or [C]hains in the vicinity of a given entity.
 
@@ -838,47 +839,47 @@ class Structure(object):
             self.build_kdtree()
 
         # Perform search
+        # kdt returns Point (p.index, p.radius) objects
         if method == 'centroid':
-            logging.debug('Using \'centroid\' method to search')
             _xyz = np.array(coords, dtype='d')  # redundant for Atom but we pass...
             centroid = _xyz.mean(axis=0)
-            assert centroid.shape == (3, ), 'Something went wrong when calculating object c.o.m.'
+            assert centroid.shape == (3, ), \
+                'Something went wrong when calculating object c.o.m.'
 
-            neighbor_list = self._kdt.search(centroid, radius)  # list of Point (p.index, p.radius) objects
+            neighbor_list = self._kdt.search(centroid, radius)
             neighbor_idx = {item.index for item in neighbor_list}
 
         elif method == 'exhaustive':
-            logging.debug('Using \'exhaustive\' method to search')
             neighbor_idx = set()  # avoid duplicates
             for atom in coords:
-                neighbor_list = [it.index for it in self._kdt.search(atom, radius)]
+                results = self._kdt.search(atom, radius)
+                neighbor_list = [it.index for it in results]
                 neighbor_idx.update(neighbor_list)
 
         # Exclude self neighbors
         neighbor_idx = neighbor_idx.difference(self_idx)
-        logging.debug('Search returned {} neighboring atoms'.format(len(neighbor_idx)))
 
         # Propagate to proper level (if not A)
         if level == 'atom':
-            logging.debug('Returning Atom objects')
+            logging.debug('Found {} Atom neighbors'.format(len(neighbor_idx)))
             return [a for a in self.topology.atoms() if a.index in neighbor_idx]
 
         elif level == 'residue':
-            logging.debug('Returning Residue objects')
             result = []
             for residue in self.topology.residues():
                 atomlist = {a.index for a in residue.atoms()}
                 if atomlist & neighbor_idx:
                     result.append(residue)
+            logging.debug('Found {} Residue neighbors'.format(len(result)))
             return result
 
         elif level == 'chain':
-            logging.debug('Returning Chain objects')
             result = []
             for chain in self.topology.chains():
                 atomlist = {a.index for a in chain.atoms()}
                 if atomlist & neighbor_idx:
                     result.append(chain)
+            logging.debug('Found {} Chain neighbors'.format(len(result)))
             return result
 
     def get_neighboring_pairs(self, radius=5.0, level='atom'):
