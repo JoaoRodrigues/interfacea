@@ -331,8 +331,14 @@ class Structure(object):
         """
 
         solvent = set(('HOH', 'WAT'))
+
         m = app.Modeller(self.topology, self.positions)
-        m.delete((r for r in m.topology.residues() if r.name in solvent))
+        solvent_list = [r for r in m.topology.residues() if r.name in solvent]
+        m.delete(solvent_list)
+
+        msg = 'Removed {} solvent molecules from Structure'
+        logging.info(msg.format(len(solvent_list)))
+
         self.__set_topology(m.topology)
         self.__set_positions(m.positions)
 
