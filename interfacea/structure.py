@@ -27,6 +27,7 @@ import simtk.openmm as mm
 import simtk.unit as units
 
 from .src import kdtrees
+from .private import internal
 
 # Setup logger
 # _private name to prevent collision/confusion with parent logger
@@ -66,7 +67,7 @@ class Structure(object):
             the forcefield parameters.
     """
 
-    def __init__(self, name, structure, random_seed=917, build_kdtree=True):
+    def __init__(self, name, structure, build_kdtree=True):
 
         self.sequences = None
         self.forcefield = None  # forcefield name (str)
@@ -76,8 +77,6 @@ class Structure(object):
         self._system = None
         self._pdbfixer = None  # cache PDBFixer structure if we need it.
         self._kdt = None
-
-        self.seed = random_seed  # to allow (some) reproducibility of results
 
         self.name = name
         self._set_topology(structure.topology)
@@ -442,7 +441,7 @@ class Structure(object):
 
         # Add missing terminal atoms/residues
         try:
-            s.addMissingAtoms(seed=self.seed)
+            s.addMissingAtoms(seed=internal.RANDOM_SEED)
         except TypeError as err:
             msg = 'OpenMM does not add missing atoms at reproducible positions.'
             msg += ' Consider installing the latest OpenMM from git'
@@ -477,7 +476,7 @@ class Structure(object):
             logging.info('Found missing heavy atoms: {}'.format(n_added_atoms))
 
             try:
-                s.addMissingAtoms(seed=self.seed)
+                s.addMissingAtoms(seed=internal.RANDOM_SEED)
             except TypeError as err:
                 msg = 'OpenMM does not add missing atoms at reproducible positions.'
                 msg += ' Consider installing the latest OpenMM from git'
@@ -609,7 +608,7 @@ class Structure(object):
             s.missingTerminals = {}
 
             try:
-                s.addMissingAtoms(seed=self.seed)
+                s.addMissingAtoms(seed=internal.RANDOM_SEED)
             except TypeError as err:
                 msg = 'OpenMM does not add missing atoms at reproducible positions.'
                 msg += ' Consider installing the latest OpenMM from git'
@@ -660,7 +659,7 @@ class Structure(object):
         # Set integrator
         integrator = mm.LangevinIntegrator(300 * units.kelvin, 1.0 / units.picosecond,
                                            2.0 * units.femtosecond)
-        integrator.setRandomNumberSeed(self.seed)
+        integrator.setRandomNumberSeed(internal.RANDOM_SEED)
         integrator.setConstraintTolerance(0.00001)
 
         # Create context
@@ -695,7 +694,7 @@ class Structure(object):
         # Set integrator
         integrator = mm.LangevinIntegrator(300 * units.kelvin, 1.0 / units.picosecond,
                                            2.0 * units.femtosecond)
-        integrator.setRandomNumberSeed(self.seed)
+        integrator.setRandomNumberSeed(internal.RANDOM_SEED)
         integrator.setConstraintTolerance(0.00001)
 
         # Harmonic position restraints
