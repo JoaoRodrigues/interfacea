@@ -35,6 +35,7 @@ if sys.version_info[0] != 3:
 
 PACKAGES = [
     'interfacea',
+    'interfacea.private',
 ]
 
 EXTENSIONS = [
