@@ -19,7 +19,7 @@ import pandas as pd
 import simtk.openmm.app.topology as openmm_topology
 
 from . import functional_groups as fgs
-from . import constants
+from . import data
 
 # Setup logger
 # _private name to prevent collision/confusion with parent logger
