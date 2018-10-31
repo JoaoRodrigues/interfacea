@@ -32,8 +32,6 @@ from .src import kdtrees
 # _private name to prevent collision/confusion with parent logger
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-# .minimize([posre=True, nsteps=50])
-
 
 class StructureError(Exception):
     """Dummy catch-all class for all exceptions related to `Structure` objects.
@@ -59,8 +57,8 @@ class Structure(object):
         topology (:obj:`OpenMM Topology`): OpenMM topology.
         positions (:obj:`OpenMM Positions`): OpenMM positions array.
 
-        sequences(:obj:`list(`PDBFixer Sequence`)`: list of sequences described in
-            the `Structure` object.
+        sequences(:obj:`list(`PDBFixer Sequence`)`: list of sequences described
+            in the `Structure` object.
         forcefield(:obj:`ForceField`): pointer to associated `ForceField` class
             defined at runtime.
 
@@ -79,7 +77,7 @@ class Structure(object):
         self._pdbfixer = None  # cache PDBFixer structure if we need it.
         self._kdt = None
 
-        self.seed = random_seed  # to allow reproducibility of results across the library
+        self.seed = random_seed  # to allow (some) reproducibility of results
 
         self.name = name
         self._set_topology(structure.topology)
@@ -114,7 +112,7 @@ class Structure(object):
         """
 
         newstruct = self.__class__(self.name, self, build_kdtree=False)
-        logging.warning('Copy does not have forcefield or neighbor information.')
+        warnings.warn('Copy does not have forcefield or neighbor information.')
         return newstruct
 
     def __copy__(self, *args):
@@ -449,8 +447,8 @@ class Structure(object):
             msg = 'OpenMM does not add missing atoms at reproducible positions.'
             msg += ' Consider installing the latest OpenMM from git'
             msg += ' to minimize this effect. This is just a warning, nothing'
-            msg += ' is wrong with your structure or added atoms.'
-            logging.warning(msg)
+            msg += ' is wrong with your structure or the added atoms.'
+            warnings.warn(msg)
 
             s.addMissingAtoms()
 
@@ -484,8 +482,8 @@ class Structure(object):
                 msg = 'OpenMM does not add missing atoms at reproducible positions.'
                 msg += ' Consider installing the latest OpenMM from git'
                 msg += ' to minimize this effect. This is just a warning, nothing'
-                msg += ' is wrong with your structure or added atoms.'
-                logging.warning(msg)
+                msg += ' is wrong with your structure or the added atoms.'
+                warnings.warn(msg)
 
                 s.addMissingAtoms()
 
@@ -616,8 +614,8 @@ class Structure(object):
                 msg = 'OpenMM does not add missing atoms at reproducible positions.'
                 msg += ' Consider installing the latest OpenMM from git'
                 msg += ' to minimize this effect. This is just a warning, nothing'
-                msg += ' is wrong with your structure or added atoms.'
-                logging.warning(msg)
+                msg += ' is wrong with your structure or the added atoms.'
+                warnings.warn(msg)
 
                 s.addMissingAtoms()
 

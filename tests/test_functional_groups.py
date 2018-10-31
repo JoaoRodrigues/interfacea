@@ -8,7 +8,6 @@ import copy
 import os
 import tempfile
 import unittest
-import warnings
 
 import interfacea as ia
 import interfacea.functional_groups as fgs

@@ -14,6 +14,8 @@ import interfacea as ia
 
 TESTDIR = os.path.dirname(os.path.abspath(__file__))
 
+warnings.simplefilter('ignore')  # blanket warning ignore filter
+
 
 class TestTermini(unittest.TestCase):
     """Tests for add_termini() method
@@ -124,9 +126,7 @@ class TestAddAtoms(unittest.TestCase):
         """
 
         s = copy.deepcopy(self.s_missing)  # copy initial structure
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
-            s.add_missing_atoms()
+        s.add_missing_atoms()
 
         n_ini_atoms = self.s_missing.topology.getNumAtoms()
         n_end_atoms = s.topology.getNumAtoms()
@@ -145,9 +145,7 @@ class TestMutate(unittest.TestCase):
         """
 
         s = copy.deepcopy(self.struct)  # copy initial structure
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
-            s.mutate([('A-ASN-1', 'ALA')])
+        s.mutate([('A-ASN-1', 'ALA')])
 
         self.assertEqual(list(s.topology.residues())[0].name, 'ALA')
 
@@ -160,9 +158,7 @@ class TestMutate(unittest.TestCase):
         """
 
         s = copy.deepcopy(self.struct)  # copy initial structure
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
-            s.mutate([('A-ASN-1', 'ALA'), ('B-ALA-6', 'PHE')])
+        s.mutate([('A-ASN-1', 'ALA'), ('B-ALA-6', 'PHE')])
 
         reslist = [r.name for r in s.topology.residues()]
         self.assertEqual(reslist[0], 'ALA')
