@@ -1,0 +1,10 @@
+name: interfacea-install
+channels:
+  - omnia
+dependencies:
+  - python
+  - numpy
+  - pandas
+  - networkx
+  - openmm
+  - pdbfixer
