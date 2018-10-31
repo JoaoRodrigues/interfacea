@@ -34,6 +34,9 @@ def set_log_level(level='minimal'):
     """
 
     if level == 'none':
+        root_logger = logging.getLogger()
+        root_logger.handlers = []  # clear handler list
+        root_logger.setLevel(logging.WARNING)
         return
 
     handler = logging.StreamHandler()
