@@ -328,13 +328,6 @@ class Structure(object):
         else:
             raise TypeError('\'output\' argument must be a string.')
 
-        try:
-            with handle:
-                writer(self.topology, self.positions, handle, keepIds=True)
-        except Exception as e:
-            emsg = 'Error when writing Structure to file: {}'
-            raise StructureError(emsg.format(handle.name)) from e
-
     # Structure manipulation
     def prepare(self, cap_termini=True, forcefield='amber14-all.xml', minimize=True, pH=7.0):
         """Utility function to complete a structure and minimize it.
@@ -429,11 +422,11 @@ class Structure(object):
 
             # Add caps if necessary and if protein molecules
             n_cap, c_cap = ends[chain_idx]
-            if n_cap and n_ter != n_cap and n_ter in _protein_aa:
+            if n_cap and n_ter != n_cap and n_ter in protein_aa:
                 chain_reslist.insert(0, n_cap)
                 msg = 'Adding \'{}\' capping group to chain {} N-terminus'
                 logging.debug(msg.format(n_cap, chain.id))
-            if c_cap and c_ter != c_cap and c_ter in _protein_aa:
+            if c_cap and c_ter != c_cap and c_ter in protein_aa:
                 chain_reslist.append(c_cap)
                 msg = 'Adding \'{}\' capping group to chain {} C-terminus'
                 logging.debug(msg.format(c_cap, chain.id))
@@ -774,7 +767,7 @@ class Structure(object):
 
         state = context.getState(getEnergy=True)
         initial_e = state.getPotentialEnergy()
-        initial_e_kjmol = .value_in_unit(units.kilojoule_per_mole)
+        initial_e_kjmol = initial_e.value_in_unit(units.kilojoule_per_mole)
         msg = 'Energy before minimization: {:8.3f} kJ/mol'
         logging.debug(msg.format(initial_e_kjmol))
 

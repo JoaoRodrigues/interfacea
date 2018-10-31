@@ -200,7 +200,7 @@ class TestWriter(unittest.TestCase):
         with open(filename, 'r') as handle:
             new = handle.readlines()
 
-        # os.remove(filename)
+        os.remove(filename)
 
         with open(self.pdb) as handle:
             ori = handle.readlines()
