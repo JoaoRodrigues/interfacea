@@ -3,8 +3,8 @@
 """
 Analysis of Biomolecular Interfaces.
 
-Module containing parsing and setup routines for
-molecular structures.
+Module containing Structure class to represent 3D molecular objects and allow
+fundamental manipulation/parameterization functions.
 """
 
 from __future__ import print_function
@@ -26,6 +26,7 @@ import simtk.openmm.app as app
 import simtk.openmm as mm
 import simtk.unit as units
 
+from . import data
 from .src import kdtrees
 from .private import internal
 
@@ -49,8 +50,6 @@ class Structure(object):
     Args:
         name (str): path to file used to create Structure instance.
         structure (:obj:`OpenMM Class`): OpenMM `PDB(x)File` object.
-        random_seed (int): integer to use as a random number seed.
-            Default is 917.
         build_kdtree (bool): automatically build KDTree on instantiation.
             Default is True.
 
@@ -58,11 +57,10 @@ class Structure(object):
         topology (:obj:`OpenMM Topology`): OpenMM topology.
         positions (:obj:`OpenMM Positions`): OpenMM positions array.
 
-        sequences(:obj:`list(`PDBFixer Sequence`)`: list of sequences described
+        sequences (:obj:`list(`PDBFixer Sequence`)`: list of sequences described
             in the `Structure` object.
-        forcefield(:obj:`ForceField`): pointer to associated `ForceField` class
-            defined at runtime.
-
+        forcefield (str): name of the forcefield used to parameterize the 
+            structure. Default is None - the structure is not parameterized.
         potential_energy (float): potential energy (in kJ/mol) calculated using
             the forcefield parameters.
     """
@@ -79,12 +77,12 @@ class Structure(object):
         self._kdt = None
 
         self.name = name
-        self._set_topology(structure.topology)
-        self._set_positions(structure.positions)
+        self.__set_topology(structure.topology)
+        self.__set_positions(structure.positions)
 
         # Build KDTree
         if build_kdtree:
-            self.build_kdtree()
+            self.__build_kdtree()
 
         logging.info('Created Structure from \'{}\''.format(name))
 
@@ -98,7 +96,9 @@ class Structure(object):
         n_resid = self.topology.getNumResidues()
         n_atoms = self.topology.getNumAtoms()
 
-        rep_str += ' ({} chain(s), {} residue(s), and {} atom(s))'.format(n_chain, n_resid, n_atoms)
+        rep_str += ' ({} chain(s), '.format(n_chain)
+        rep_str += '{} residue(s), '.format(n_resid)
+        rep_str += 'and {} atom(s))'.format(n_atoms)
 
         if self._forcefield:
             rep_str += ' (ff={})'.format(self.forcefield)
@@ -108,10 +108,11 @@ class Structure(object):
     # Pickling/Copying methods
     def copy(self):
         """Returns a (deep) copy of the Structure.
-        """
 
+        Does not include KDTree or System objects to allow pickling.
+        """
         newstruct = self.__class__(self.name, self, build_kdtree=False)
-        warnings.warn('Copy does not have forcefield or neighbor information.')
+        warnings.warn('Copy is not parameterized.')  # kdtree is built on search
         return newstruct
 
     def __copy__(self, *args):
@@ -132,10 +133,10 @@ class Structure(object):
     # Private Methods
     #
 
-    def build_kdtree(self):
+    def __build_kdtree(self):
         """Builds a KDTree for fast neighbor lookup.
 
-        KDTree in C and Python bindings by Michiel de Hoon, taken from Biopython.
+        Biopython's KDTree in C and Python bindings by Michiel de Hoon.
         For details, read the source code at src/kdtrees.c
 
         The module implements a KDTree class that takes a Nx3 numpy array of
@@ -156,39 +157,43 @@ class Structure(object):
         logging.debug('Building KDTree (this might take a minute or two)')
         self._kdt = kdtrees.KDTree(self._np_positions)
 
-    def _set_topology(self, topology):
+    def __set_topology(self, topology):
         """Utility method to apply changes on topology changes.
         """
 
         self.topology = topology
 
-        self._get_bonded_atoms()
-        self._make_residue_graphs()
+        self.__get_bonded_atoms()
+        self.__make_residue_graphs()
 
-    def _set_positions(self, positions):
+    def __set_positions(self, positions):
         """Utility method to apply changes on atom addition/deletion.
         """
 
         self.positions = positions
 
         # Convert positions to numpy array
+        # use double precision for coordinates because of KDTree
         _xyz_list = positions.value_in_unit(units.angstrom)
-        self._np_positions = np.asarray(_xyz_list, dtype="d")  # double precision needed for kdtree
+        self._np_positions = np.asarray(_xyz_list, dtype="d")
         del _xyz_list
 
+        # Update KDTree
         if self._kdt is not None:
-            self.build_kdtree()
+            self.__build_kdtree()
 
-    def _load_to_pdbfixer(self):
-        """Utility class to write a temporary PDB file and reload using PDBFixer.
+    def __load_to_pdbfixer(self):
+        """Class to write a temporary PDB file and reload using PDBFixer.
 
-        If PDBFixer was never called before, runs and caches the resulting Structure.
-        Always resets/empties the missing lists to avoid conflicts.
+        If PDBFixer was never called before, runs and caches the resulting
+        Structure object. Always resets/empties the missing lists to avoid
+        conflicts.
         """
 
         if self._pdbfixer is None:
             with tempfile.TemporaryFile(mode='r+') as handle:
-                app.PDBFile.writeFile(self.topology, self.positions, handle, keepIds=True)
+                app.PDBFile.writeFile(self.topology, self.positions, handle,
+                                      keepIds=True)
                 handle.seek(0)  # rewind
                 s = pf.PDBFixer(pdbfile=handle)
 
@@ -204,9 +209,9 @@ class Structure(object):
         self._pdbfixer.missingResidues = {}
         self._pdbfixer.missingTerminals = {}
 
-        logging.debug('Cached PDBFixer data structure')
+        logging.debug('Cached PDBFixer Data Structure')
 
-    def _get_bonded_atoms(self):
+    def __get_bonded_atoms(self):
         """Creates a dictionary of bonds per atom.
 
         Somewhat a performance bottleneck for large structures.
@@ -228,7 +233,7 @@ class Structure(object):
 
         logging.debug('Created per-atom bonding dictionary from topology')
 
-    def _make_residue_graphs(self):
+    def __make_residue_graphs(self):
         """Creates a networkx.Graph representation of a `Residue`.
 
         Uses the atom elements as node attributes and the topology bonds
@@ -254,17 +259,17 @@ class Structure(object):
 
         logging.debug('Converted residue topologies to graph representation')
 
-    def _load_forcefield(self, forcefield='amber14-all.xml'):
+    def __load_forcefield(self, forcefield='amber14-all.xml'):
         """Utility private method to load forcefield definitions.
         """
 
         try:
             loaded_forcefield = app.ForceField(forcefield)
-            logging.debug('Loaded forcefield definitions from: {}'.format(forcefield))
+            logging.debug('Loaded forcefield: {}'.format(forcefield))
 
         except ValueError as e:
-            emsg = 'Error when loading forcefield XML file: {}'.format(forcefield)
-            raise StructureError(emsg) from e
+            emsg = 'Error when loading forcefield XML file: {}'
+            raise StructureError(emsg.format(forcefield)) from e
 
         self._forcefield = loaded_forcefield
         self.forcefield = forcefield
@@ -277,14 +282,17 @@ class Structure(object):
     def write(self, output, ftype=None, overwrite=False):
         """Writes `Structure` object to file.
 
-        Uses OpenMM PDBFile or PDBxFile methods to write the `Structure` to a file on disk in
-        PDB or mmCIF format, respectively. The output format is guessed from the user-provided
-        file name or by the optional argument `format`.
+        Uses OpenMM PDBFile or PDBxFile methods to write the `Structure` to a
+        file on disk in PDB or mmCIF format, respectively. The output format is
+        guessed from the user-provided file name or by the optional argument
+        `format`.
 
 
         Args:
-            output (file/str): file object or name to create the new file on disk.
-            ftype (str): format to use when writing the file. Must be either 'pdb' or 'cif'.
+            output (str): name of file to write Structure to disk.
+            ftype (str): file format to use when writing the file. Must be 
+                either 'pdb' or 'cif'. If None, tries guessing from output file
+                extension.
             overwrite(bool, optional): write file even if it already exists. Defaults to False.
 
         Raises:
@@ -299,32 +307,33 @@ class Structure(object):
             _, ext = os.path.splitext(output)
             ftype = ext[1:]  # removes the dot
             if not ftype.strip():  # empty (no extension?)
-                emsg = 'You must either provide an extension or a filename with one.'
-                raise StructureError(emsg)
+                emsg = 'File type could not be guessed from output name: {}'
+                raise StructureError(emsg.format(output))
 
         writer = _writers.get(ftype)
         if writer is None:
-            emsg = 'Unsupported file type \'{}\'. Choose from {}'.format(ftype, _fmt_str)
-            raise StructureError(emsg)
+            emsg = 'Unsupported file type \'{}\'. Choose from {}'
+            raise StructureError(emsg.format(ftype, _fmt_str))
 
         if isinstance(output, str):
             if os.path.isfile(output) and not overwrite:
                 emsg = 'File already exists. Use overwrite=True or remove file.'
                 raise OSError(emsg)
-            handle = open(output, 'w')
-
-        elif isinstance(output, io.IOBase) or (hasattr(output, 'file') and
-                                               isinstance(output.file, io.IOBase)):
-            handle = output
+            try:
+                with open(output, 'w') as handle:
+                    writer(self.topology, self.positions, handle, keepIds=True)
+            except Exception as e:
+                emsg = 'Error when writing Structure to file: {}'
+                raise StructureError(emsg.format(handle.name)) from e
         else:
-            raise TypeError('\'output\' argument must be a file name or a file-like object')
+            raise TypeError('\'output\' argument must be a string.')
 
         try:
             with handle:
                 writer(self.topology, self.positions, handle, keepIds=True)
         except Exception as e:
-            emsg = 'Error when writing Structure to file: {}'.format(handle.name)
-            raise StructureError(emsg) from e
+            emsg = 'Error when writing Structure to file: {}'
+            raise StructureError(emsg.format(handle.name)) from e
 
     # Structure manipulation
     def prepare(self, cap_termini=True, forcefield='amber14-all.xml', minimize=True, pH=7.0):
@@ -350,46 +359,50 @@ class Structure(object):
             self.minimize()
 
     def add_termini(self, ends=None):
-        """Method to add missing terminal atoms to (all) chains in the `Structure`.
+        """Adds missing terminal atoms to protein chains in the `Structure`.
 
-        Uses PDBFixer to modify structure. By default, adds acetyl (ACE) and N-methyl (NME) caps
-        to N- and C- termini, respectively. Other caps can be specified using the `ends` option.
+        Uses PDBFixer to modify structure. By default, adds acetyl (ACE) and 
+        N-methyl (NME) caps to N- and C- termini of protein molecules. Other 
+        caps can be specified using the `ends` option, as long as they are 
+        supported by PDBFixer and OpenMM.
 
         Args:
-            ends (:obj:`list(tuple(str, str)`, optional): definitions of termini groups to add
-                to each chain. Number of items in list must match the number of chains in the
-                `Structure`. Allowed options for each chain are: 'ACE', 'NME', or None (charged
-                terminus).
+            ends (:obj:`list(tuple(str, str)`, optional): definitions of termini
+                groups to add to each chain. Number of items in list must match
+                the number of chains in the `Structure`. Allowed options for
+                each chain are: 'ACE', 'NME', or None (charged terminus).
 
         Raises:
             StructureError
         """
+
+        protein_aa = data.protein_aa
 
         _allowed_n_caps = set(('ACE', None))
         _allowed_c_caps = set(('NME', None))
 
         chains = list(self.topology.chains())
         num_chains = len(chains)
-        logging.debug('Adding termini to {} chains'.format(num_chains))
+        logging.debug('Adding termini caps to {} chains'.format(num_chains))
 
         if ends is not None:
             num_ends = len(ends)
             if num_ends != num_chains:
-                emsg = 'Number of terminal capping groups ({}) != '.format(num_ends)
-                emsg += 'number of chains in the molecule ({})'.format(num_chains)
-                raise StructureError(emsg)
+                emsg = 'Number of terminal capping groups ({}) does not match '
+                emsg += 'the number of chains in the molecule ({})'
+                raise StructureError(emsg.format(num_ends, num_chains))
 
             for chain_idx, chain in enumerate(ends):
                 name = chains[chain_idx].id
                 n_cap, c_cap = chain
 
                 if n_cap not in _allowed_n_caps:
-                    emsg = 'User-specified N-terminal for chain {}: {}'.format(name, n_cap)
-                    raise StructureError(emsg)
+                    emsg = 'Unsupported N-terminal cap for chain {}: {}'
+                    raise StructureError(emsg.format(name, n_cap))
 
                 if c_cap not in _allowed_c_caps:
-                    emsg = 'User-specified C-terminal for chain {}: {}'.format(name, c_cap)
-                    raise StructureError(emsg)
+                    emsg = 'Unsupported C-terminal cap for chain {}: {}'
+                    raise StructureError(emsg.format(name, c_cap))
 
         else:
             ends = [('ACE', 'NME') for _ in range(num_chains)]
@@ -397,7 +410,7 @@ class Structure(object):
         # PDBFixer is picky with mmCIF files and OpenMM does not
         # export them properly. The irony I know.
         # For now, we save as PDB and re-read.
-        self._load_to_pdbfixer()
+        self.__load_to_pdbfixer()
         s = self._pdbfixer
 
         # Find missing atoms to exclude from termini addition
@@ -414,14 +427,16 @@ class Structure(object):
             chain_reslist = [r.name for r in chain.residues()]
             n_ter, c_ter = chain_reslist[0], chain_reslist[-1]
 
-            # Add caps if necessary
+            # Add caps if necessary and if protein molecules
             n_cap, c_cap = ends[chain_idx]
-            if n_cap and n_ter != n_cap:
+            if n_cap and n_ter != n_cap and n_ter in _protein_aa:
                 chain_reslist.insert(0, n_cap)
-                logging.debug('Adding \'{}\' capping group to chain {} N-terminus'.format(n_cap, chain.id))
-            if c_cap and c_ter != c_cap:
+                msg = 'Adding \'{}\' capping group to chain {} N-terminus'
+                logging.debug(msg.format(n_cap, chain.id))
+            if c_cap and c_ter != c_cap and c_ter in _protein_aa:
                 chain_reslist.append(c_cap)
-                logging.debug('Adding \'{}\' capping group to chain {} C-terminus'.format(c_cap, chain.id))
+                msg = 'Adding \'{}\' capping group to chain {} C-terminus'
+                logging.debug(msg.format(c_cap, chain.id))
 
             sequences.append(Sequence(chain.id, chain_reslist))
 
@@ -451,8 +466,8 @@ class Structure(object):
 
             s.addMissingAtoms()
 
-        self._set_topology(s.topology)
-        self._set_positions(s.positions)
+        self.__set_topology(s.topology)
+        self.__set_positions(s.positions)
 
     def add_missing_atoms(self):
         """Method to add missing atoms to a `Structure` object.
@@ -462,7 +477,7 @@ class Structure(object):
 
         # Save as PDB and re-read.
         # Someone should really write an OpenMM to PDBFixer conversion ...
-        self._load_to_pdbfixer()
+        self.__load_to_pdbfixer()
         s = self._pdbfixer
 
         s.findMissingResidues()
@@ -486,76 +501,79 @@ class Structure(object):
 
                 s.addMissingAtoms()
 
-            self._set_topology(s.topology)
-            self._set_positions(s.positions)
+            self.__set_topology(s.topology)
+            self.__set_positions(s.positions)
 
             # Issue warning about atom positions
-            warnings.warn(('Atoms added but their positions are not optimized. '
-                           'Make sure to minimize the structure before doing any analysis'))
+            wmsg = ('Atoms added but their positions are not optimized. '
+                    'Minimize the structure before doing any analysis')
+            warnings.warn(wmsg)
 
     def protonate(self, forcefield='amber14-all.xml', pH=7.0, keep_existing=False):
         """Method to add hydrogen atoms to a `Structure` object.
 
-        Uses the `Modeller` class from OpenMM to add hydrogen atoms to the structure.
-        Removes existing hydrogen atoms (to avoid naming issues) before adding them
-        again with naming and topology matching the force field and chosen pH.
+        Uses the `Modeller` class from OpenMM to add hydrogen atoms to the
+        structure. Removes existing hydrogen atoms (to avoid naming issues)
+        before adding them again with naming and topology matching the
+        forcefield and chosen pH.
 
 
         Args:
-            forcefield (str): name of file defining the force field.
+            forcefield (str): name of file defining the forcefield.
             pH (float): numerical value of the pH to check protonation states
                 of ionizable groups.
-            keep_existing (bool): Default is False. Does not remove existing protons.
-                This is dangerous because protons might not follow proper naming conventions
-                but useful in the case of wanting specific protonation states.
+            keep_existing (bool): Does not remove existing protons. This can be
+                dangerous because protons might not follow proper naming
+                conventions but useful in the case of wanting specific
+                protonation states. Default is False.
         """
 
+        def is_hydrogen(atom):
+            """Returns True if the atom is a hydrogen atom.
+            """
+            return a.element.atomic_number == 1
+
         if self._forcefield is None:
-            self._load_forcefield(forcefield)
+            self.__load_forcefield(forcefield)
 
         model = app.Modeller(self.topology, self.positions)
 
         if not keep_existing:
             _elem_H = app.element.hydrogen
-            existing_H = [a for a in model.topology.atoms() if a.element == _elem_H]
+            existing_H = [a for a in model.topology.atoms() if is_hydrogen(a)]
             model.delete(existing_H)
+            msg = 'Removed {} existing hydrogen atoms'
+            logging.debug(msg.format(len(existing_H)))
 
         logging.debug('Protonating structure at pH {}'.format(pH))
         model.addHydrogens(forcefield=self._forcefield, pH=pH)
 
-        self._set_topology(model.topology)
-        self._set_positions(model.positions)
+        self.__set_topology(model.topology)
+        self.__set_positions(model.positions)
 
         # Issue warning about atom positions
-        warnings.warn(('Protons added but their positions are not optimized. '
-                       'Make sure to minimize the structure before doing any analysis'))
+        wmsg = ('Protons added but their positions are not optimized. '
+                'Minimize the structure before doing any analysis')
+        warnings.warn(wmsg)
 
     def mutate(self, mutation_list):
         """Mutates residues in the molecule using PDBFixer.
 
-        This is a very crude method of deleting/adding atoms, so most useful (or reasonable)
-        for single mutations. Mutations of multiple residues at once might yield a
-        very bad structure, even if followed by minimization.
+        This is a very crude method of deleting/adding atoms, so most useful
+        (or reasonable) for single mutations. Mutation of multiple residues at
+        once might yield a very bad structure, even if followed by minimization.
 
         Args:
-            mutation_list (:obj:`list(tuple)`): list of two-item tuples containing the
-                id of the residue to mutate as a string with 'chain-resname-resid' and
-                the resname of the mutated residue. Residue names should always be in
-                three-letter code to avoid ambiguities.
-                e.g. ('A-ASN-1', 'ALA') mutates ASN1 of chain A to alanine.
+            mutation_list (:obj:`list(tuple)`): list of two-item tuples
+                containing the id of the residue to mutate as a string with
+                'chain-resname-resid' and the resname of the mutated residue.
+                Residue names should always be in three-letter code to avoid
+                ambiguities: 
+                    e.g. ('A-ASN-1', 'ALA') mutates ASN1 of chain A to alanine.
 
         Raises:
             StructureError
         """
-
-        self._load_to_pdbfixer()
-        s = self._pdbfixer
-
-        # Mutate only. Do not add/complete structure.
-        s.findMissingResidues()
-        s.findMissingAtoms()
-        missing_residues = set(s.missingResidues.keys())
-        missing_atoms = set(s.missingAtoms.keys())
 
         # Build list of valid residues to mutate to
         _supported_resnames = set(pf.pdbfixer.proteinResidues +
@@ -564,26 +582,43 @@ class Structure(object):
 
         # Sanity check on mutation list
         mut_per_chain = {}
+
+        if not isinstance(mutation_list, list):
+            if isinstance(mutation_list, tuple):
+                mutation_list = [mutation_list]  # assume single mutation
+            else:
+                emsg = '\'mutation_list\' must be a list. Check documentation.'
+                raise TypeError(emsg)
+
         for mutation in mutation_list:
             try:
-                ori, new = mutation
-                chain, name, idx = ori.split('-')
+                ori, mutres = mutation
+                chain, resname, idx = ori.split('-')
             except Exception as e:
                 emsg = 'Wrong format in mutation: \'{}\''.format(mutation)
                 raise StructureError(emsg) from e
 
-            if new not in _supported_resnames:
-                emsg = 'Residue not supported for mutation: {}'.format(new)
+            if mutres not in _supported_resnames:
+                emsg = 'Residue not supported for mutation: {}'.format(mutres)
                 raise StructureError(emsg)
 
-            # defer to PDBFixer to catch errors of mutating non-existing residues
-            # or on non-existing chains.
-
+            # defer to PDBFixer to catch errors of mutating non-existing
+            # residues or on non-existing chains.
             if chain not in mut_per_chain:
                 mut_per_chain[chain] = []
 
-            logging.info('Mutating [{}]{}{} to {}'.format(name, idx, chain, new))
-            mut_per_chain[chain].append('{}-{}-{}'.format(name, idx, new))
+            msg = 'Mutating residue {}:{}{} to {}'
+            logging.info(msg.format(chain, resname, idx, mutres))
+            mut_per_chain[chain].append('{}-{}-{}'.format(resname, idx, mutres))
+
+        self.__load_to_pdbfixer()
+        s = self._pdbfixer
+
+        # Mutate only. Do not add/complete structure.
+        s.findMissingResidues()
+        s.findMissingAtoms()
+        missing_residues = set(s.missingResidues.keys())
+        missing_atoms = set(s.missingAtoms.keys())
 
         # Mutate on each chain at a time
         for chain in mut_per_chain:
@@ -592,7 +627,7 @@ class Structure(object):
             try:
                 s.applyMutations(muts, chain)
             except (KeyError, ValueError) as e:
-                emsg = 'There was an error when applying mutations to the structure'
+                emsg = 'Unknown error when applying mutations to the structure'
                 raise StructureError(emsg) from e
 
             s.findMissingResidues()
@@ -618,15 +653,17 @@ class Structure(object):
 
                 s.addMissingAtoms()
 
-        self._set_topology(s.topology)
-        self._set_positions(s.positions)
+        self.__set_topology(s.topology)
+        self.__set_positions(s.positions)
 
         # Issue warning about atom positions
-        warnings.warn(('Residue mutated but atom positions are not optimized. '
-                       'Make sure to minimize the structure before doing any analysis'))
+        wmsg = ('Residue mutated but atom positions were not optimized. '
+                'Minimize the structure before doing any analysis')
+        warnings.warn(wmsg)
 
+    #
     # MM Functions
-
+    #
     def parameterize(self, forcefield='amber14-all.xml'):
         """Wrapper function to create an OpenMM system from the Structure.
 
@@ -638,12 +675,14 @@ class Structure(object):
 
         if self._forcefield is None or forcefield != self.forcefield:
             if forcefield != self.forcefield:
-                warnings.warn(('Structure previously parameterized with \'{}\'. '
-                               'It is advisable to run protonate() again'.format(self.forcefield)))
+                wmsg = 'Structure previously parameterized with \'{}\'. '
+                wmsg += 'It is advisable to run protonate() again'
+                warnings.warn(wmsg.format(self.forcefield))
 
-            self._load_forcefield(forcefield)
+            self.__load_forcefield(forcefield)
 
-        system = self._forcefield.createSystem(self.topology, nonbondedMethod=app.NoCutoff)
+        ff = self._forcefield
+        system = ff.createSystem(self.topology, nonbondedMethod=app.NoCutoff)
         self._system = system
 
         logging.debug('Structure parameterized using \'{}\''.format(forcefield))
@@ -657,7 +696,8 @@ class Structure(object):
             raise StructureError(emsg)
 
         # Set integrator
-        integrator = mm.LangevinIntegrator(300 * units.kelvin, 1.0 / units.picosecond,
+        integrator = mm.LangevinIntegrator(300 * units.kelvin, 
+                                           1.0 / units.picosecond,
                                            2.0 * units.femtosecond)
         integrator.setRandomNumberSeed(internal.RANDOM_SEED)
         integrator.setConstraintTolerance(0.00001)
@@ -667,12 +707,15 @@ class Structure(object):
         context.setPositions(self.positions)
 
         state = context.getState(getEnergy=True)
-        energy = state.getPotentialEnergy().value_in_unit(units.kilojoule_per_mole)
-        logging.info('Potential energy of the structure = {:8.3f} kJ/mol'.format(energy))
+        energy = state.getPotentialEnergy()
+        energy_kjmol = energy.value_in_unit(units.kilojoule_per_mole)
+        msg = 'Potential energy of the structure = {:8.3f} kJ/mol'
+        logging.info(msg.format(energy_kjmol))
 
-        if energy > 0.0:  # sort of arbitrary value
-            warnings.warn(('Potential energy of the structure is high ({:8.3f}). '
-                           'You should try minimize() before any analysis'.format(energy)))
+        if energy_kjmol > 0.0:  # sort of arbitrary value
+            wmsg = 'Potential energy of the structure is high ({:8.3f}). '
+            wmsg += 'You should try minimize() before any analysis'
+            warnings.warn(wmsg.format(energy_kjmol))
 
         self.potential_energy = energy
 
@@ -683,8 +726,10 @@ class Structure(object):
         """Perform energy minimization using OpenMM.
 
         Args:
-            iterations (int): number of steps taken by the minimizer (or 0 until convergence)
-            hydrogen_only (bool): minimize positions of hydrogen atoms only. Default is False.
+            iterations (int): number of steps taken by the minimizer
+                (or 0 until convergence). Default is 250 steps.
+            hydrogen_only (bool): minimize positions of hydrogen atoms only.
+                Default is False - all atoms are free to move.
         """
 
         if self._system is None:
@@ -692,84 +737,92 @@ class Structure(object):
             raise StructureError(emsg)
 
         # Set integrator
-        integrator = mm.LangevinIntegrator(300 * units.kelvin, 1.0 / units.picosecond,
+        integrator = mm.LangevinIntegrator(300 * units.kelvin,
+                                           1.0 / units.picosecond,
                                            2.0 * units.femtosecond)
         integrator.setRandomNumberSeed(internal.RANDOM_SEED)
         integrator.setConstraintTolerance(0.00001)
 
         # Harmonic position restraints
+        posre_k = 500.0 * (units.kilojoule_per_mole / units.nanometer**2)
         posre = mm.CustomExternalForce("0.5*k*periodicdistance(x, y, z, x0, y0, z0)^2")
-        posre.addGlobalParameter("k", 500.0 * (units.kilojoule_per_mole / units.nanometer**2))
+        posre.addGlobalParameter("k", posre_k)
         posre.addPerParticleParameter("x0")
         posre.addPerParticleParameter("y0")
         posre.addPerParticleParameter("z0")
 
         if hydrogen_only:
 
-            logging.info('Optimizing positions of hydrogen atoms only')
-
+            logging.info('Adding position restraints to all heavy atoms')
             elemlist = [a.element.atomic_number for a in self.topology.atoms()]
 
-            for idx, atom_crd in enumerate(self.positions):
+            for idx, xyz in enumerate(self.positions):
                 elem = elemlist[idx]
                 if elem != 1:
-                    posre.addParticle(idx, atom_crd.value_in_unit(units.nanometers))
+                    posre.addParticle(idx, xyz.value_in_unit(units.nanometers))
 
             self._system.addForce(posre)
 
             n_restraints = posre.getNumParticles()
             n_atoms = len(elemlist)
-            logging.debug('Restrained {} out of {} atoms'.format(n_restraints, n_atoms))
+            msg = 'Restrained {} out of {} atoms'
+            logging.debug(msg.format(n_restraints, n_atoms))
 
         # Perform minimization
         context = mm.Context(self._system, integrator)
         context.setPositions(self.positions)
 
         state = context.getState(getEnergy=True)
-        initial_e = state.getPotentialEnergy().value_in_unit(units.kilojoule_per_mole)
-        logging.debug('Energy before minimization: {:8.3f} kJ/mol'.format(initial_e))
+        initial_e = state.getPotentialEnergy()
+        initial_e_kjmol = .value_in_unit(units.kilojoule_per_mole)
+        msg = 'Energy before minimization: {:8.3f} kJ/mol'
+        logging.debug(msg.format(initial_e_kjmol))
 
-        if initial_e > 1000000.0:  # sort of arbitrary value
-            warnings.warn(('Potential energy of the starting structure is very high ({:8.3f} kJ/mol). '
-                           'Minimization is likely to fail.'.format(initial_e)))
+        if initial_e_kjmol > 1000000.0:  # sort of arbitrary value
+            wmsg = ('Initial potential energy is very high ({:8.3f} kJ/mol). '
+                    'Minimization is likely to fail.'.format(initial_e_kjmol))
+            warnings.warn(wmsg)
 
         mm.LocalEnergyMinimizer.minimize(context, maxIterations=iterations)
 
         state = context.getState(getPositions=True, getEnergy=True)
-        final_e = state.getPotentialEnergy().value_in_unit(units.kilojoule_per_mole)
+        final_e = state.getPotentialEnergy()
+        final_e_kjmol = final_e.value_in_unit(units.kilojoule_per_mole)
 
-        delta_e = final_e - initial_e
-        logging.info('Energy after minimization: {:8.3f} kJ/mol (deltaE = {:8.3} kJ/mol)'.format(final_e, delta_e))
+        delta_e_kjmol = final_e_kjmol - initial_e_kjmol
+        msg = 'Minimized energy: {:8.3f} kJ/mol (deltaE = {:8.3} kJ/mol)'
+        logging.info(msg.format(final_e_kjmol, delta_e_kjmol))
 
         if final_e > 1000.0:  # arbitrary value
-            emsg = 'Minimization failed. Minimized energy is still very high: {:8.3f} kJ/mol'
-            raise StructureError(emsg.format(final_e))
+            emsg = 'Final energy is very high: {:8.3f} kJ/mol '
+            emsg += '- minimization failed. Check structure for severe clashes.'
+            raise StructureError(emsg.format(final_e_kjmol))
 
-        self._set_positions(state.getPositions())
+        self.__set_positions(state.getPositions())
 
         # Remove restraint force from system (LIFO)
         self._system.removeForce(self._system.getNumForces() - 1)
-
-        self.potential_energy = final_e
+        self.potential_energy = final_e_kjmol
 
     # Neighbor Search
     # Thanks Xavier Martinez (IBPC, FR) for the KDTree suggestion.
     def get_neighbors(self, entity, radius=5.0, level='atom', method='exhaustive'):
-        """Returns [A]toms, [R]esidues, or [C]hains in the vicinity of a given entity.
+        """Returns Atoms, Residues, or Chains in the vicinity of a given entity.
 
         Args:
-            entity (:obj:): list or single instance of `Atom`, `Residue`, or `Chain` object(s).
-            radius (float): distance threshold in Angstrom to consider an atom as neighbor.
-                Default is 5.0 A.
-            level (str): type of object returned after search: 'atom', 'residue', or 'chain'.
-                Default is 'Atom'.
+            entity (:obj:): list or single instance of `Atom`, `Residue`, or
+                `Chain` object(s).
+            radius (float): distance threshold in Angstrom to consider an atom
+                as neighbor of another. Default is 5.0 A.
+            level (str): objects returned after search: 'atom', 'residue', or
+                'chain'. Default is 'atom'.
             method (str): defines how to look for neighbors.
-                Options are 'centroid' (calculates distance from center of gravity) or
-                'exhaustive' (looks for neighbors of all children of the object).
-                Default is exhaustive.
+                Options are 'centroid' (calculates distance from center of
+                gravity) or 'exhaustive' (looks for neighbors of all children of
+                the object). Default is exhaustive.
         """
 
-        msg = 'Search Parameters: radius={}/level={}/method={}'.format(radius, level, method)
+        msg = 'Search Parameters: r={}/l={}/{}'.format(radius, level, method)
         logging.debug(msg)
 
         if method not in ('centroid', 'exhaustive'):
@@ -785,21 +838,24 @@ class Structure(object):
         try:
             radius = float(radius)
         except ValueError as e:
-            raise ValueError('\'radius\' should be a float, not {}'.format(type(radius))) from e
+            emsg = '\'radius\' should be a float, not {}'
+            raise ValueError(emsg.format(type(radius))) from e
 
         if radius <= 0:
-            raise ValueError('Distance threshold must be a positive number ...')
+            raise ValueError('Distance threshold must be a positive number..')
+
+        all_xyz = self._np_positions
 
         # Decompose into Atoms for search
         if isinstance(entity, app.topology.Atom):
-            coords = [self._np_positions[entity.index]]
+            coords = [all_xyz[entity.index]]
             self_idx = {entity.index}
             method = 'exhaustive'
 
         elif isinstance(entity, (app.topology.Residue, app.topology.Chain)):
             if not hasattr(entity, 'atoms'):
-                raise TypeError('Object should implement an \'atoms\' attribute.')
-            coords = [self._np_positions[a.index] for a in entity.atoms()]
+                raise TypeError('Object must implement an \'atoms\' attribute.')
+            coords = [all_xyz[a.index] for a in entity.atoms()]
             self_idx = {a.index for a in entity.atoms()}
 
         elif isinstance(entity, list):  # list of any of the above?
@@ -807,18 +863,19 @@ class Structure(object):
                 raise ValueError('You provided an empty list.')
 
             _types = (app.topology.Atom, app.topology.Residue, app.topology.Chain)
-            list_types = sum([isinstance(item, _types) for item in entity])  # True == 1
+            list_types = sum([isinstance(item, _types) for item in entity])
             if list_types != len(entity):
-                raise TypeError('List of objects must contain only Atoms, Residues, or Chains')
+                emsg = 'List of objects must contain Atoms, Residues, or Chains'
+                raise TypeError(emsg)
 
             coords = []
             self_idx = set()
             for item in entity:
                 if isinstance(item, app.topology.Atom):
-                    coords.append(self._np_positions[item.index])
+                    coords.append(all_xyz[item.index])
                     self_idx.add(item.index)
                 else:
-                    coords += [self._np_positions[a.index] for a in item.atoms()]
+                    coords += [all_xyz[a.index] for a in item.atoms()]
                     self_idx.update((a.index for a in item.atoms()))
 
             if len(coords) == 1:  # treat like single atom
@@ -826,19 +883,20 @@ class Structure(object):
                 self_idx = {item.index}
 
         else:
-            emsg = 'Object \'{}\' not supported in search. Provide Atom(s), Residue(s), or Chain(s).'.format(entity)
-            raise TypeError(emsg)
+            emsg = 'Object \'{}\' not supported in search. '
+            emsg += 'Provide Atom(s), Residue(s), or Chain(s).'
+            raise TypeError(emsg.format(entity))
 
         logging.debug('Search object comprises {} atoms'.format(len(coords)))
 
         # Build KDTree if not there
         if self._kdt is None:
-            self.build_kdtree()
+            self.__build_kdtree()
 
         # Perform search
         # kdt returns Point (p.index, p.radius) objects
         if method == 'centroid':
-            _xyz = np.array(coords, dtype='d')  # redundant for Atom but we pass...
+            _xyz = np.array(coords, dtype='d')  # redundant for Atom
             centroid = _xyz.mean(axis=0)
             assert centroid.shape == (3, ), \
                 'Something went wrong when calculating object c.o.m.'
@@ -903,7 +961,7 @@ class Structure(object):
             return atom.residue.chain
 
         if level.lower() not in ('atom', 'residue', 'chain'):
-            emsg = '\'level\' must be one of: \'atom\', \'residue\', or \'chain\''
+            emsg = '\'level\' must \'atom\', \'residue\', or \'chain\''
             raise ValueError(emsg)
         else:
             level = level.lower()
@@ -920,14 +978,14 @@ class Structure(object):
             raise ValueError(emsg.format(vt)) from e
 
         if radius <= 0:
-            raise ValueError('Distance threshold must be a positive number ...')
+            raise ValueError('Distance threshold must be a positive number..')
 
         msg = 'Searching all \'{}\' neighbor pairs within {} Angstrom'
         logging.debug(msg.format(level, radius))
 
         # Build KDTree if not there
         if self._kdt is None:
-            self.build_kdtree()
+            self.__build_kdtree()
 
         raw_neighbors = self._kdt.neighbor_search(radius)
 
