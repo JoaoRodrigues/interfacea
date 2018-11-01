@@ -6,8 +6,6 @@ Analysis of Biomolecular Interfaces.
 Module containing interaction type categories and analyzers.
 """
 
-from __future__ import print_function
-
 import collections
 import logging
 import itertools
@@ -374,13 +372,15 @@ class InteractionAnalyzer(object):
                 - radius: maximum distance of any ring atom to center of mass
                 - plane: equation defining the ring plane (ax + by + cz + d = 0)
                 - normal: one representative of the normal of the ring
+                - representative: random atom of the ring.
         """
 
         # Define a simple data structure to hold information on each
         # aromatic ring.
         AromaticRing = collections.namedtuple('AromaticRing',
-                                              ['residue', 'center', 'radius',
-                                               'plane', 'normal'])
+                                              ['residue', 'center', 
+                                               'radius', 'plane', 'normal',
+                                               'representative'])
 
         if subset is None:
             reslist = list(self.structure.topology.residues())
@@ -412,7 +412,8 @@ class InteractionAnalyzer(object):
             for aroring in aromatic_list:
                 r_xyz = [all_xyz[a.index] for a in aroring]
                 com = np.array(r_xyz).mean(axis=0)  # center of mass
-                radius = max((np.linalg.norm(a_xyz - com) for a_xyz in r_xyz))
+                radius = max(np.linalg.norm(a_xyz - com) for a_xyz in r_xyz)
+                representative = aroring[0]
 
                 # calculate the equation of ring plane
                 # Pick 3 points on ring to calculate normal
@@ -429,7 +430,8 @@ class InteractionAnalyzer(object):
 
                 ar = AromaticRing(residue=residue, center=com,
                                   radius=radius, plane=ring_plane,
-                                  normal=plane_normal)
+                                  normal=plane_normal, 
+                                  representative=representative)
 
                 res_aromatic[residue].append(ar)
 
@@ -541,6 +543,8 @@ class InteractionAnalyzer(object):
                 above. Default is 1.0 Angstrom.
         """
 
+        logging.info('Searching structure for clashing heavy atoms')
+
         s = self.structure
         t = self.itable
 
@@ -638,10 +642,10 @@ class InteractionAnalyzer(object):
             for idx_ii, group in enumerate(hydrophobic_list):
                 hp_list = filter(is_not_h_or_polar, group)
                 for at_a in hp_list:
-                    neighbors = s.get_neighbors(at_a, radius=max_d, level='atom')
-                    n_hp_list = set(neighbors) & hp_atoms_set
+                    neighbors = set(s.get_neighbors(at_a, radius=max_d, level='atom'))
+                    neighbors &= hp_atoms_set
 
-                    for at_b in n_hp_list:
+                    for at_b in neighbors:
                         other = at_b.residue
                         chain_b = other.chain.id
                         if chain_a == chain_b and not include_intra:
@@ -780,8 +784,10 @@ class InteractionAnalyzer(object):
             self.find_aromatic_rings(subset=subset)
 
         vecangle = self.__vecangle
-        n_pi, n_t = 0, 0
         aromatic_dict = self.aromatics
+        t = self.itable
+
+        n_pi, n_t = 0, 0
         reslist = list(aromatic_dict.keys())
         for res_i, res_j in itertools.combinations(reslist, 2):
 
@@ -795,8 +801,15 @@ class InteractionAnalyzer(object):
                 d = np.linalg.norm(ar_i.center - ar_j.center)
                 if d > center_d:
                     continue
+
+                # Pick two arbitrary atoms from each ring
+                # to act as representative for logging
+                at_a = ar_i.representative
+                at_b = ar_j.representative
+
                 # Angle (rounded down to the nearest integer)
                 angle = round(vecangle(ar_i.normal, ar_j.normal))
+
                 if is_pi_angle(angle, angle_dev):
                     # Projection Distance
                     proj = project_on_plane(ar_j.center, ar_i.plane)
@@ -804,14 +817,21 @@ class InteractionAnalyzer(object):
                     if pd <= ar_i.radius + 0.5:
                         msg = 'Residues {} & {} are pi-stacking'
                         logging.debug(msg.format(res_i, res_j))
-                        self.itable.add(res_i, res_j, itype='pi-stacking')
+
+                        t.add(res_i, res_j, itype='pi-stacking',
+                              atom_a=at_a, atom_b=at_b)
+
                         n_pi += 1
+
                 elif is_t_angle(angle, angle_dev):
                     # Stricter Distance
                     if d <= 5.0:
                         msg = 'Residues {} & {} are t-stacking'
                         logging.debug(msg.format(res_i, res_j))
-                        self.itable.add(res_i, res_j, itype='t-stacking')
+
+                        t.add(res_i, res_j, itype='t-stacking',
+                              atom_a=at_a, atom_b=at_b)
+
                         n_t += 1
 
         logging.info('Found {} stacking interactions'.format(n_pi + n_t))
@@ -891,6 +911,11 @@ class InteractionTable(object):
 
         self._table = None
         self._setup_new_df()
+
+    def show(self):
+        """Prints the interaction table.
+        """
+        print(self._table)
 
     def sort(self):
         pass
