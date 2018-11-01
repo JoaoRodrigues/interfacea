@@ -274,26 +274,58 @@ class InteractionAnalyzer(object):
                 defined in `functional_groups.anionic`.
         """
 
+        # def is_heavy_atom(atom):
+        #     return atom.element.atomic_number != 1
+
         hphobic_list = hydrophobic_list
         if hphobic_list is None:
             hphobic_list = fgs.hydrophobic
 
         match_dict = self.find_groups(subset=subset, group_list=hphobic_list)
 
-        # Prune sub-matches (e.g. phenyl is in indole)
+        # Filter matched groups for redundancies
         for residue, groups in match_dict.items():
+            # bonds = residue.bonds_per_atom
+            n_groups = len(groups)
+
             # Sort groups by size, starting with smallest
             sorted_groups = sorted(groups, key=len)
-            n_groups = len(sorted_groups)
+            delete = set()
             for i in range(0, n_groups):
                 group_i = sorted_groups[i]
+
                 for j in range(i + 1, n_groups):
-                    group_j = set(sorted_groups[j])
-                    if group_i.issubset(group_j):
-                        msg = 'Residue {}: group {} is a subset of group {}'
-                        logging.debug(msg.format(residue, i, j))
-                        match_dict[residue].remove(sorted_groups[i])
-                        break
+                    group_j = sorted_groups[j]
+                    intersection = group_i & group_j
+                    if intersection:
+                        # Agglomerate groups and remove smaller
+                        sorted_groups[j] = group_i | group_j
+                        delete.add(i)
+
+                        # # special case: i is completely contained in j
+                        # if group_i.issubset(group_j):
+                        #     msg = 'Residue {}: group {} is a subset of group {}'
+                        #     logging.debug(msg.format(residue, i, j))
+                        #     match_dict[residue].remove(sorted_groups[i])
+                        #     break
+
+                        # # Remove common atoms in group where they make the less
+                        # # number of bonds.
+                        # for atom in intersection:
+                        #     atom_bonds = set(bonds.get(atom))
+                        #     n_bonded_i = len(atom_bonds & group_i)
+                        #     n_bonded_j = len(atom_bonds & group_j)
+                        #     if n_bonded_i < n_bonded_j:
+                        #         msg = 'Residue {}: removed {} from group {}'
+                        #         logging.debug(msg.format(residue, atom.name, i))
+                        #         group_i.remove(atom)
+                        #     else:
+                        #         msg = 'Residue {}: removed {} from group {}'
+                        #         logging.debug(msg.format(residue, atom.name, j))
+                        #         group_j.remove(atom)
+
+            match_dict[residue] = [g for idx, g in enumerate(sorted_groups)
+                                   if idx not in delete]
 
         n_matches = sum(map(len, match_dict.values()))
 
@@ -592,37 +624,40 @@ class InteractionAnalyzer(object):
         def is_not_h_or_polar(atom):
             return atom.element.atomic_number not in {1, 7, 8}
 
+        # Make dict of hydrophobic heavy-atoms to check neighbors faster
+        hp_atoms = {a: (idx_gl, idx_g) for idx_gl, gl in enumerate(hp_dict.values())
+                    for idx_g, g in enumerate(gl) for a in g if is_not_h_or_polar(a)}
+        hp_atoms_set = set(hp_atoms.keys())
+
         _num = 0  # number of interactions for logging
         s = self.structure
-        for res, hydrophobic_list in hp_dict.items():
+        t = self.itable
+        _seen = set()
+        for idx_i, (res, hydrophobic_list) in enumerate(hp_dict.items()):
+            chain_a = res.chain.id
+            for idx_ii, group in enumerate(hydrophobic_list):
+                hp_list = filter(is_not_h_or_polar, group)
+                for at_a in hp_list:
+                    neighbors = s.get_neighbors(at_a, radius=max_d, level='atom')
+                    n_hp_list = set(neighbors) & hp_atoms_set
 
-            for idx_i, hp_atoms in enumerate(hydrophobic_list):
-                # Find neighbors of atoms in group
-                hp_list = list(hp_atoms)
-                n_list = s.get_neighbors(hp_list, radius=max_d, level='atom')
-                #
-                # Make same trick as in cations to save comparisons
-                #
-                _seen = set()
-                for atom in n_list:
-                    other = atom.residue
-                    if res.chain.id == other.chain.id and not include_intra:
-                        continue
-                    if other not in hp_dict or not is_not_h_or_polar(atom):
-                        continue
+                    for at_b in n_hp_list:
+                        other = at_b.residue
+                        chain_b = other.chain.id
+                        if chain_a == chain_b and not include_intra:
+                            continue
 
-                    other_groups = hp_dict[other]
-                    for idx_j, group in enumerate(other_groups):
-                        pair_id = (idx_i, idx_j)
+                        idx_j, idx_jj = hp_atoms.get(at_b)
+                        pair_id = (idx_i, idx_ii, idx_j, idx_jj)
                         if pair_id in _seen:
                             continue
 
-                        if atom in group:
-                            logging.debug('[H] {} - [H] {}'.format(res, other))
-                            self.itable.add(res, other, 'hydrophobic')
-                            _num += 1
-                            _seen.add(pair_id)
-                            break
+                        msg = '[H] {}:{}{}_{} = {}:{}{}_{}'
+                        logging.debug(msg.format(chain_a, res.name, res.id, at_a.name,
+                                                 chain_b, other.name, other.id, at_b.name))
+                        t.add(res, other, 'hydrophobic', atom_a=at_a, atom_b=at_b)
+                        _num += 1
+                        _seen.add(pair_id)
 
         msg = 'Found {} hydrophobic interaction(s) in structure'
         logging.info(msg.format(_num))
