@@ -939,8 +939,9 @@ class Structure(object):
         elif isinstance(entity, (app.topology.Residue, app.topology.Chain)):
             if not hasattr(entity, 'atoms'):
                 raise TypeError('Object must implement an \'atoms\' attribute.')
-            coords = [all_xyz[a.index] for a in entity.atoms()]
-            self_idx = {a.index for a in entity.atoms()}
+            atomidx = [a.index for a in entity.atoms()]
+            coords = [all_xyz[idx] for idx in atomidx]
+            self_idx = set(atomidx)
 
         elif isinstance(entity, list):  # list of any of the above?
             if not entity:  # empty list
@@ -959,8 +960,9 @@ class Structure(object):
                     coords.append(all_xyz[item.index])
                     self_idx.add(item.index)
                 else:
-                    coords += [all_xyz[a.index] for a in item.atoms()]
-                    self_idx.update((a.index for a in item.atoms()))
+                    atomidx = [a.index for a in item.atoms()]
+                    coords += [all_xyz[idx] for idx in atomidx]
+                    self_idx.update(atomidx)
 
             if len(coords) == 1:  # treat like single atom
                 method = 'exhaustive'
@@ -983,22 +985,23 @@ class Structure(object):
             assert centroid.shape == (3, ), \
                 'Something went wrong when calculating object c.o.m.'
 
-            neighbor_list = self._kdt.search(centroid, radius)
-            neighbor_idx = {item.index for item in neighbor_list}
+            neighbor_idx = set(a.index for a in self._kdt.search(centroid, radius))
+            # neighbor_list = self._kdt.search(centroid, radius)
+            # neighbor_idx = {item.index for item in neighbor_list}
 
         elif method == 'exhaustive':
             neighbor_idx = set()  # avoid duplicates
             for atom in coords:
-                results = self._kdt.search(atom, radius)
-                neighbor_list = [it.index for it in results]
-                neighbor_idx.update(neighbor_list)
+                # results = (a.index for a in self._kdt.search(atom, radius))
+                # neighbor_list = [it.index for it in results]
+                neighbor_idx.update(a.index for a in self._kdt.search(atom, radius))
 
         # Exclude self neighbors
-        neighbor_idx = neighbor_idx.difference(self_idx)
+        # neighbor_idx = neighbor_idx.difference(self_idx)
+        neighbor_idx -= self_idx  # difference update
 
         # Propagate to proper level (if not A)
         if level == 'atom':
-            logging.debug('Found {} Atom neighbors'.format(len(neighbor_idx)))
             return [a for a in self.topology.atoms() if a.index in neighbor_idx]
 
         elif level == 'residue':
@@ -1007,7 +1010,6 @@ class Structure(object):
                 atomlist = {a.index for a in residue.atoms()}
                 if atomlist & neighbor_idx:
                     result.append(residue)
-            logging.debug('Found {} Residue neighbors'.format(len(result)))
             return result
 
         elif level == 'chain':
@@ -1016,7 +1018,6 @@ class Structure(object):
                 atomlist = {a.index for a in chain.atoms()}
                 if atomlist & neighbor_idx:
                     result.append(chain)
-            logging.debug('Found {} Chain neighbors'.format(len(result)))
             return result
 
     def get_neighboring_pairs(self, radius=5.0, level='atom'):
