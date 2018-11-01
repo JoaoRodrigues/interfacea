@@ -33,16 +33,54 @@ protein_aa = {'2AS', '3AH', '5HP', 'ACL', 'AGM', 'AIB', 'ALA', 'ALM', 'ALO',
               'SOC', 'STY', 'SVA', 'THR', 'TIH', 'TPL', 'TPO', 'TPQ', 'TRG',
               'TRO', 'TRP', 'TYB', 'TYI', 'TYQ', 'TYR', 'TYS', 'TYY', 'VAL'}
 
-# van der Waals radii from:
+# van der Waals radii (in Angstrom) from:
 #    A. Bondi, J. Phys. Chem., 68, 441 - 452, 1964,
 # radius of H taken from:
 #    R.S. Rowland & R. Taylor, J.Phys.Chem., 100, 7384 - 7391, 1996.
 vdw_radii = {
     1: 1.20,
+    5: 2.00,  # default value
     6: 1.70,
     7: 1.55,
     8: 1.52,
     9: 1.47,
+    14: 2.10,
     15: 1.80,
     16: 1.80,
+    17: 2.27,
+    19: 1.76,
+    20: 1.37,
+    26: 2.00,  # default
+    27: 2.00,  # default
+    28: 1.63,
+    29: 1.40,
+    30: 1.39,
+    33: 1.85,
+    34: 1.90,
+    35: 1.85,
+    48: 1.58,
+    53: 1.98,
+    79: 1.66,
+    80: 1.55,
+}
+
+# Covalent atom radii (in Angstrom) used to infer connectivity
+# Values taken from CCDC and Roger Sayle's website:
+# http://www.daylight.com/meetings/mug01/Sayle/m4xbondage.html
+covalent_radii = {
+    1: 0.23,
+    5: 0.83,
+    6: 0.68,
+    7: 0.68,
+    8: 0.68,
+    9: 0.64,
+    14: 1.20,
+    15: 1.05,
+    16: 1.02,
+    17: 0.99,
+    33: 1.21,
+    34: 1.22,
+    35: 1.21,
+    52: 1.47,
+    53: 1.40
 }

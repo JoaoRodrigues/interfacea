@@ -7,6 +7,7 @@ Module containing Structure class to represent 3D molecular objects and allow
 fundamental manipulation/parameterization functions.
 """
 
+import itertools
 import logging
 import os
 import tempfile
@@ -74,8 +75,8 @@ class Structure(object):
         self._kdt = None
 
         self.name = name
-        self.__set_topology(structure.topology)
         self.__set_positions(structure.positions)
+        self.__set_topology(structure.topology)
 
         # Build KDTree
         if build_kdtree:
@@ -208,6 +209,53 @@ class Structure(object):
 
         logging.debug('Cached PDBFixer Data Structure')
 
+    def __guess_bonds_from_coordinates(self, residue):
+        """Guesses atom connectivity from atomic distances and covalent radii.
+
+        This is only meant to be used in the absence of proper parameters in the
+        forcefield for a particular residue. Will patch, hopefully, enough info
+        for the graph matching to work, but forget about minimizations/energies.
+
+        Args:
+            residue (:obj:`Residue`): residue object to define connectvity for.
+                Populates the `Residue.bonds()` attribute in-place.
+        """
+
+        # Taken from m4xbondage.html webpage
+        metals = {
+            3, 4, 12, 13, 18, 23, 24, 25, 27, 29, 30, 31, 33, 36, 37, 38, 39,
+            42, 47, 48, 49, 51, 52, 54, 55, 56, 57, 58, 62, 63, 64, 65, 67, 70,
+            71, 74, 75, 76, 77, 78, 79, 80, 81, 82, 92,
+        }
+
+        tolerance = 0.45  # tolerance value to account for weird structures
+
+        xyz = self._np_positions
+        cov_radii = data.covalent_radii
+
+        msg = 'Determining atom connectivity from coordinates for residue: {}'
+        logging.info(msg.format(residue.name))
+
+        _num = 0  # number of bonds found
+        atomlist = list(residue.atoms())
+        for atom_i, atom_j in itertools.combinations(atomlist, 2):
+
+            elem_i = atom_i.element.atomic_number
+            elem_j = atom_j.element.atomic_number
+            if elem_i in metals or elem_j in metals:
+                continue  # skip bonds with metallic elements
+
+            radius_i = cov_radii.get(elem_i, 2.0)
+            radius_j = cov_radii.get(elem_j, 2.0)
+
+            d_ij = np.linalg.norm(xyz[atom_i.index] - xyz[atom_j.index])
+            if d_ij <= (radius_i + radius_j + tolerance):
+                self.topology.addBond(atom_i, atom_j)
+                _num += 1
+
+        msg = 'Assigned {} bonds in residue {}'
+        logging.debug(msg.format(_num, residue.name))
+
     def __get_bonded_atoms(self):
         """Creates a dictionary of bonds per atom.
 
@@ -216,19 +264,25 @@ class Structure(object):
         """
 
         reslist = list(self.topology.residues())
-        for residue in reslist:
-            bond_dict = {}
-            for b in residue.bonds():
+        for res in reslist:
 
-                bond_dict.setdefault(b.atom1, [])
-                bond_dict.setdefault(b.atom2, [])
+            bond_list = list(res.internal_bonds())
 
+            if not bond_list:  # unknown residue?
+                self.__guess_bonds_from_coordinates(res)
+                bond_list = list(res.internal_bonds())
+                if not bond_list:
+                    wmsg = 'Residue {}:{}{} is missing bonding information.'
+                    warnings.warn(wmsg.format(res.chain.id, res.name, res.id))
+
+            bond_dict = {a: [] for a in res.atoms()}
+            for b in bond_list:
                 bond_dict[b.atom1].append(b.atom2)
                 bond_dict[b.atom2].append(b.atom1)
 
-            residue.bonds_per_atom = bond_dict
+            res.bonds_per_atom = bond_dict
 
-        logging.debug('Created per-atom bonding dictionary from topology')
+        logging.debug('Created atom bond dictionaries from Topology')
 
     def __make_residue_graphs(self):
         """Creates a networkx.Graph representation of a `Residue`.
@@ -249,8 +303,7 @@ class Structure(object):
             for atom, idx in at_to_idx.items():
                 res_g.add_node(idx, element=atom.element.atomic_number)
                 for bonded in residue.bonds_per_atom.get(atom, []):
-                    if bonded in at_to_idx:
-                        res_g.add_edge(idx, at_to_idx[bonded])
+                    res_g.add_edge(idx, at_to_idx[bonded])
 
             residue._g = res_g
 
