@@ -159,6 +159,7 @@ class Structure(object):
         """Utility method to apply changes on topology changes.
         """
 
+        logging.debug('(Re)Setting topology for \'{}\''.format(self.name))
         self.topology = topology
 
         self.__get_bonded_atoms()
@@ -168,6 +169,7 @@ class Structure(object):
         """Utility method to apply changes on atom addition/deletion.
         """
 
+        logging.debug('(Re)Setting coordinates for \'{}\''.format(self.name))
         self.positions = positions
 
         # Convert positions to numpy array
@@ -259,30 +261,46 @@ class Structure(object):
     def __get_bonded_atoms(self):
         """Creates a dictionary of bonds per atom.
 
-        Somewhat a performance bottleneck for large structures.
-        Should we optimize? How?
+        Avoids residue.bonds() purposedly because it is very slow.
         """
 
-        reslist = list(self.topology.residues())
-        for res in reslist:
+        logging.debug('__get_bonded_atoms :: started')
 
-            bond_list = list(res.internal_bonds())
+        # Make a nested dictionary of residue bonds {res: atom: [bonds]}
+        top = self.topology
+        res_bonds = {r: {a: [] for a in r.atoms()} for r in top.residues()}
 
-            if not bond_list:  # unknown residue?
+        # Iterate over topology bonds
+        for a1, a2 in self.topology.bonds():
+            r1, r2 = a1.residue, a2.residue
+            # Skip bonds between residues
+            if r1 != r2:
+                continue
+
+            res_bonds[r1][a1].append(a2)
+            res_bonds[r2][a2].append(a1)
+
+        # Iterate over each residue and assign to attribute
+        for res in self.topology.residues():
+            bond_dict = res_bonds[res]
+            n_bonds = sum(map(len, bond_dict.values()))
+
+            if not n_bonds:  # unknown residue?
                 self.__guess_bonds_from_coordinates(res)
-                bond_list = list(res.internal_bonds())
-                if not bond_list:
+                # Do not except many, so OK to use .internal_bonds() here
+                for a1, a2 in res.internal_bonds():
+                    res_bonds[res][a1].append(a2)
+                    res_bonds[res][a2].append(a1)
+
+                bond_dict = res_bonds[res]
+                n_bonds = sum(map(len, bond_dict.values()))
+                if not n_bonds:
                     wmsg = 'Residue {}:{}{} is missing bonding information.'
                     warnings.warn(wmsg.format(res.chain.id, res.name, res.id))
 
-            bond_dict = {a: [] for a in res.atoms()}
-            for b in bond_list:
-                bond_dict[b.atom1].append(b.atom2)
-                bond_dict[b.atom2].append(b.atom1)
-
             res.bonds_per_atom = bond_dict
 
-        logging.debug('Created atom bond dictionaries from Topology')
+        logging.debug('__get_bonded_atoms :: finished')
 
     def __make_residue_graphs(self):
         """Creates a networkx.Graph representation of a `Residue`.
@@ -293,6 +311,8 @@ class Structure(object):
         Somewhat a performance bottleneck for large structures.
         Should we optimize? How?
         """
+
+        logging.debug('__make_residue_graphs :: started')
 
         reslist = list(self.topology.residues())
         for residue in reslist:
@@ -307,7 +327,7 @@ class Structure(object):
 
             residue._g = res_g
 
-        logging.debug('Converted residue topologies to graph representation')
+        logging.debug('__make_residue_graphs :: finished')
 
     def __load_forcefield(self, forcefield='amber14-all.xml'):
         """Utility private method to load forcefield definitions.
