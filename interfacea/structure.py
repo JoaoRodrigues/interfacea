@@ -889,9 +889,6 @@ class Structure(object):
                 the object). Default is exhaustive.
         """
 
-        msg = 'Search Parameters: r={}/l={}/{}'.format(radius, level, method)
-        logging.debug(msg)
-
         if method not in ('centroid', 'exhaustive'):
             emsg = '\'method\' must be either: \'centroid\' or \'exhaustive\''
             raise ValueError(emsg)
@@ -953,8 +950,6 @@ class Structure(object):
             emsg = 'Object \'{}\' not supported in search. '
             emsg += 'Provide Atom(s), Residue(s), or Chain(s).'
             raise TypeError(emsg.format(entity))
-
-        logging.debug('Search object comprises {} atoms'.format(len(coords)))
 
         # Build KDTree if not there
         if self._kdt is None:
