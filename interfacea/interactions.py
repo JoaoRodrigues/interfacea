@@ -688,7 +688,7 @@ class InteractionAnalyzer(object):
                     elif acc.element.atomic_number not in nofs_set:
                         continue
 
-                    theta = get_angle(donor, hydro, acc)
+                    theta = round(get_angle(donor, hydro, acc), 1)  # xxx.y
                     if theta >= min_t:
                         self.itable.add(res, other, 'hbond',
                                         atom_a=donor, atom_b=acc)
@@ -821,11 +821,14 @@ class InteractionTable(object):
             itype (str): name of the interaction type (e.g. ionic)
 
         Optional Arguments:
-            donor  (:obj:`Atom`): donor atom participating in a hydrogen bond
-            acceptor (:obj:`Atom`): acceptor atom participating in a hydrogen bond
+            atom_a (:obj:`Atom`): atom of first residue participating in the
+                interaction.
+            atom_b (:obj:`Atom`): atom of second residue participating in the
+                interaction.
         """
 
         # Sort residues by chain/number
+        _res_a = res_a
         res_a, res_b = sorted((res_a, res_b), key=lambda r: (r.chain.id, r.id))
 
         chain_a, chain_b = res_a.chain.id, res_b.chain.id
@@ -834,6 +837,9 @@ class InteractionTable(object):
 
         atom_a = getattr(kwargs.get('atom_a', None), 'name', None)
         atom_b = getattr(kwargs.get('atom_b', None), 'name', None)
+
+        if _res_a != res_a:  # swapped?
+            atom_a, atom_b = atom_b, atom_a
 
         energy = kwargs.get('energy')
 
