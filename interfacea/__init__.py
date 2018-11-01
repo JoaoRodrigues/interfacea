@@ -72,5 +72,5 @@ def read(fpath, ftype=None):
         emsg = '\'{}\' is not one of the supported types: {}'.format(ftype, _formats_str)
         raise StructureError(emsg)
 
-    logging.info('Successfully parsed file into Structure: {}'.format(fullpath))
+    logging.debug('File parsed successfully using OpenMM reader.')
     return Structure(os.path.basename(fname), struct)
