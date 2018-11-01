@@ -53,11 +53,10 @@ def read(fpath, ftype=None):
 
     fname, fext = os.path.splitext(fullpath)
     ftype = ftype if ftype is not None else fext[1:]
-    logging.debug('Assigning file type: {}'.format(ftype))
+    logging.debug('Assigned file type: {}'.format(ftype))
 
     if ftype in _pdb_formats:
         try:
-            logging.debug('Detected file as PDB')
             struct = app.PDBFile(fullpath)
         except Exception as e:
             emsg = 'Failed parsing file {} as \'PDB\' format'.format(fullpath)
@@ -65,7 +64,6 @@ def read(fpath, ftype=None):
 
     elif ftype in _cif_formats:
         try:
-            logging.debug('Detected file as mmCIF')
             struct = app.PDBxFile(fullpath)
         except Exception as e:
             emsg = 'Failed parsing file {} as \'mmCIF\' format'.format(fullpath)
