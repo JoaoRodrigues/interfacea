@@ -232,7 +232,8 @@ class FunctionalGroup(object):
                 observed.add(sorted_keys)
 
                 matched_atoms = []
-                for r_idx, g_idx in subgraph.items():
+                for r_idx in sorted_keys:
+                    g_idx = subgraph[r_idx]
                     atom = atomlist[r_idx]
 
                     # Now check if atoms make only the bonds specified in the FG
