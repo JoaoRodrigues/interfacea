@@ -527,18 +527,16 @@ class Structure(object):
                 msg = 'Adding \'{}\' capping group to chain {} N-terminus'
                 logging.debug(msg.format(n_cap, chain.id))
             else:
-                msg = 'Ignoring caps on chain {}'
+                msg = 'Ignoring N-terminal caps on chain {}'
                 logging.debug(msg.format(chain.id))
-                continue
 
             if c_cap and c_ter != c_cap and c_ter in protein_aa:
                 chain_reslist.append(c_cap)
                 msg = 'Adding \'{}\' capping group to chain {} C-terminus'
                 logging.debug(msg.format(c_cap, chain.id))
             else:
-                msg = 'Ignoring caps on chain {}'
+                msg = 'Ignoring C-terminal caps on chain {}'
                 logging.debug(msg.format(chain.id))
-                continue
 
             sequences.append(Sequence(chain.id, chain_reslist))
 
