@@ -43,7 +43,8 @@ class InteractionAnalyzer(object):
         structure (:obj:`Structure`): interfacea `Structure` object.
 
     Attributes:
-        itable (:obj:`InteractionTable`): queriable table for interactions.
+        itable (:obj:`InteractionTable`): Pandas dataframe containing detailed
+            information on each interaction type.
     """
 
     def __init__(self, structure):
@@ -378,7 +379,7 @@ class InteractionAnalyzer(object):
         # Define a simple data structure to hold information on each
         # aromatic ring.
         AromaticRing = collections.namedtuple('AromaticRing',
-                                              ['residue', 'center', 
+                                              ['residue', 'center',
                                                'radius', 'plane', 'normal',
                                                'representative'])
 
@@ -430,7 +431,7 @@ class InteractionAnalyzer(object):
 
                 ar = AromaticRing(residue=residue, center=com,
                                   radius=radius, plane=ring_plane,
-                                  normal=plane_normal, 
+                                  normal=plane_normal,
                                   representative=representative)
 
                 res_aromatic[residue].append(ar)
@@ -911,20 +912,13 @@ class InteractionTable(object):
 
         self._table = None
         self._setup_new_df()
+        logging.debug('Removed all information from InteractionTable.')
 
     def show(self):
         """Prints the interaction table.
         """
-        print(self._table)
 
-    def sort(self):
-        pass
-
-    def remove(self):
-        pass
-
-    def filter(self):
-        pass
+        return self._table
 
     def to_json(self):
         pass
