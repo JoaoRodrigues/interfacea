@@ -683,7 +683,7 @@ class InteractionAnalyzer(object):
         msg = 'Found {} hydrophobic interaction(s) in structure'
         logging.info(msg.format(_num))
 
-    def get_hbonds(self, subset=None, include_intra=False, max_distance=2.5, min_angle=120.0):
+    def get_hbonds(self, subset=None, include_intra=False, max_distance=2.5, min_angle=120.0, strict=False, filter_ionic=True):
         """Finds hydrogen bonds in the structure using.
 
         Defines donors as any N/O/F/S connected to a hydrogen atom and
@@ -707,7 +707,15 @@ class InteractionAnalyzer(object):
             min_angle (float): minimum angle, in degrees, formed between the
                 donor heavy-atom, the donor hydrogen, and the acceptor atom.
                 Default is 120 degrees.
+            strict (bool): if True, allows only one hydrogen bond per donor and
+                per acceptor, picking the one whose angle is closest to 180
+                degrees.
+            filter_ionic (bool): if True, removes hydrogen bonds between atoms
+                belonging to cationic/anionic pairs. Default if True.
         """
+
+        def get_atomic_number(atom):
+            return atom.element.atomic_number
 
         max_d = max_distance
         min_t = min_angle
@@ -723,33 +731,62 @@ class InteractionAnalyzer(object):
             self.find_hb_donors(subset=subset)
         hbdonors_dict = self.hbdonors
 
+        # Get ionic groups if necessary
+        if filter_ionic:
+            if self.cations is None:
+                self.find_cations(subset=subset)
+            if self.anions is None:
+                self.find_anions(subset=subset)
+
+            cation_set = {a for gl in self.cations.values() for g in gl for a in g}
+            anion_set = {a for gl in self.anions.values() for g in gl for a in g}
+
         # Find acceptors within range/angle of donors
-        _num = 0
-        nofs_set = {7, 8, 9, 16}
-        occupied = set()  # acceptor indexes
+        nofs_set = {7, 8}
+        hb_list = []  # (angle, donor, acceptor)
         for res, donor_group in hbdonors_dict.items():
 
             for group in donor_group:
 
                 # Find acceptors within range
-                donor, hydro = group
+                hydro, donor = sorted(group, key=get_atomic_number)
                 acceptors = s.get_neighbors(hydro, radius=max_d, level='atom')
-
                 for acc in acceptors:
-                    occupied.add(acc.index)  # acceptor only accepts once
                     other = acc.residue
 
                     if res.chain.id == other.chain.id and not include_intra:
                         continue
                     elif acc.element.atomic_number not in nofs_set:
                         continue
+                    elif filter_ionic and donor in cation_set and acc in anion_set:
+                        continue
 
-                    theta = round(get_angle(donor, hydro, acc), 1)  # xxx.y
+                    theta = get_angle(donor, hydro, acc)
                     if theta >= min_t:
-                        self.itable.add(res, other, 'hbond',
-                                        atom_a=donor, atom_b=acc)
-                        _num += 1
-                        break  # donor can only donate once (X-H pair)
+                        hb_list.append((abs(theta - 180), donor, acc))
+
+        # Filter if strict=True
+        _num = 0
+        if strict:
+            _seen = set()
+            hb_list.sort()
+            for _, donor, acceptor in hb_list:
+                if donor in _seen or acceptor in _seen:
+                    continue
+
+                d_res, a_res = donor.residue, acceptor.residue
+                self.itable.add(d_res, a_res, 'hbond',
+                                atom_a=donor, atom_b=acceptor)
+
+                _seen.add(donor)
+                _seen.add(acceptor)
+                _num += 1
+        else:
+            for _, donor, acceptor in hb_list:
+                d_res, a_res = donor.residue, acceptor.residue
+                self.itable.add(d_res, a_res, 'hbond',
+                                atom_a=donor, atom_b=acceptor)
+                _num += 1
 
         logging.info('Found {} hydrogen bonds in structure'.format(_num))
 
