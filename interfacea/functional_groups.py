@@ -512,7 +512,7 @@ class HBondDonor(FunctionalGroup):
     def __init__(self):
         super().__init__(name='hbond-donor',
                          charge=0,
-                         elements=[(7, 8, 9, 16), 1],
+                         elements=[(7, 8), 1],
                          bonds=[(0, 1)],
                          max_bonds=[99, 1])
 
