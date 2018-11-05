@@ -32,5 +32,5 @@ if __name__ == '__main__':
     tpath = os.path.join(mpath, 'tests')
     suite = loader.discover(tpath)
 
-    runner = unittest.TextTestRunner(verbosity=1)
+    runner = unittest.TextTestRunner(verbosity=2)
     runner.run(suite)
