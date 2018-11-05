@@ -276,7 +276,7 @@ class InteractionAnalyzer(object):
         self.anions = match_dict  # cache result
         logging.info('Found {} anionic groups'.format(n_matches))
 
-    def find_hydrophobics(self, subset=None, hydrophobic_list=None):
+    def find_hydrophobics(self, subset=None, hydrophobic_list=None, agglomerate=True):
         """Finds residues matching hydrophobic functional groups.
 
         Arguments:
@@ -287,10 +287,12 @@ class InteractionAnalyzer(object):
                 to search the structure for. Must all be instances of the
                 `FunctionalGroup` class. By default, it will search the groups
                 defined in `functional_groups.anionic`.
+            agglomerate (bool): if True, combines all groups sharing at least
+                one atom into successively bigger groups. Will make searching
+                for interactions later on faster at a cost of resolution. If
+                False, will only remove groups that are subsets of others, e.g.
+                indole/phenyl.
         """
-
-        # def is_heavy_atom(atom):
-        #     return atom.element.atomic_number != 1
 
         hphobic_list = hydrophobic_list
         if hphobic_list is None:
@@ -300,44 +302,26 @@ class InteractionAnalyzer(object):
 
         # Filter matched groups for redundancies
         for residue, groups in match_dict.items():
-            # bonds = residue.bonds_per_atom
+
             n_groups = len(groups)
 
             # Sort groups by size, starting with smallest
             sorted_groups = sorted(groups, key=len)
             delete = set()
-            for i in range(0, n_groups):
+            for i, j in itertools.combinations(range(n_groups), 2):
                 group_i = sorted_groups[i]
+                group_j = sorted_groups[j]
 
-                for j in range(i + 1, n_groups):
-                    group_j = sorted_groups[j]
-                    intersection = group_i & group_j
-                    if intersection:
+                intersection = group_i & group_j
+                if intersection:
+                    if agglomerate:
                         # Agglomerate groups and remove smaller
                         sorted_groups[j] = group_i | group_j
                         delete.add(i)
-
-                        # # special case: i is completely contained in j
-                        # if group_i.issubset(group_j):
-                        #     msg = 'Residue {}: group {} is a subset of group {}'
-                        #     logging.debug(msg.format(residue, i, j))
-                        #     match_dict[residue].remove(sorted_groups[i])
-                        #     break
-
-                        # # Remove common atoms in group where they make the less
-                        # # number of bonds.
-                        # for atom in intersection:
-                        #     atom_bonds = set(bonds.get(atom))
-                        #     n_bonded_i = len(atom_bonds & group_i)
-                        #     n_bonded_j = len(atom_bonds & group_j)
-                        #     if n_bonded_i < n_bonded_j:
-                        #         msg = 'Residue {}: removed {} from group {}'
-                        #         logging.debug(msg.format(residue, atom.name, i))
-                        #         group_i.remove(atom)
-                        #     else:
-                        #         msg = 'Residue {}: removed {} from group {}'
-                        #         logging.debug(msg.format(residue, atom.name, j))
-                        #         group_j.remove(atom)
+                    else:
+                        # special case: i is completely contained in j
+                        if group_i.issubset(group_j):
+                            delete.add(i)
 
             match_dict[residue] = [g for idx, g in enumerate(sorted_groups)
                                    if idx not in delete]
