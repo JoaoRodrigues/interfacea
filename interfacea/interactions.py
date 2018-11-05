@@ -26,12 +26,12 @@ import itertools
 
 import networkx as nx
 import numpy as np
-import pandas as pd
 
 import simtk.openmm.app.topology as openmm_topology
 
-from . import functional_groups as fgs
 from . import data
+from . import functional_groups as fgs
+from . import tables
 
 # Setup logger
 # _private name to prevent collision/confusion with parent logger
@@ -66,7 +66,7 @@ class InteractionAnalyzer(object):
         self.structure = structure
 
         t_name = 'interactions_{}'.format(structure.name)
-        self.itable = InteractionTable(name=t_name)
+        self.itable = tables.InteractionTable(name=t_name)
 
         # Initialize a few variables that we will need later on
         self.anions = None
@@ -126,9 +126,10 @@ class InteractionAnalyzer(object):
         all_xyz = self.structure._np_positions
         vecangle = self.__vecangle
 
-        if len(atomlist) < 3:
+        n_atoms = len(atomlist)
+        if n_atoms < 3:
             emsg = 'Cannot check planarity for a group of {} atoms: {}'
-            raise ValueError(emsg.format(len(atomlist), atomlist))
+            raise InteractionAnalyzerError(emsg.format(n_atoms, atomlist))
 
         normal_list = []
         for atom in atomlist:
@@ -174,14 +175,14 @@ class InteractionAnalyzer(object):
                         reslist.append(res)
                 else:
                     emsg = 'Item {} (\'{}\') must be a Residue or Chain'
-                    raise TypeError(emsg.format(idx, item))
+                    raise InteractionAnalyzerError(emsg.format(idx, item))
         elif isinstance(subset, openmm_topology.Residue):
             reslist = [subset]
         elif isinstance(subset, openmm_topology.Chain):
             reslist = [res for res in subset.residues()]
         else:
             emsg = '\'{}\' is not a (list of) Residue(s) or Chain(s)'
-            raise TypeError(emsg.format(subset))
+            raise InteractionAnalyzerError(emsg.format(subset))
 
         return reslist
 
@@ -205,13 +206,14 @@ class InteractionAnalyzer(object):
         """
 
         if not isinstance(group_list, list):
+            gl_type = type(group_list)
             emsg = 'Argument \'{}\' must be of type list, not {}'
-            raise TypeError(emsg.format(group_list, type(group_list)))
+            raise InteractionAnalyzerError(emsg.format(group_list, gl_type))
 
         for idx, item in enumerate(group_list, start=1):
             if not issubclass(item, fgs.FunctionalGroup):
                 emsg = 'Item {} (\'{}\') is not a FunctionalGroup subclass'
-                raise TypeError(emsg.format(idx, item))
+                raise InteractionAnalyzerError(emsg.format(idx, item))
 
         groups = [fg() for fg in group_list]
 
@@ -856,102 +858,3 @@ class ResidueTable(object):
     """Table-like container object to hold interaction information per-residue.
     """
     pass
-
-
-class InteractionTable(object):
-    """Container class to store and allow search of pairwise interactions.
-
-    Essentially interfaces with a pandas `DataFrame` object, providing utility
-    methods to change the content of the `InteractionTable` or query/filter it.
-    """
-
-    def __init__(self, name=None):
-        self.name = name
-
-        self._setup_new_df()
-
-    def _setup_new_df(self):
-        """Creates a new DataFrame.
-        """
-
-        # Identify closest heavy atom in the group and add it as marker
-        # of interaction: cation, anion, etc.
-        _col = ['itype',
-                'chain_a', 'chain_b', 'resname_a', 'resname_b',
-                'resid_a', 'resid_b', 'atom_a', 'atom_b', 'energy']
-
-        self._table = pd.DataFrame(columns=_col)
-
-    def add(self, res_a, res_b, itype, **kwargs):
-        """Appends an interaction type to the table.
-
-        Arguments:
-            res_a (:obj:`Residue`): `Residue` object involved in the interaction.
-            res_b (:obj:`Residue`): Other `Residue` object involved in the interaction.
-            itype (str): name of the interaction type (e.g. ionic)
-
-        Optional Arguments:
-            atom_a (:obj:`Atom`): atom of first residue participating in the
-                interaction.
-            atom_b (:obj:`Atom`): atom of second residue participating in the
-                interaction.
-        """
-
-        # Sort residues by chain/number
-        _res_a = res_a
-        res_a, res_b = sorted((res_a, res_b), key=lambda r: (r.chain.id, r.id))
-
-        chain_a, chain_b = res_a.chain.id, res_b.chain.id
-        resname_a, resname_b = res_a.name, res_b.name
-        resid_a, resid_b = res_a.id, res_b.id
-
-        atom_a = getattr(kwargs.get('atom_a', None), 'name', None)
-        atom_b = getattr(kwargs.get('atom_b', None), 'name', None)
-
-        if _res_a != res_a:  # swapped?
-            atom_a, atom_b = atom_b, atom_a
-
-        energy = kwargs.get('energy')
-
-        df = self._table
-        df.loc[len(df)] = [itype,
-                           chain_a, chain_b, resname_a, resname_b,
-                           resid_a, resid_b, atom_a, atom_b, energy]
-
-        logging.debug('InteractionTable now contains {} entries'.format(len(df)))
-
-    def clear(self):
-        """Deletes all entries in InteractionTable.
-        """
-
-        self._table = None
-        self._setup_new_df()
-        logging.debug('Removed all information from InteractionTable.')
-
-    def show(self):
-        """Prints the interaction table.
-        """
-
-        return self._table
-
-    def to_json(self):
-        pass
-
-    def compare(self, other):
-        """Performs a per-row/per-column comparison between two tables.
-
-        Proposed algorithm:
-            for this.row, other.row in (this, other)
-              if this.row not in other
-                new.row[itype] = None
-              elif this.row in other
-                compare this.row[itype] with other.row[itype] => None if diff.
-            return new
-        """
-
-        pass
-
-    def difference(self, other):
-        """Show rows only in this table
-        """
-        pass
