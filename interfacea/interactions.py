@@ -72,7 +72,7 @@ class InteractionAnalyzer(object):
         self.anions = None
         self.aromatics = None
         self.cations = None
-        self.hbdonors = None
+        self.hb_donors = None
         self.hydrophobics = None
 
         msg = 'Created InteractionAnalyzer for structure: \'{}\''
@@ -349,7 +349,7 @@ class InteractionAnalyzer(object):
         match_dict = self.find_groups(subset=subset, group_list=donor_list)
         n_matches = sum(map(len, match_dict.values()))
 
-        self.hbdonors = match_dict  # cache result
+        self.hb_donors = match_dict  # cache result
         logging.info('Found {} hydrogen bond donor groups'.format(n_matches))
 
     def find_aromatic_rings(self, subset=None):
@@ -711,9 +711,9 @@ class InteractionAnalyzer(object):
         logging.info('Searching structure for hydrogen-bonded interactions')
 
         # Get donor groups
-        if self.hbdonors is None:
+        if self.hb_donors is None:
             self.find_hb_donors(subset=subset)
-        hbdonors_dict = self.hbdonors
+        hb_donors_dict = self.hb_donors
 
         # Get ionic groups if necessary
         if filter_ionic:
@@ -728,7 +728,7 @@ class InteractionAnalyzer(object):
         # Find acceptors within range/angle of donors
         nofs_set = {7, 8}
         hb_list = []  # (angle, donor, acceptor)
-        for res, donor_group in hbdonors_dict.items():
+        for res, donor_group in hb_donors_dict.items():
 
             for group in donor_group:
 
