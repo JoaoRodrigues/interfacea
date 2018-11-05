@@ -31,6 +31,53 @@ TESTDIR = os.path.dirname(os.path.abspath(__file__))
 warnings.simplefilter('ignore')  # blanket warning ignore filter
 
 
+class TestReader(unittest.TestCase):
+    """Tests for read() method and associated functions.
+    """
+
+    def setUp(self):
+        fpath = os.path.join(TESTDIR, 'data', 'protein_ligand.pdb')
+        self.struct = ia.read(fpath)
+
+    def test_read_ligand(self):
+        """Test writing a Structure with a ligand (not in topology).
+        """
+
+        struct = self.struct
+        # Check DRG residue
+        drg = [r for r in struct.topology.residues() if r.name == 'DRG'][0]
+        n_bonds = len(list(drg.bonds()))
+        self.assertEqual(n_bonds, 26)
+
+    def test_make_residue_graph(self):
+        """Tests creating a nx.Graph from residue topology.
+        """
+
+        struct = self.struct
+        reslist = [r for r in struct.topology.residues()]
+        for residue in reslist:
+            g = residue._g
+
+            n_atoms = len(list(residue.atoms()))
+            n_nodes = g.number_of_nodes()
+            self.assertEqual(n_atoms, n_nodes)
+
+            n_bonds = len(list(residue.internal_bonds()))
+            n_edges = g.number_of_edges()
+            self.assertEqual(n_bonds, n_edges)
+
+            # Check C-alpha has 4 edges
+            if residue.name == 'DRG':
+                continue
+
+            idx = [idx for idx, a in enumerate(residue.atoms())
+                   if a.name == 'CA'][0]
+            n_node_edges = len(g[idx])
+            self.assertEqual(n_node_edges, 4)
+
+
+
+
 class TestTermini(unittest.TestCase):
     """Tests for add_termini() method
     """
