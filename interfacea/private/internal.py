@@ -19,13 +19,14 @@ Code to calculate pairwise residue energies in macromolecular structures.
 """
 
 import logging
+import random
 
 __all__ = ['set_random_seed', 'set_log_level']
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 # Constants
-RANDOM_SEED = None
+RANDOM_SEED = random.randint(0, 1000)  # user can set it manually later
 
 
 # Methods
