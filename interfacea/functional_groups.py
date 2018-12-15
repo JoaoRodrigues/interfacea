@@ -374,16 +374,16 @@ class Phosphate(FunctionalGroup):
                          max_bonds=[4, 1, 1, 1])
 
 
-class HydrogenPhosphate(FunctionalGroup):
-    """Hydrogen phosphate.
+class SingleCoordinatedPhosphate(FunctionalGroup):
+    """Phosphate bound to an atom.
     """
 
     def __init__(self):
         super().__init__(name='phosphate-h',
                          charge=1,
-                         elements=[15, 8, 8, 8, 1],
+                         elements=[15, 8, 8, 8, 0],
                          bonds=[(0, 1), (0, 2), (0, 3), (1, 4)],
-                         max_bonds=[4, 2, 1, 1, 1])
+                         max_bonds=[4, 2, 1, 1, 99])
 
 
 class QuaternaryAmine(FunctionalGroup):
@@ -518,7 +518,7 @@ class HBondDonor(FunctionalGroup):
 
 
 # Lists for easier access
-anionic = [Carboxylate, Phosphate, HydrogenPhosphate, Sulfate]
+anionic = [Carboxylate, Phosphate, SingleCoordinatedPhosphate, Sulfate]
 cationic = [Guanidinium, Imidazolium, QuaternaryAmine, Sulfonium]
 charged = anionic + cationic
 
