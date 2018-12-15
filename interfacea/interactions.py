@@ -574,6 +574,9 @@ class InteractionAnalyzer(object):
                 continue
             elif (res_i.chain.id == res_j.chain.id) and not include_intra:
                 continue
+            # Ignore bonded atoms
+            elif atom_j in res_i.bonds_per_atom[atom_i]:
+                continue
 
             # Ignore hydrogens
             if is_hydrogen(atom_i) or is_hydrogen(atom_j):
