@@ -502,7 +502,9 @@ class InteractionAnalyzer(object):
                     for at_b in no_list:
                         other = at_b.residue
 
-                        if res.chain.id == other.chain.id and not include_intra:
+                        if res == other:  # exclude intra-residue interactions
+                            continue
+                        elif res.chain.id == other.chain.id and not include_intra:
                             continue
 
                         # idx_j: anion idx, idx_jj: anionic group within anion
@@ -649,7 +651,10 @@ class InteractionAnalyzer(object):
                     for at_b in neighbors:
                         other = at_b.residue
                         chain_b = other.chain.id
-                        if chain_a == chain_b and not include_intra:
+
+                        if res == other:  # exclude intra-residue interactions
+                            continue
+                        elif chain_a == chain_b and not include_intra:
                             continue
 
                         idx_j, idx_jj = hp_atoms.get(at_b)
@@ -738,7 +743,9 @@ class InteractionAnalyzer(object):
                 for acc in acceptors:
                     other = acc.residue
 
-                    if res.chain.id == other.chain.id and not include_intra:
+                    if res == other:  # exclude intra-residue interactions
+                        continue
+                    elif res.chain.id == other.chain.id and not include_intra:
                         continue
                     elif acc.element.atomic_number not in nofs_set:
                         continue
