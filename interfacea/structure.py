@@ -875,7 +875,7 @@ class Structure(object):
         initial_e = state.getPotentialEnergy()
         initial_e_kjmol = initial_e.value_in_unit(units.kilojoule_per_mole)
         msg = 'Energy before minimization: {:8.3f} kJ/mol'
-        logging.debug(msg.format(initial_e_kjmol))
+        logging.info(msg.format(initial_e_kjmol))
 
         if initial_e_kjmol > 1000000.0:  # sort of arbitrary value
             wmsg = ('Initial potential energy is very high ({:8.3f} kJ/mol). '
@@ -892,7 +892,7 @@ class Structure(object):
         msg = 'Minimized energy: {:8.3f} kJ/mol (deltaE = {:8.3} kJ/mol)'
         logging.info(msg.format(final_e_kjmol, delta_e_kjmol))
 
-        if final_e > 1000.0:  # arbitrary value
+        if final_e_kjmol > 1000.0:  # arbitrary value
             emsg = 'Final energy is very high: {:8.3f} kJ/mol '
             emsg += '- minimization failed. Check structure for severe clashes.'
             raise StructureError(emsg.format(final_e_kjmol))
