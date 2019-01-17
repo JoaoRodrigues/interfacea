@@ -209,14 +209,11 @@ class FunctionalGroup(object):
 
         # Match fg subgraph to residue graph
         def _node_match(n1, n2):
-            """Returns True if the residue atomic elements match the FG node elements.
+            """Return True if the residue atomic elements match the FG node elements.
             """
-            if n1['element'] in n2['element']:
-                return True
-            elif 0 in n2['element']:
-                return True
-            else:
-                return False
+            n1_element = n1['element']
+            n2_element = n2['element']
+            return n1_element in n2_element or 0 in n2_element
 
         res_graph = residue._g
         matcher = iso.GraphMatcher(res_graph, self._g, node_match=_node_match)
