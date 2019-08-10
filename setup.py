@@ -63,7 +63,6 @@ REQUIRES = [
     'networkx',
     'numpy',
     'openmm',
-    'pandas',
     'pdbfixer',
 ]
 
