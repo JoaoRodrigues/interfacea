@@ -22,8 +22,6 @@ import logging
 import os
 import random
 
-import simtk.openmm.app as app
-
 # Setup logger
 # This is the parent logger since the library is supposed
 # to be loaded from here. Hence, configs set here apply to
@@ -108,6 +106,7 @@ def read(fpath, ftype=None):
             or conversion with OpenMM.
     """
 
+    import simtk.openmm.app as app
     from interfacea.core.structure import Structure
     from interfacea.core.structure import StructureError
 
