@@ -107,8 +107,8 @@ def read(fpath, ftype=None):
     """
 
     import simtk.openmm.app as app
-    from interfacea.core.structure import Structure
-    from interfacea.core.structure import StructureError
+    from interfacea.core.Structure import Structure
+    from interfacea.core.Structure import StructureError
 
     _pdb_formats = {'pdb', 'ent'}
     _cif_formats = {'cif', 'mmcif'}

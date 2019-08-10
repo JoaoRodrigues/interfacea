@@ -1148,3 +1148,4 @@ class Structure(object):
             KeyError: if the energy term is not coupled to the `Structure`.
         """
         pass
+
