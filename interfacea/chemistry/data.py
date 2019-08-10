@@ -18,8 +18,6 @@
 Analysis of Biomolecular Interfaces.
 """
 
-from __future__ import print_function
-
 import logging
 
 # Setup logger
