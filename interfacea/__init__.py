@@ -20,14 +20,9 @@ Code to calculate pairwise residue energies in macromolecular structures.
 
 import logging
 import os
+import random
 
 import simtk.openmm.app as app
-
-from .structure import Structure
-from .structure import StructureError
-
-from .interactions import InteractionAnalyzer
-from .private.internal import *
 
 # Setup logger
 # This is the parent logger since the library is supposed
@@ -35,7 +30,67 @@ from .private.internal import *
 # all module-level loggers
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-# Global Methods
+# Global Constants
+RANDOM_SEED = random.randint(0, 1000)  # user can set it manually later
+
+
+# Methods
+def set_log_level(level='minimal'):
+    """Enables logging to a certain level.
+
+    Useful for interactive/debugging applications.
+
+    Args:
+        level (str): verbosity/type of logging. Can be either
+            'none', 'minimal', or 'verbose'. Default is 'minimal'.
+    """
+
+    if level == 'none':
+        root_logger = logging.getLogger()
+        root_logger.handlers = []  # clear handler list
+        root_logger.setLevel(logging.WARNING)
+        return
+
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter(fmt='[%(asctime)s] %(message)s',
+                                  datefmt='%H:%M:%S')
+    handler.setFormatter(formatter)
+
+    # We override the root logger here, assuming this function is only called
+    # interactively ...
+    root_logger = logging.getLogger()
+    root_logger.handlers = []  # clear handler list
+    root_logger.addHandler(handler)
+
+    if level == 'minimal':
+        root_logger.setLevel(logging.INFO)
+    elif level == 'verbose':
+        root_logger.setLevel(logging.DEBUG)
+    else:
+        raise ValueError('Logging level must be: \'none\', \'minimal\', or \'verbose\'')
+
+    logging.info('Logging enabled and set to \'{}\''.format(level))
+
+
+# Randomness
+def set_random_seed(seed=917):
+    """Sets a defined seed for reproducible operations across the library.
+
+    This does not ensure *complete reproducibility*. Some methods in OpenMM, for
+    example, are not deterministic across different hardware configurations even
+    with the same random seed.
+    """
+
+    global RANDOM_SEED
+
+    if isinstance(seed, int):
+        RANDOM_SEED = seed
+    else:
+        emsg = 'Invalid random seed: {} - Must be a positive integer.'
+        raise TypeError(emsg.format(seed))
+
+
+# IO
 def read(fpath, ftype=None):
     """Creates a `Structure` instance from a PDB/mmCIF file.
 
@@ -53,12 +108,15 @@ def read(fpath, ftype=None):
             or conversion with OpenMM.
     """
 
+    from interfacea.core.structure import Structure
+    from interfacea.core.structure import StructureError
+
     _pdb_formats = {'pdb', 'ent'}
     _cif_formats = {'cif', 'mmcif'}
     _formats = _pdb_formats | _cif_formats
     _formats_str = ','.join(_formats)
 
-    logging.debug('Reading file: {}'.format(fpath))
+    logging.info('Reading file: {}'.format(fpath))
 
     fullpath = os.path.abspath(fpath)
     if not os.path.isfile(fullpath):
@@ -86,5 +144,5 @@ def read(fpath, ftype=None):
         emsg = '\'{}\' is not one of the supported types: {}'.format(ftype, _formats_str)
         raise StructureError(emsg)
 
-    logging.debug('File parsed successfully using OpenMM reader.')
+    # logging.debug('File parsed successfully using OpenMM reader.')
     return Structure(os.path.basename(fname), struct)
