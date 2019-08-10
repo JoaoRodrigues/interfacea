@@ -49,7 +49,9 @@ if sys.version_info[0] != 3:
 
 PACKAGES = [
     'interfacea',
-    'interfacea.private',
+    'interfacea.core',
+    'interfacea.analyzers',
+    'interfacea.chemistry',
 ]
 
 EXTENSIONS = [
