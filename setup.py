@@ -55,8 +55,8 @@ PACKAGES = [
 ]
 
 EXTENSIONS = [
-    Extension('interfacea.src.kdtrees',
-              [os.path.join('interfacea', 'src', 'kdtrees.c')]),
+    Extension('interfacea.src.kdtree.kdtrees',
+              [os.path.join('interfacea', 'src', 'kdtree', 'kdtrees.c')]),
 ]
 
 REQUIRES = [
