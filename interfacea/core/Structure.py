@@ -364,7 +364,7 @@ class Structure(object):
             m.delete(unknowns)
 
             self.__set_topology(m.topology)
-            self.__set_positions(m.positions)  
+            self.__set_positions(m.positions)
 
             msg = f'Removed {len(unknowns)} unknown residues from Structure'
             logging.info(msg)
