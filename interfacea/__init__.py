@@ -19,7 +19,7 @@ Code to calculate pairwise residue energies in macromolecular structures.
 """
 
 import logging
-import os
+import pathlib
 import random
 
 # Setup logger
@@ -27,26 +27,42 @@ import random
 # to be loaded from here. Hence, configs set here apply to
 # all module-level loggers
 logging.getLogger(__name__).addHandler(logging.NullHandler())
+logging.getLogger(__name__).setLevel(logging.CRITICAL)
 
 # Global Constants
 RANDOM_SEED = random.randint(0, 1000)  # user can set it manually later
 
 
 # Methods
-def set_log_level(level='minimal'):
+def set_log_level(level='verbose'):
     """Enables logging to a certain level.
 
     Useful for interactive/debugging applications.
 
     Args:
-        level (str): verbosity/type of logging. Can be either
-            'none', 'minimal', or 'verbose'. Default is 'minimal'.
+        level (str): verbosity/type of logging. Choose from:
+            - 'silent': disables logging.
+            - 'minimal': only warnings and other critical messages
+            - 'verbose': informative/descriptive messages (default).
+            - 'debug': very verbose internal/diagnostic messages.
     """
 
-    if level == 'none':
+    # Logging levels
+    _lc = {
+           'minimal': logging.WARNING,
+           'verbose': logging.INFO,
+           'debug': logging.DEBUG
+          }
+
+    if level not in _lc and level != 'silent':
+        emsg = f"Unknown or unsupported log level: {level}"
+        raise ValueError(emsg)
+
+    # Treat 'silent' differently
+    if level == 'silent':
         root_logger = logging.getLogger()
         root_logger.handlers = []  # clear handler list
-        root_logger.setLevel(logging.WARNING)
+        root_logger.setLevel(logging.CRITICAL)
         return
 
     handler = logging.StreamHandler()
@@ -60,36 +76,31 @@ def set_log_level(level='minimal'):
     root_logger.handlers = []  # clear handler list
     root_logger.addHandler(handler)
 
-    if level == 'minimal':
-        root_logger.setLevel(logging.INFO)
-    elif level == 'verbose':
-        root_logger.setLevel(logging.DEBUG)
-    else:
-        raise ValueError('Logging level must be: \'none\', \'minimal\', or \'verbose\'')
-
-    logging.info('Logging enabled and set to \'{}\''.format(level))
+    log_level = _lc.get(level)
+    root_logger.setLevel(log_level)
+    logging.warn(f"Logging activated and set to '{level}'")  # always show
 
 
 # Randomness
 def set_random_seed(seed=917):
     """Sets a defined seed for reproducible operations across the library.
 
-    This does not ensure *complete reproducibility*. Some methods in OpenMM, for
-    example, are not deterministic across different hardware configurations even
-    with the same random seed.
+    This does not ensure *complete reproducibility*. Some methods in OpenMM,
+    for example, are not deterministic across different hardware configurations
+    even with the same random seed.
     """
 
     global RANDOM_SEED
 
-    if isinstance(seed, int):
+    if isinstance(seed, int) and seed > 0:
         RANDOM_SEED = seed
     else:
-        emsg = 'Invalid random seed: {} - Must be a positive integer.'
-        raise TypeError(emsg.format(seed))
+        emsg = f"Random seed must be a positive integer: {seed}"
+        raise TypeError(emsg)
 
 
 # IO
-def read(fpath, ftype=None):
+def read(fpath, ftype=None, **kwargs):
     """Creates a `Structure` instance from a PDB/mmCIF file.
 
     Args:
@@ -112,36 +123,37 @@ def read(fpath, ftype=None):
 
     _pdb_formats = {'pdb', 'ent'}
     _cif_formats = {'cif', 'mmcif'}
-    _formats = _pdb_formats | _cif_formats
-    _formats_str = ','.join(_formats)
 
-    logging.info('Reading file: {}'.format(fpath))
+    logging.info(f"Reading file: {fpath}")
 
-    fullpath = os.path.abspath(fpath)
-    if not os.path.isfile(fullpath):
-        emsg = 'File could not be read: {}'.format(fullpath)
+    fpath = pathlib.Path(fpath)
+
+    if not fpath.exists():
+        emsg = f"File unreadable/does not exist: {fpath}"
         raise StructureError(emsg)
 
-    fname, fext = os.path.splitext(fullpath)
-    ftype = ftype if ftype is not None else fext[1:]
-    logging.debug('Assigned file type: {}'.format(ftype))
+    fext = fpath.suffix[1:]
+    if ftype is None:
+        ftype = fext
+
+    logging.debug(f'File type: {ftype}')
 
     if ftype in _pdb_formats:
         try:
-            struct = app.PDBFile(fullpath)
+            struct = app.PDBFile(str(fpath.resolve()))
         except Exception as e:
-            emsg = 'Failed parsing file {} as \'PDB\' format'.format(fullpath)
+            emsg = f"Could not parse file as PDB: {fpath}"
             raise StructureError(emsg) from e
 
     elif ftype in _cif_formats:
         try:
-            struct = app.PDBxFile(fullpath)
+            struct = app.PDBxFile(str(fpath.resolve()))
         except Exception as e:
-            emsg = 'Failed parsing file {} as \'mmCIF\' format'.format(fullpath)
+            emsg = f"Could not parse file as mmCIF: {fpath}"
             raise StructureError(emsg) from e
+
     else:
-        emsg = '\'{}\' is not one of the supported types: {}'.format(ftype, _formats_str)
+        emsg = f"Unsupported file type: {ftype}"
         raise StructureError(emsg)
 
-    # logging.debug('File parsed successfully using OpenMM reader.')
-    return Structure(os.path.basename(fname), struct)
+    return Structure(fpath.name, struct, **kwargs)
