@@ -24,9 +24,8 @@ install:
   # Useful for debugging any issues with conda
   - conda info -a
 
-  # Replace dep1 dep2 ... with your dependencies
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION -f requirements.yml
-  - conda activate test-environment
+  - conda env create python=$TRAVIS_PYTHON_VERSION -f requirements.yml
+  - conda activate interfacea-install
   - python setup.py install
 
 script:
