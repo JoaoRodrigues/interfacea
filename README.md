@@ -23,7 +23,7 @@ git clone https://github.com/joaorodrigues/interfacea.git interfacea
 cd interfacea
 conda env create -f requirements.yml  # create environment with dependencies
 python setup.py build && python setup.py install  # install interfacea
-conda activate interface-install
+conda activate interfacea-install
 # Ta-Daa!
 ```
 
