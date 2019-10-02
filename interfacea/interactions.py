@@ -884,6 +884,77 @@ class InteractionAnalyzer(object):
 
         logging.info('Found {} stacking interactions'.format(n_pi + n_t))
 
+    def get_cation_pi(self, subset=None, include_intra=False, max_d=6.0):
+        """Searches structure for cation-pi interactions.
+
+        Cation-pi interactions are defined as per Gallivan et al, PNAS, 1999
+        using a geometric criterion of 6A between the cation and the center of
+        the ring. This definition is not necessarily the most correct, as
+        cation-pi interactions can be repulsive or attractive depending on
+        factors other than distance. However, for a simple analyzer, this method
+        does a sufficiently good job.
+
+        Args:
+            subset (:obj:`list(object)`): Residue or Chain objects or list of to
+                restrict the search. If None, the default, we will search every
+                residue in the structure.
+            include_intra (bool): includes intramolecular residue pairs in the
+                search. By default, False.
+            max_d (float): maximum distance between ring and cation, in Angstrom.
+        """
+
+        def is_nitro_or_oxy(atom):
+            return atom.element.atomic_number in {7, 8}
+
+        logging.info('Searching structure for cation-pi interactions')
+
+        if self.aromatics is None:
+            self.find_aromatic_rings(subset=subset)
+        if self.cations is None:
+            self.find_cations(subset=subset)
+
+        all_xyz = self.structure._np_positions
+        aromatic_dict = self.aromatics
+        cation_dict = self.cations
+        t = self.itable
+
+        n_cat_pi = 0
+        reslist_aro = list(aromatic_dict.keys())
+        reslist_cat = list(cation_dict.keys())
+        skip = False
+        for res_i, res_j in itertools.product(reslist_aro, reslist_cat):
+            skip = False  # reset
+
+            if (res_i.chain.id == res_j.chain.id) and not include_intra:
+                continue
+
+            aro_groups = aromatic_dict[res_i]
+            cat_groups = cation_dict[res_j]
+            for aro, cat in itertools.product(aro_groups, cat_groups):
+                if skip:
+                    break
+
+                # Unpack cation
+                cation_no_atoms = filter(is_nitro_or_oxy, cat)
+
+                # Distance
+                for cat_at in cation_no_atoms:
+                    cat_at_xyz = all_xyz[cat_at.index]
+                    d = np.linalg.norm(aro.center - cat_at_xyz)
+                    if d <= max_d:
+                        aro_at = aro.representative
+                        msg = 'Residues {} & {} make a cation-pi interaction'
+                        logging.debug(msg.format(res_i, res_j))
+
+                        t.add(res_i, res_j, itype='cation-pi',
+                              atom_a=cat_at, atom_b=aro_at)
+
+                        n_cat_pi += 1
+                        skip = True
+                        break  # skip further interactions between these groups
+
+        logging.info('Found {} cation-pi interactions'.format(n_cat_pi))
+
 
 class ResidueTable(object):
     """Table-like container object to hold interaction information per-residue.
