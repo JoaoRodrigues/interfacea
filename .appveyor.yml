@@ -23,7 +23,8 @@ install:
   - conda config --set always_yes yes
   - conda config --add channels omnia --add channels conda-forge
   - conda update --yes --all
-  - conda install openmm pdbfixer
+  - conda env create -f requirements.yml
+  - conda activate interfacea-install
 
   - cd %APPVEYOR_BUILD_FOLDER%
 
