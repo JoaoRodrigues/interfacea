@@ -1,7 +1,6 @@
 
 [![Travis Continuous Integration](https://travis-ci.com/JoaoRodrigues/interfacea.svg?branch=master)](https://travis-ci.com/JoaoRodrigues/interfacea)
 [![Appveyor Continuous Integration](https://ci.appveyor.com/api/projects/status/tcss5si0bgtdl3xj?svg=true)](https://ci.appveyor.com/project/JoaoRodrigues/interfacea)
-
 [![DOI](https://zenodo.org/badge/136096537.svg)](https://zenodo.org/badge/latestdoi/136096537)
 
 
