@@ -22,6 +22,9 @@ After downloading and uncompressing the source code, or cloning it from git,
 type the following command:
 
     python setup.py install
+
+As a developer, to test your changes without installing the package please use:
+    python setup.py develop
 """
 
 #
@@ -32,7 +35,6 @@ import os
 import sys
 
 from setuptools import setup
-# from setuptools import Command
 from setuptools import Extension
 
 from setuptools.command.install import install
@@ -97,14 +99,6 @@ class build_extensions(build_ext):
         build_ext.run(self)
 
 
-# class run_tests(Command):
-#     """Run all of the tests for the package.
-#     """
-
-#     description = "Automatically run the test suite (in test/)"
-#     user_options = []
-
-
 setup(name='interfacea',
       version=__version__,
       author='Joao Rodrigues',
@@ -129,7 +123,6 @@ setup(name='interfacea',
           "install": install_library,
           "build_py": build_py_modules,
           "build_ext": build_extensions,
-          # "test": run_tests,
       },
       packages=PACKAGES,
       ext_modules=EXTENSIONS,
