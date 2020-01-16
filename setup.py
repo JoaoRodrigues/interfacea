@@ -39,7 +39,7 @@ from setuptools.command.install import install
 from setuptools.command.build_py import build_py
 from setuptools.command.build_ext import build_ext
 
-__version__ = "0.1"
+__version__ = "0.1.0"
 
 # Check for Python version
 if sys.version_info[0] != 3:
@@ -106,13 +106,13 @@ setup(name='interfacea',
       author='Joao Rodrigues',
       author_email='j.p.g.l.m.rodrigues@gmail.com',
       url='https://github.com/joaorodrigues/interfacea',
-      description='Open-source library to analyze the structure and energetics of biomolecular interfaces',
+      description='Open-source library to analyze the structure and energetics of protein interfaces',
       long_description=readme,
       classifiers=[
-          'Development Status :: 5 - Production/Stable',
+          'Development Status :: 3 - Alpha',
           'Intended Audience :: Developers',
           'Intended Audience :: Science/Research',
-          'License :: Freely Distributable',  # Change
+          'License :: OSI Approved :: Apache Software License',
           'Operating System :: OS Independent',
           'Programming Language :: Python',
           'Programming Language :: Python :: 3',
