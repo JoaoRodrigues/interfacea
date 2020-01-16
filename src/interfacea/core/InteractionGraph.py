@@ -99,7 +99,7 @@ class InteractionGraph(object):
         elif isinstance(item, tuple):
             try:
                 i, j, a = item
-            except ValueError as e:
+            except ValueError:
                 try:
                     i, j = item
                     a = None
