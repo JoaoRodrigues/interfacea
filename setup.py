@@ -66,6 +66,10 @@ REQUIRES = [
     'pdbfixer',
 ]
 
+DEV_REQUIRES = [
+    'pytest',
+]
+
 # For long description
 with open("README.md", "rb") as handle:
     readme = handle.read().decode("ascii")
@@ -130,4 +134,5 @@ setup(name='interfacea',
       packages=PACKAGES,
       ext_modules=EXTENSIONS,
       install_requires=REQUIRES,
+      extras_require=DEV_REQUIRES,
       )
