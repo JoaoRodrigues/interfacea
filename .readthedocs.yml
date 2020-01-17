@@ -15,7 +15,7 @@ python:
   version: 3.6
   install:
     - method: setuptools
-      path: package
+      path: .
 
     - requirements: docs/requirements.txt
 
