@@ -2,7 +2,7 @@ name: interfacea
 channels:
   - omnia
 dependencies:
-  - python
+  - python>=3.6
   - numpy
   - networkx
   - openmm
