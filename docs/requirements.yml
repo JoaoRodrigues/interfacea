@@ -1,0 +1,13 @@
+name: interfacea-docs
+channels:
+  - omnia
+dependencies:
+  - python>=3.6
+  - numpy
+  - networkx
+  - openmm
+  - pdbfixer
+  - pip
+  - pip:
+    - sphinx
+    - sphinx-bootstrap-theme

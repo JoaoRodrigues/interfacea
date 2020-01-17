@@ -9,12 +9,11 @@ version: 2
 formats: all
 
 conda:
-  environment: requirements.yml
+  environment: docs/requirements.yml
 
 python:
   version: 3.6
   install:
-    - requirements: docs/requirements.txt
     - method: setuptools
       path: .
 
