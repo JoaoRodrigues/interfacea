@@ -22,6 +22,8 @@ import logging
 import pathlib
 import random
 
+from ._version import __version__
+
 # Setup logger
 # This is the parent logger since the library is supposed
 # to be loaded from here. Hence, configs set here apply to
