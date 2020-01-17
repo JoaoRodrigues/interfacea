@@ -32,6 +32,7 @@ As a developer, to test your changes without installing the package please use:
 #
 
 import os
+from pathlib import Path
 import sys
 
 from setuptools import setup
@@ -41,13 +42,29 @@ from setuptools.command.install import install
 from setuptools.command.build_py import build_py
 from setuptools.command.build_ext import build_ext
 
-__version__ = "0.1.0"
-
 # Check for Python version
-if sys.version_info[0] != 3:
-    sys.stderr.write("interfacea requires Python 3.x. "
+if sys.version_info < (3, 6):
+    sys.stderr.write("interfacea requires Python 3.6+. "
                      "Python %d.%d detected.\n" % sys.version_info[:2])
     sys.exit(1)
+
+
+# Get version from code
+def get_version():
+    """Read the variable version from interfacea/_version.py"""
+
+    f = Path('interfacea/_version.py')
+    contents = f.read_text()
+    *_, version = contents.strip().split()
+    return version
+
+
+# Get long description
+def get_long_description():
+    """Reads the contents of the README file"""
+    contents = Path('README.rst').read_text()
+    return contents
+
 
 PACKAGES = [
     'interfacea',
@@ -67,14 +84,6 @@ REQUIRES = [
     'openmm',
     'pdbfixer',
 ]
-
-DEV_REQUIRES = [
-    'pytest',
-]
-
-# For long description
-with open("README.md", "rb") as handle:
-    readme = handle.read().decode("ascii")
 
 #
 # Install/Build/Test classes
@@ -100,12 +109,13 @@ class build_extensions(build_ext):
 
 
 setup(name='interfacea',
-      version=__version__,
+      version=get_version(),
       author='Joao Rodrigues',
       author_email='j.p.g.l.m.rodrigues@gmail.com',
       url='https://github.com/joaorodrigues/interfacea',
+    #   download_url=''  # TODO: add url to release using version string.
       description='Open-source library to analyze the structure and energetics of protein interfaces',
-      long_description=readme,
+      long_description=get_long_description(),
       classifiers=[
           'Development Status :: 3 - Alpha',
           'Intended Audience :: Developers',
@@ -127,5 +137,4 @@ setup(name='interfacea',
       packages=PACKAGES,
       ext_modules=EXTENSIONS,
       install_requires=REQUIRES,
-      extras_require=DEV_REQUIRES,
       )
