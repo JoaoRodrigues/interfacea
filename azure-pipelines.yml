@@ -1,32 +1,31 @@
-# Python package
-# Create and test a Python package on multiple Python versions.
-# Add steps that analyze code, save the dist with the build record, publish to a PyPI-compatible index, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/python
+# trigger:
+#   - reorg
 
-trigger:
-- master
+jobs:
+  - job:
+    displayName: 'Build_Windows'
 
-pool:
-  vmImage: 'ubuntu-latest'
-strategy:
-  matrix:
-    Python36:
-      python.version: '3.6'
-    Python37:
-      python.version: '3.7'
+    pool:
+      imageName: 'vs2017-win2016'
 
-steps:
-- task: UsePythonVersion@0
-  inputs:
-    versionSpec: '$(python.version)'
-  displayName: 'Use Python $(python.version)'
+    strategy:
+      matrix:
+        # Python Versions
+        Python36:
+          python.version: '3.6'
+        Python37:
+          python.version: '3.7'
 
-- script: |
-    python -m pip install --upgrade pip
-    pip install -r requirements.txt
-  displayName: 'Install dependencies'
+    steps:
+      - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
+        displayName: 'Add conda to PATH'
 
-# - script: |
-#     pip install pytest pytest-azurepipelines
-#     pytest
-#   displayName: 'pytest'
+      - script: |
+          conda env create --name interfacea-build --file environment.yml
+        displayName: "Creating conda environment"
+
+      - script: |
+          call activate interfacea-build
+          python setup.py build
+          python setup.py install
+        displayName: 'Running setup.py'
