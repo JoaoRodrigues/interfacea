@@ -1,4 +1,3 @@
-name: interfacea-install
 channels:
   - omnia
 dependencies:
