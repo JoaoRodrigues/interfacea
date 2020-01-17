@@ -1,6 +1,8 @@
-
 interfacea
 =====================================
+
+.. image:: https://zenodo.org/badge/136096537.svg
+   :target: https://zenodo.org/badge/latestdoi/136096537
 
 .. image:: https://img.shields.io/travis/JoaoRodrigues/interfacea/master.svg?label=TravisCI
     :target: https://travis-ci.com/JoaoRodrigues/interfacea
@@ -9,6 +11,12 @@ interfacea
 .. image:: https://img.shields.io/appveyor/ci/joaorodrigues/interfacea?label=Appveyor
   :target: https://ci.appveyor.com/project/JoaoRodrigues/interfacea
   :alt: Appveyor Continuous Integration
+
+.. image:: https://api.codeclimate.com/v1/badges/ca054443ee84f96d748a/test_coverage
+   :target: https://codeclimate.com/github/JoaoRodrigues/interfacea/test_coverage
+   :alt: Test Coverage
+
+.. start-description
 
 interfacea is a Python library to analyze geometric and energetic features of
 protein interfaces. The feature list includes:
@@ -20,46 +28,47 @@ protein interfaces. The feature list includes:
 
 * Rebuilding missing (heavy) atoms and *in silico* mutagenesis.
 
-For the Impatient
------------------
+.. end-description
 
-Read the full documentation at `interfacea.readthedocs.io <https://interfacea.readthedocs.io/en/latest/>`_.
+.. start-intro
+
+Getting Started
+-----------------
 
 **Installation instructions**
 
-.. code:: bash
+.. code-block:: bash
 
     git clone https://github.com/joaorodrigues/interfacea.git interfacea
     cd interfacea
-    conda env create -f requirements.yml  # create environment with dependencies
-    python setup.py build && python setup.py install  # install interfacea
+    conda env create -f requirements.yml
+    python setup.py build && python setup.py install
 
 **Quick Example(s)**
 
-* Loading a molecule and performing energy minimization.
+.. code-block:: python
 
-    .. code-block:: python
+    # Load a molecule and perform energy minimization.
 
-        import interfacea as ia
+    import interfacea as ia
 
-        mol = ia.read('tests/data/mini.pdb')
-        mol.prepare(minimize=True)
+    mol = ia.read('tests/data/mini.pdb')
+    mol.prepare(minimize=True)
 
-        print(mol.potential_energy)
+    print(mol.potential_energy)
 
-* Find ionic interactions in the structure
+.. code-block:: python
 
-    .. code-block:: python
+    # Find ionic interactions in the structure
 
-        import interfacea as ia
+    analyzer = ia.InteractionAnalyzer(mol)
+    analyzer.get_ionic()
 
-        mol = ia.read('tests/data/mini.pdb')
+    print(analyzer.itable._table)  # will obviously change in the future.
 
-        analyzer = ia.InteractionAnalyzer(mol)
-        analyzer.get_ionic()
+.. end-intro
 
-        print(analyzer.itable._table)  # will obviously change in the future.
-
+Read the full documentation at `interfacea.readthedocs.io <https://interfacea.readthedocs.io/en/latest/>`_
 
 Software Dependencies
 ---------------------
