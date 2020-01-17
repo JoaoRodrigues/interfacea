@@ -56,7 +56,7 @@ def get_version():
 
     f = Path('./interfacea') / '_version.py'
     contents = f.read_text()
-    *_, version = contents.strip().split()
+    version = contents.strip().split()[-1]
     return version[1:-1]
 
 
