@@ -70,3 +70,4 @@ napoleon_google_docstring = True
 
 # autodoc settings
 autodoc_member_order = 'bysource'
+autodoc_mock_imports = ["interfacea.src.kdtree"]  # C ext not support by RTD
