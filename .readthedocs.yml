@@ -9,7 +9,7 @@ version: 2
 formats: all
 
 conda:
-  file: requirements.yml
+  environment: requirements.yml
 
 python:
   version: 3.6
