@@ -1,6 +1,0 @@
-dependencies:
-- python>=3.6
-- sphinx
-- pip
-- pip:
-  - sphinx-bootstrap-theme
