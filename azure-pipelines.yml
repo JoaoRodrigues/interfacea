@@ -25,7 +25,7 @@ jobs:
         displayName: "Creating conda environment"
 
       - script: |
-          call activate interfacea-build
+          activate interfacea-build
           python setup.py build
           python setup.py install
         displayName: 'Running setup.py'
