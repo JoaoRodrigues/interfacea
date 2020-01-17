@@ -14,10 +14,14 @@ conda:
 python:
   version: 3.6
   install:
+    - requirements: docs/requirements.txt
+    - method: pip
+      path: .
+      extra_requirements:
+        - docs
     - method: setuptools
       path: .
 
-    - requirements: docs/requirements.txt
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
