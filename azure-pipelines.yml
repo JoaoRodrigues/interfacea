@@ -1,31 +1,5 @@
-# trigger:
-#   - reorg
 
-jobs:
-  - job:
-    displayName: 'Build_Windows'
-
-    pool:
-      imageName: 'vs2017-win2016'
-
-    strategy:
-      matrix:
-        # Python Versions
-        Python36:
-          python.version: '3.6'
-        Python37:
-          python.version: '3.7'
-
-    steps:
-      - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
-        displayName: 'Add conda to PATH'
-
-      - script: |
-          conda env create --name interfacea-build --file environment.yml
-        displayName: "Creating conda environment"
-
-      - script: |
-          activate interfacea-build
-          python setup.py build
-          python setup.py install
-        displayName: 'Running setup.py'
+stages:
+  - stage: Build
+    jobs:
+      -template: ./ci/azure_win10.yml
