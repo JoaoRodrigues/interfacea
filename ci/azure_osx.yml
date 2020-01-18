@@ -3,9 +3,9 @@
       workspace:
           clean: all
 
-      displayName: Build_Windows
+      displayName: Build_OSX
       pool:
-        vmImage: 'vs2017-win2016'
+        vmImage: 'macOS-10.13'
 
       strategy:
         matrix:
