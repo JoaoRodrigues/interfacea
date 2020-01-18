@@ -3,9 +3,9 @@ jobs:
     workspace:
         clean: all
 
-    displayName: Build_Windows
+    displayName: Build_Linux
     pool:
-      vmImage: 'vs2017-win2016'
+      vmImage: 'ubuntu-latest'
 
     strategy:
       matrix:
@@ -17,29 +17,29 @@ jobs:
         #   python.version: '3.8'
 
     steps:
-    - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
+    - bash: echo "##vso[task.prependpath]$CONDA/bin"
       displayName: Add Conda to PATH
 
-    - script: |
+    - bash: |
         conda update -n base conda pip setuptools -y
         conda create --yes --quiet --name interfacea_build python=%PYTHON_VERSION%
         conda env update --name interfacea_build --file environment.yml
       displayName: Create and Setup Conda Environment
       continueOnError: false
 
-    - script: |
-        call activate interfacea_build
+    - bash: |
+        source activate interfacea_build
         conda list
       displayName: Check Environment
       continueOnError: false
 
-    - script: |
-        call activate interfacea_build
+    - bash: |
+        source activate interfacea_build
         python setup.py build
         python setup.py install
       displayName: Build & Install
       continueOnError: false
 
-    - script: |
+    - bash: |
         conda env remove -n interfacea_build
       displayName: Manual Paranoid Cleanup
