@@ -35,14 +35,23 @@ protein interfaces. The feature list includes:
 Getting Started
 -----------------
 
-**Installation instructions**
+**Installing from Source**
 
 .. code-block:: bash
 
+    # Clone the repository
     git clone https://github.com/joaorodrigues/interfacea.git interfacea
+
     cd interfacea
-    conda env create -f requirements.yml
-    python setup.py build && python setup.py install
+
+    # Setup a dedicated conda environment to install interfacea
+    conda create --yes --quiet --name interfacea python=3.6
+    conda env update --name interfacea --file environment.yml
+
+    # Activate the environment and install the library
+    conda activate interfacea
+    python setup.py build
+    python setup.py install
 
 **Quick Example(s)**
 
