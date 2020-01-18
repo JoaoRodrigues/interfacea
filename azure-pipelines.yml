@@ -1,5 +1,4 @@
-
 stages:
   - stage: Build
     jobs:
-      -template: ./ci/azure_win10.yml
+      - template: ./ci/azure_win10.yml
