@@ -30,7 +30,7 @@ interactions. In addition, interfacea is tightly coupled with
 operations on atomic structures under a variety of force fields.
 
 We welcome contributions and suggestions to our project - please read our
-`contributing guidelines <CONTRIBUTING.rst>`_.
+contributing guidelines.
 
 .. end-description
 
