@@ -1,3 +1,5 @@
+.. _contrib-label:
+
 Contributing Guidelines
 =======================
 
@@ -31,7 +33,7 @@ Our Code of Conduct
 -------------------
 
 This project and everyone participating in it is governed by our
-`Code of Conduct <CODE_OF_CONDUCT.rst>`_. By participating, we
+:ref:`Code of Conduct <coc-label>`. By participating, we
 expect you to abide by and uphold this code. Please report any
 unacceptable behavior to joaor@stanford.edu.
 
