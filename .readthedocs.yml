@@ -9,7 +9,7 @@ version: 2
 formats: all
 
 conda:
-  environment: docs/requirements.yml
+  environment: docs/docs-environment.yml
 
 python:
   version: 3.6
