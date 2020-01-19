@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.abspath(mod_path))
 project = 'interfacea'
 copyright = '2019, Joao Rodrigues'
 author = 'joaorodrigues'
-version = release = 0.1.0
+version = release = '0.1.0'
 
 # -- General configuration ---------------------------------------------------
 
