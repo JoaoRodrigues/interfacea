@@ -29,6 +29,8 @@ Table of Contents
     - Documentation Style Guide
     - Git(hub) Etiquette
 
+5. `Continuous Integration`_
+
 Our Code of Conduct
 -------------------
 
@@ -57,12 +59,26 @@ Contributing Code
 If you are reading this section, thank you for donating your time
 to improve the code in interfacea.
 
+The first step to contribute to our project is to fork our repository,
+clone it locally, and create a new branch named after your contribution.
+For example, if you want to add a new parser for the WHATEVER file format,
+name your branch something like :code:`whatever-parser` and make your
+changes there. Then, once you are done, push it to your github account
+and make a pull request to our repository (see `Git(hub) Etiquette`_).
+
 Contributing Documentation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Thank you for taking the time to contribute to our documentation! We believe
 that proper documentation is essential for the widespread adoption and usage
 of software tools.
+
+The first step to contribute to our project is to fork our repository,
+clone it locally, and create a new branch named after your contribution.
+For example, if you want to fix a typo on the documentation index page,
+name your branch something like :code:`fix-index-typo` and make your
+changes there. Then, once you are done, push it to your github account
+and make a pull request to our repository (see `Git(hub) Etiquette`_).
 
 We use `Sphinx <http://www.sphinx-doc.org/en/master/>`_ to
 build and format our online documentation, which is then hosted at
@@ -112,7 +128,6 @@ process.
   documentation, this file lives at the root of the source code repository
   and is used by the ReadTheDocs server to start our online build.
 
-
 Style Guides
 ------------
 
@@ -124,3 +139,29 @@ Documentation Style Guide
 
 Git(hub) Etiquette
 ~~~~~~~~~~~~~~~~~~
+
+Continuous Integration
+----------------------
+
+We aim to have all the building, testing, and documentation infrastructure
+automated through continuous integration services/servers. In this way, we
+hope to make it easier for new and current developers alike to contribute
+and maintain the library. In accordance with the previous sections in this
+document, we have several checks that run automatically with each pull
+request that is made against the master branch. The following paragraphs
+explain, roughly, how this process happens and the choices we made in terms
+to host/carry out the continuous integration services.
+
+The bulk of the services run on `Azure Pipelines <https://dev.azure.com/jpglmrodrigues/interfacea-ci>`_.
+We have pipelines setup to 1) ensure if the library builds correctly,
+2) run the testing framework (and quantify how much of the code they
+cover), and 3) verify if the documentation builds correctly. Each of this
+actions is setup in a *stage* in Azure DevOps terminology.
+
+These pipelines are controlled by the :code:`azure-pipelines.yml` file, as
+well as its dependencies in the :code:`ci/` folder. By default, we run
+builds and the testing framework against several versions of Python - using
+tox - and all three major OSes (Windows, Mac OSX, and Linux).
+
+As with the rest of the library, we welcome pull requests that improve or
+correct our continuous integration practices!
