@@ -19,14 +19,12 @@ import sphinx_bootstrap_theme
 mod_path = os.path.join('..')
 sys.path.insert(0, os.path.abspath(mod_path))
 
-import interfacea
-
 # -- Project information -----------------------------------------------------
 
 project = 'interfacea'
 copyright = '2019, Joao Rodrigues'
 author = 'joaorodrigues'
-version = release = interfacea.__version__
+version = release = 0.1.0
 
 # -- General configuration ---------------------------------------------------
 

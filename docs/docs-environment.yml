@@ -1,13 +1,13 @@
 # We need to install the library to access the __version__ var.
 name: interfacea-docs
-channels:
-  - omnia
+# channels:
+#   - omnia
 dependencies:
   - python>=3.6
-  - numpy
-  - networkx
-  - openmm
-  - pdbfixer
+  # - numpy
+  # - networkx
+  # - openmm
+  # - pdbfixer
   - pip
   - pip:
     - sphinx
