@@ -23,14 +23,14 @@ interfacea
 .. start-description
 
 interfacea is a Python library to analyze geometric and energetic features of
-protein interfaces. The feature list includes:
+protein interfaces. It implements a graph-based functional group
+representation that allows for fast detection of several types of chemical
+interactions. In addition, interfacea is tightly coupled with
+`OpenMM <http://openmm.org/>`_ to provide simple modeling and refinement
+operations on atomic structures under a variety of force fields.
 
-* Fast and flexible graph-based search of functional groups.
-
-* Identification of several types of atomic interactions
-  (e.g. ionic, hydrogen bonds).
-
-* Rebuilding missing (heavy) atoms and *in silico* mutagenesis.
+We welcome contributions and suggestions to our project - please read our
+`contributing guidelines <CONTRIBUTING.rst>`_.
 
 .. end-description
 
