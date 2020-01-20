@@ -31,6 +31,7 @@ stages:
             - script: |
                 source activate $(condaEnvName)
                 flake8 .
+              displayName: Run Flake8
 
   - stage:
       displayName: Tester
@@ -46,6 +47,7 @@ stages:
             - script: |
                 source activate $(condaEnvName)
                 python setup.py test  # soon to be deprecated, move to pytest
+              displayName: Run Unit Tests
 
         # - script: |
         #     conda env remove -n $(condaEnvName)

@@ -22,13 +22,13 @@ jobs:
     steps:
 
       # Modify PATH depending on the OS
-      - script: echo "##vso[task.prependpath]$CONDA/bin"
-        displayName: Add Conda to PATH
-        condition: ne(parameters.displayName, 'Windows')
+      - ${{ if ne(parameters.displayName, 'Windows') }}:
+        - script: echo "##vso[task.prependpath]$CONDA/bin"
+          displayName: Add Conda to PATH
 
-      - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
-        displayName: Add Conda to PATH
-        condition: eq(parameters.displayName, 'Windows')
+      - ${{ if eq(parameters.displayName, 'Windows') }}:
+        - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
+          displayName: Add Conda to PATH
 
       # Build environment
       - script: |
