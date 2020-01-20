@@ -23,7 +23,7 @@
   # Only run if the Builder step is successful
   - stage: "Linter_${{ parameters.OS }}"
     dependsOn: "Builder_${{ parameters.OS }}"
-    condition: succeeded("Builder_${{ parameters.OS }}")
+    condition: succeeded('Builder_${{ parameters.OS }}')
 
     jobs:
       - template: job_backbone.yml
@@ -38,7 +38,7 @@
 
   - stage: "Tester_${{ parameters.OS }}"
     dependsOn: "Builder_${{ parameters.OS }}"
-    condition: succeeded("Builder_${{ parameters.OS }}")
+    condition: succeeded('Builder_${{ parameters.OS }}')
 
     jobs:
       - template: job_backbone.yml
