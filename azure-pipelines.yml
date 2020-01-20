@@ -1,6 +1,7 @@
+variables:
+  condaEnvName: interfacea-ci
+
 stages:
-  - stage: Build
-    jobs:
-      - template: ./ci/azure_win10.yml
-      - template: ./ci/azure_linux.yml
-      - template: ./ci/azure_osx.yml
+  # - template: ./ci/job_win10.yml
+  - template: ./ci/job_linux.yml
+  # - template: ./ci/job_osx.yml
