@@ -9,61 +9,43 @@ stages:
           displayName: 'Linux'
           vmImage: 'ubuntu-latest'
           steps:
-            - script: echo "##vso[task.prependpath]$CONDA/bin"
-              displayName: Add Conda to PATH
-
-            - template: setup_conda.yml
-
             - script: |
                 source activate $(condaEnvName)
                 python setup.py build
                 python setup.py install
               displayName: Build & Install
 
-  # # These two will run in parallel since they share the same dependency
-  # # Only run if the Builder step is successful
-  # - stage:
-  #   displayName: Linter
-  #   dependsOn: Builder
-  #   condition: succeeded('Builder')
+  # These two will run in parallel since they share the same dependency
+  # Only run if the Builder step is successful
+  - stage:
+    displayName: Linter
+    dependsOn: Builder
+    condition: succeeded('Builder')
 
-  #   jobs:
-  #     - template: ci/job_backbone.yml
-  #       parameters:
-  #         displayName: 'Linux'
-  #         vmImage: 'ubuntu-latest'
+    jobs:
+      - template: job_backbone.yml
+        parameters:
+          displayName: 'Linux'
+          vmImage: 'ubuntu-latest'
+          steps:
+            - script: |
+                source activate $(condaEnvName)
+                flake8 .
 
-  #       steps:
-  #         - script: echo "##vso[task.prependpath]$CONDA/bin"
-  #           displayName: Add Conda to PATH
+  - stage:
+      displayName: Tester
+      dependsOn: Builder
+      condition: succeeded('Builder')
 
-  #         - template: ci/setup_conda.yml
-
-  #         - script: |
-  #             source activate $(condaEnvName)
-  #             flake8 .
-
-
-  # - stage:
-  #     displayName: Tester
-  #     dependsOn: Builder
-  #     condition: succeeded('Builder')
-
-  #   jobs:
-  #     - template: ci/job_backbone.yml
-  #       parameters:
-  #         displayName: 'Linux'
-  #         vmImage: 'ubuntu-latest'
-
-  #       steps:
-  #         - script: echo "##vso[task.prependpath]$CONDA/bin"
-  #           displayName: Add Conda to PATH
-
-  #         - template: ci/setup_conda.yml
-
-  #         - script: |
-  #             source activate $(condaEnvName)
-  #             python setup.py test  # soon to be deprecated, move to pytest
+    jobs:
+      - template: job_backbone.yml
+        parameters:
+          displayName: 'Linux'
+          vmImage: 'ubuntu-latest'
+          steps:
+            - script: |
+                source activate $(condaEnvName)
+                python setup.py test  # soon to be deprecated, move to pytest
 
         # - script: |
         #     conda env remove -n $(condaEnvName)
