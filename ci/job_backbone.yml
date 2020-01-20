@@ -38,6 +38,11 @@ jobs:
         displayName: Create and Setup Conda Environment
         continueOnError: false
 
+      # OSX-specific
+      - ${{ if eq(parameters.displayName, 'OSX') }}:
+        - bash: sudo chown -R $USER $CONDA
+          displayName: Take ownership of conda installation
+
       # Additional custom steps
       - ${{ each step in parameters.steps }}:
         - ${{ each pair in step }}:

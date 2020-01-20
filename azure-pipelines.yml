@@ -2,6 +2,6 @@ variables:
   condaEnvName: interfacea-ci
 
 stages:
-  # - template: ./ci/job_win10.yml
+  - template: ./ci/job_win10.yml
   - template: ./ci/job_linux.yml
-  # - template: ./ci/job_osx.yml
+  - template: ./ci/job_osx.yml

@@ -1,17 +1,22 @@
-stages:
+ variables:
+  OS: 'Linux'
+  image: 'ubuntu-latest'
+
+ stages:
   - stage: Builder
     dependsOn: []
 
     jobs:
       - template: job_backbone.yml
         parameters:
-          displayName: 'Linux'
-          vmImage: 'ubuntu-latest'
+          displayName: $(OS)
+          vmImage: $(image)
           steps:
             - script: |
                 source activate $(condaEnvName)
                 python setup.py build
                 python setup.py install
+                python -c 'import interfacea as ia; print(ia.__version__)'
               displayName: Build & Install
 
   # These two will run in parallel since they share the same dependency
@@ -23,8 +28,8 @@ stages:
     jobs:
       - template: job_backbone.yml
         parameters:
-          displayName: 'Linux'
-          vmImage: 'ubuntu-latest'
+          displayName: $(OS)
+          vmImage: $(image)
           steps:
             - script: |
                 source activate $(condaEnvName)
@@ -38,8 +43,8 @@ stages:
     jobs:
       - template: job_backbone.yml
         parameters:
-          displayName: 'Linux'
-          vmImage: 'ubuntu-latest'
+          displayName: $(OS)
+          vmImage: $(image)
           steps:
             - script: |
                 source activate $(condaEnvName)

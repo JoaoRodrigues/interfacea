@@ -1,43 +1,52 @@
- jobs:
-    - job:
-      workspace:
-          clean: all
+ variables:
+  OS: 'OSX'
+  image: 'macOS-10.13'
 
-      displayName: OSX
-      pool:
-        vmImage: 'macOS-10.13'
+ stages:
+  - stage: Builder
+    dependsOn: []
 
-      strategy:
-        matrix:
-          Python36:
-            python.version: '3.6'
-          Python37:
-            python.version: '3.7'
-          # Python38:
-          #   python.version: '3.8'
+    jobs:
+      - template: job_backbone.yml
+        parameters:
+          displayName: $(OS)
+          vmImage: $(image)
+          steps:
+            - script: |
+                source activate $(condaEnvName)
+                python setup.py build
+                python setup.py install
+                python -c 'import interfacea as ia; print(ia.__version__)'
+              displayName: Build & Install
 
-      steps:
-      - bash: echo "##vso[task.prependpath]$CONDA/bin"
-        displayName: Add Conda to PATH
+  # These two will run in parallel since they share the same dependency
+  # Only run if the Builder step is successful
+  - stage: Linter
+    dependsOn: Builder
+    condition: succeeded('Builder')
 
-      - bash: sudo chown -R $USER $CONDA
-        displayName: Take ownership of conda installation
+    jobs:
+      - template: job_backbone.yml
+        parameters:
+          displayName: $(OS)
+          vmImage: $(image)
+          steps:
+            - script: |
+                source activate $(condaEnvName)
+                flake8 .
+              displayName: Run Flake8
 
-      - template: devtools/setup_conda.yml
+  - stage: Tester
+    dependsOn: Builder
+    condition: succeeded('Builder')
 
-      - bash: |
-          source activate $(condaEnvName)
-          conda list
-        displayName: Check Environment
-        continueOnError: false
-
-      - script: |
-          source activate $(condaEnvName)
-          python setup.py build
-          python setup.py install
-        displayName: Build & Install
-        continueOnError: false
-
-      - script: |
-          conda env remove -n $(condaEnvName)
-        displayName: Manual Paranoid Cleanup
+    jobs:
+      - template: job_backbone.yml
+        parameters:
+          displayName: $(OS)
+          vmImage: $(image)
+          steps:
+            - script: |
+                source activate $(condaEnvName)
+                python setup.py test  # soon to be deprecated, move to pytest
+              displayName: Run Unit Tests
