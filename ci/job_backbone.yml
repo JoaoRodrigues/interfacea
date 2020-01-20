@@ -1,7 +1,7 @@
 parameters:
   displayName: ''
   vmImage: ''
-  jobs: []
+  steps: []
 
 jobs:
   - job:
@@ -20,6 +20,6 @@ jobs:
           python.version: '3.7'
 
     steps:
-    - ${{ each job in parameters.jobs }}:
-      - ${{ each pair in job }}:
+    - ${{ each step in parameters.steps }}:
+      - ${{ each pair in step }}:
           ${{ pair.key }}: ${{ pair.value }}

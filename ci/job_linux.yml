@@ -8,19 +8,17 @@ stages:
         parameters:
           displayName: 'Linux'
           vmImage: 'ubuntu-latest'
-          jobs:
-            - job:
-              steps:
-                - script: echo "##vso[task.prependpath]$CONDA/bin"
-                  displayName: Add Conda to PATH
+          steps:
+            - script: echo "##vso[task.prependpath]$CONDA/bin"
+              displayName: Add Conda to PATH
 
-                - template: setup_conda.yml
+            - template: setup_conda.yml
 
-                - script: |
-                    source activate $(condaEnvName)
-                    python setup.py build
-                    python setup.py install
-                  displayName: Build & Install
+            - script: |
+                source activate $(condaEnvName)
+                python setup.py build
+                python setup.py install
+              displayName: Build & Install
 
   # # These two will run in parallel since they share the same dependency
   # # Only run if the Builder step is successful
