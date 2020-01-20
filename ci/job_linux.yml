@@ -1,6 +1,5 @@
 stages:
-  - stage:
-    displayName: Builder
+  - stage: Builder
     dependsOn: []
 
     jobs:
@@ -17,8 +16,7 @@ stages:
 
   # These two will run in parallel since they share the same dependency
   # Only run if the Builder step is successful
-  - stage:
-    displayName: Linter
+  - stage: Linter
     dependsOn: Builder
     condition: succeeded('Builder')
 
