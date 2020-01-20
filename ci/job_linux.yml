@@ -3,7 +3,7 @@
   image: ''
 
  stages:
-  - stage: Builder
+  - stage: "Builder_${{ parameters.OS }}"  # stage names must be unique
     dependsOn: []
 
     jobs:
@@ -21,9 +21,9 @@
 
   # These two will run in parallel since they share the same dependency
   # Only run if the Builder step is successful
-  - stage: Linter
-    dependsOn: Builder
-    condition: succeeded('Builder')
+  - stage: "Linter_${{ parameters.OS }}"
+    dependsOn: "Builder_${{ parameters.OS }}"
+    condition: succeeded("Builder_${{ parameters.OS }}")
 
     jobs:
       - template: job_backbone.yml
@@ -36,9 +36,9 @@
                 flake8 .
               displayName: Run Flake8
 
-  - stage: Tester
-    dependsOn: Builder
-    condition: succeeded('Builder')
+  - stage: "Tester_${{ parameters.OS }}"
+    dependsOn: "Builder_${{ parameters.OS }}"
+    condition: succeeded("Builder_${{ parameters.OS }}")
 
     jobs:
       - template: job_backbone.yml
