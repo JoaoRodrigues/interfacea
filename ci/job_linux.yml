@@ -4,7 +4,7 @@ stages:
     dependsOn: []
 
     jobs:
-      - template: ci/job_backbone.yml
+      - template: job_backbone.yml
         parameters:
           displayName: 'Linux'
           vmImage: 'ubuntu-latest'
@@ -14,7 +14,7 @@ stages:
                 - script: echo "##vso[task.prependpath]$CONDA/bin"
                   displayName: Add Conda to PATH
 
-                - template: ci/setup_conda.yml
+                - template: setup_conda.yml
 
                 - script: |
                     source activate $(condaEnvName)
