@@ -33,22 +33,22 @@ stages:
                 flake8 .
               displayName: Run Flake8
 
-  - stage:
-      displayName: Tester
-      dependsOn: Builder
-      condition: succeeded('Builder')
+  # - stage:
+  #     displayName: Tester
+  #     dependsOn: Builder
+  #     condition: succeeded('Builder')
 
-    jobs:
-      - template: job_backbone.yml
-        parameters:
-          displayName: 'Linux'
-          vmImage: 'ubuntu-latest'
-          steps:
-            - script: |
-                source activate $(condaEnvName)
-                python setup.py test  # soon to be deprecated, move to pytest
-              displayName: Run Unit Tests
+  #   jobs:
+  #     - template: job_backbone.yml
+  #       parameters:
+  #         displayName: 'Linux'
+  #         vmImage: 'ubuntu-latest'
+  #         steps:
+  #           - script: |
+  #               source activate $(condaEnvName)
+  #               python setup.py test  # soon to be deprecated, move to pytest
+  #             displayName: Run Unit Tests
 
-        # - script: |
-        #     conda env remove -n $(condaEnvName)
-        #   displayName: Manual Paranoid Cleanup
+  # - script: |
+  #     conda env remove -n $(condaEnvName)
+  #   displayName: Manual Paranoid Cleanup
