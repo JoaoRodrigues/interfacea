@@ -1,6 +1,6 @@
- variables:
-  OS: 'OSX'
-  image: 'macOS-10.13'
+ parameters:
+  OS: ''
+  image: ''
 
  stages:
   - stage: Builder
@@ -9,8 +9,8 @@
     jobs:
       - template: job_backbone.yml
         parameters:
-          displayName: $(OS)
-          vmImage: $(image)
+          displayName: ${{ parameters.OS }}
+          vmImage: ${{ parameters.image }}
           steps:
             - script: |
                 source activate $(condaEnvName)
@@ -28,8 +28,8 @@
     jobs:
       - template: job_backbone.yml
         parameters:
-          displayName: $(OS)
-          vmImage: $(image)
+          displayName: ${{ parameters.OS }}
+          vmImage: ${{ parameters.image }}
           steps:
             - script: |
                 source activate $(condaEnvName)
@@ -43,8 +43,8 @@
     jobs:
       - template: job_backbone.yml
         parameters:
-          displayName: $(OS)
-          vmImage: $(image)
+          displayName: ${{ parameters.OS }}
+          vmImage: ${{ parameters.image }}
           steps:
             - script: |
                 source activate $(condaEnvName)
