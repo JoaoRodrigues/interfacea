@@ -16,7 +16,7 @@
                 call activate $(condaEnvName)
                 python setup.py build
                 python setup.py install
-                python -c 'import interfacea as ia; print(ia.__version__)'
+                python -c "import interfacea as ia; print(ia.__version__)"
               displayName: Build & Install
 
   # These two will run in parallel since they share the same dependency
