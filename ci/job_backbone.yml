@@ -20,6 +20,6 @@ jobs:
           python.version: '3.7'
 
     steps:
-    - ${{ each job in parameter.jobs }}:
+    - ${{ each job in parameters.jobs }}:
       - ${{ each pair in job }}:
           ${{ pair.key }}: ${{ pair.value }}
