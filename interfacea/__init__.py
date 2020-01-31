@@ -23,7 +23,9 @@ import logging
 import pathlib
 import random
 
-from ._version import __version__
+from .io import readers
+from .io.StructureBuilder import StructureBuilder
+import _version
 
 # Setup logger
 # This is the parent logger since the library is supposed
@@ -34,7 +36,7 @@ logging.getLogger(__name__).setLevel(logging.CRITICAL)
 
 # Global Constants
 RANDOM_SEED = random.randint(0, 1000)  # user can set it manually later
-
+__version__ = _version.__version__
 
 # Methods
 def set_log_level(level='verbose'):
@@ -102,61 +104,46 @@ def set_random_seed(seed=917):
         raise TypeError(emsg)
 
 
-# IO
-def read(fpath, ftype=None, **kwargs):
-    """Creates a `Structure` instance from a PDB/mmCIF file.
+# High-level IO
+def read(filepath, **kwargs):
+    """High-level method to create Structures from data files.
+
+    Reader classes are picked based on the file extension, e.g. a .pdb file
+    will be parsed by the io.PDBReader class. The mapping between extensions
+    and readers is defined in io. Refer to that file and to each of the reader
+    classes for more information on their arguments and options.
 
     Args:
-        fpath (str): path to file to be parsed.
-        ftype (:obj:`str`, optional): file type (PDB or mmCIF). `None` defaults
-            to guessing the file type from the extension.
-
+        filepath (str): path to the file to be read.
+        name (str, optional): string to use as the resulting Structure name.
+            Defaults to the input file name.
+        precision (np.dtype, optional): numerical precision for storing
+            atomic coordinates. Defaults to np.float16.
+        discard_altloc (bool, optional): keep only the instance of each atom with
+            the highest occupancy value if True. Default is False.
     Returns:
-        :obj:`Structure`: new instance of `Structure` class defining a topology
-            and positions for the input structure.
-
-    Raises:
-        StructureError: generic error class for problems during structure parsing
-            or conversion with OpenMM.
+        a Structure object containing atom coordinates and metadata.
     """
 
-    import simtk.openmm.app as app
-    from interfacea.core.Structure import Structure
-    from interfacea.core.Structure import StructureError
+    # Validate Path
+    try:
+        path = pathlib.Path(filepath).resolve(strict=True)
+    except FileNotFoundError:
+        emsg = f"File not found or not readable: {filepath}"
+        raise FileNotFoundError(emsg) from None
+    except Exception as err:
+        emsg = f"Unexpected error when parsing file path: {filepath}"
+        raise IOError(emsg) from err
 
-    _pdb_formats = {'pdb', 'ent'}
-    _cif_formats = {'cif', 'mmcif'}
-
-    logging.info(f"Reading file: {fpath}")
-
-    fpath = pathlib.Path(fpath)
-
-    if not fpath.exists():
-        emsg = f"File unreadable/does not exist: {fpath}"
-        raise StructureError(emsg)
-
-    fext = fpath.suffix[1:]
-    if ftype is None:
-        ftype = fext
-
-    logging.debug(f'File type: {ftype}')
-
-    if ftype in _pdb_formats:
-        try:
-            struct = app.PDBFile(str(fpath.resolve()))
-        except Exception as e:
-            emsg = f"Could not parse file as PDB: {fpath}"
-            raise StructureError(emsg) from e
-
-    elif ftype in _cif_formats:
-        try:
-            struct = app.PDBxFile(str(fpath.resolve()))
-        except Exception as e:
-            emsg = f"Could not parse file as mmCIF: {fpath}"
-            raise StructureError(emsg) from e
-
+    # Parse Data
+    try:
+        r = readers[path.suffix]
+    except KeyError:
+        emsg = f"Extension not supported ({path.suffix}) for file {path}"
+        raise IOError(emsg) from None
     else:
-        emsg = f"Unsupported file type: {ftype}"
-        raise StructureError(emsg)
+        data = r(path, kwargs)
 
-    return Structure(fpath.name, struct, **kwargs)
+    # Build Structure
+    name = kwargs.get('name', path.name)
+    return StructureBuilder.build(name, data, kwargs)
