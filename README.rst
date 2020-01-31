@@ -4,14 +4,6 @@ interfacea
 .. image:: https://zenodo.org/badge/136096537.svg
    :target: https://zenodo.org/badge/latestdoi/136096537
 
-.. image:: https://img.shields.io/travis/JoaoRodrigues/interfacea/master.svg?label=TravisCI
-    :target: https://travis-ci.com/JoaoRodrigues/interfacea
-    :alt: Travis Continuous Integration
-
-.. image:: https://img.shields.io/appveyor/ci/joaorodrigues/interfacea?label=Appveyor
-  :target: https://ci.appveyor.com/project/JoaoRodrigues/interfacea
-  :alt: Appveyor Continuous Integration
-
 .. image:: https://api.codeclimate.com/v1/badges/ca054443ee84f96d748a/test_coverage
    :target: https://codeclimate.com/github/JoaoRodrigues/interfacea/test_coverage
    :alt: Test Coverage
