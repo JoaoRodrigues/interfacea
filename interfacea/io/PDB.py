@@ -40,7 +40,7 @@ class PDBReader(object):
     out there.
 
     Args:
-        filepath (str): path to the PDB file to be read.
+        filepath (Path): path to the PDB file to be read.
         permissive (bool, optional): ignores mal-formatted records in the PDB
             file if set to True. Defaults to False.
     Raises:
@@ -54,7 +54,7 @@ class PDBReader(object):
 
         self.path = filepath
         self.permissive = permissive
-        self._read_file()
+        self.read_file()
 
     def read_file(self):
         """Parses the contents of a PDB-formatted file."""

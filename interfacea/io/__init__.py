@@ -20,8 +20,10 @@ Module containing classes to parse structural data files.
 """
 
 from dataclasses import dataclass
+import pathlib
 
-from PDB import PDBReader
+from core import Structure
+from pdb import PDBReader
 
 __all__ = ['readers']
 
@@ -51,3 +53,42 @@ class AtomRecord:
     b: float
     segid: str
     element_name: str
+
+# High-level IO
+def read(filepath, **kwargs):
+    """High-level method to create Structures from data files.
+
+    Reader classes are picked based on the file extension, e.g. a .pdb file
+    will be parsed by the io.PDBReader class. The mapping between extensions
+    and readers is defined in io. Refer to that file and to each of the reader
+    classes for more information on their arguments and options.
+
+    Args:
+        filepath (str): path to the file to be read.
+
+    Returns:
+        A Structure object containing atom coordinates and metadata.
+    """
+
+    # Validate Path
+    try:
+        path = pathlib.Path(filepath).resolve(strict=True)
+    except FileNotFoundError:
+        emsg = f"File not found or not readable: {filepath}"
+        raise FileNotFoundError(emsg) from None
+    except Exception as err:
+        emsg = f"Unexpected error when parsing file path: {filepath}"
+        raise IOError(emsg) from err
+
+    # Parse Data
+    try:
+        r = readers[path.suffix]
+    except KeyError:
+        emsg = f"Extension not supported ({path.suffix}) for file {path}"
+        raise IOError(emsg) from None
+    else:
+        data = r(path, kwargs)
+
+    # Build Structure
+    name = kwargs.get('name', path.name)
+    return Structure.build(name, data, kwargs)

@@ -20,11 +20,9 @@ Code to calculate pairwise residue energies in macromolecular structures.
 """
 
 import logging
-import pathlib
 import random
 
-from .io import readers
-from .io.StructureBuilder import StructureBuilder
+from io import read
 import _version
 
 # Setup logger
@@ -102,48 +100,3 @@ def set_random_seed(seed=917):
     else:
         emsg = f"Random seed must be a positive integer: {seed}"
         raise TypeError(emsg)
-
-
-# High-level IO
-def read(filepath, **kwargs):
-    """High-level method to create Structures from data files.
-
-    Reader classes are picked based on the file extension, e.g. a .pdb file
-    will be parsed by the io.PDBReader class. The mapping between extensions
-    and readers is defined in io. Refer to that file and to each of the reader
-    classes for more information on their arguments and options.
-
-    Args:
-        filepath (str): path to the file to be read.
-        name (str, optional): string to use as the resulting Structure name.
-            Defaults to the input file name.
-        precision (np.dtype, optional): numerical precision for storing
-            atomic coordinates. Defaults to np.float16.
-        discard_altloc (bool, optional): keep only the instance of each atom with
-            the highest occupancy value if True. Default is False.
-    Returns:
-        a Structure object containing atom coordinates and metadata.
-    """
-
-    # Validate Path
-    try:
-        path = pathlib.Path(filepath).resolve(strict=True)
-    except FileNotFoundError:
-        emsg = f"File not found or not readable: {filepath}"
-        raise FileNotFoundError(emsg) from None
-    except Exception as err:
-        emsg = f"Unexpected error when parsing file path: {filepath}"
-        raise IOError(emsg) from err
-
-    # Parse Data
-    try:
-        r = readers[path.suffix]
-    except KeyError:
-        emsg = f"Extension not supported ({path.suffix}) for file {path}"
-        raise IOError(emsg) from None
-    else:
-        data = r(path, kwargs)
-
-    # Build Structure
-    name = kwargs.get('name', path.name)
-    return StructureBuilder.build(name, data, kwargs)

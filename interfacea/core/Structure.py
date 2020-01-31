@@ -185,29 +185,83 @@ class Structure(object):
 
     Args:
         name (str): string that identifies the structure.
-        natoms (int): number of atoms in the structure.
-        nmodels (int, optional): number of models/frames in the structure.
-            Defaults to 1.
+        coord (np.ndarray): array of shape (num_models, num_atoms, 3)
+        atoms (list): Atom objects belonging to the structure, ordered
+            by serial number.
 
     Attributes:
         atoms (list): ordered list of all atoms belonging to the structure.
-        coord (np.ndarray): array of shape (nmodels, ndatoms, 3)
+        precision (np.dtype): numerical precision of the atomic coordinates.
     """
 
-    def __init__(self, name, natoms, nmodels=1, **kwargs):
+    def __init__(self, name, coords, atoms):
         """Creates an instance of the class."""
 
         self.name = name
-        self.natoms = natoms
-        self.nmodels = nmodels
+        self.coords = coords
+        self.atoms = atoms
 
+        self.precision = coords.dtype
         self.precision = kwargs.get('precision', np.float16)
-        self.coords = np.array(
-            (self.nmodels, self.natoms, 3),
-            dtype=self.precision)
 
-        self.atoms = []
-        self._atom_dict = {}  # for __getitem__
+        # self._make_atom_dict()
+        # self._atom_dict = {}  # for __getitem__
+
+    # Class method to build structure from parser data.
+    @classmethod
+    def build(cls, name, atomrecords, **kwargs):
+        """Creates and returns a Structure object from AtomRecord objects.
+
+        Args:
+            name (str): string to use as the resulting Structure name.
+            atomrecords (list): list of Atom objects to include in the Structure.
+
+            discard_altloc (bool, optional): keep only the instance of each atom with
+                the highest occupancy value if True. Default is False.
+            precision (np.dtype, optional): numerical precision for storing
+                atomic coordinates. Defaults to np.float16.
+
+        Returns:
+            A new Structure object with metadata and coordinate data.
+
+        Raises:
+            something
+        """
+
+        _args = {
+            'precision': np.float16,
+            'discard_altloc': False,
+        }
+        _args.update(kwargs)
+
+        if not _args.get('discard_altloc'):  # build DisorderedAtoms if needed
+
+            disordered = {}  # uniq id -> alternates
+            for atom in atomrecords:
+                uniq_id = (atom.model, atom.chain, atom.resid, atom.name)
+                existing = disordered.get(uniq_id)
+                if existing:
+                    existing.append(atom)
+                    continue
+
+                disordered[uniq_id] = atom
+
+            atomrecords = sorted(atomdict.values(), key=lambda a: a.serial)
+            logging.debug(f"Discarded {len(atomrecords) - len(atomdict)} altlocs")
+
+            nmodels = len({a.model for a in atomrecords})
+            atoms = [Atom.from_atomrecord(r) for r in atomrecords]
+
+            s = Structure(name=name, natoms=len(atoms), nmodels=nmodels, kwargs)
+            s.coord = np.asarray(
+                ((a.x, a.y, a.z) for a in atomrecords),
+                dtype=kwargs.get('precision', np.float16)
+            )
+
+            return s
+
+        else:  # build DisorderedAtoms if necessary
+            raise NotImplementedError
 
     # Internal dunder methods
     def __hash__(self):
