@@ -1,0 +1,7 @@
+REMARK   1 MISSING 1 ENDMDL RECORD
+MODEL     1
+ATOM      2  H   ASN A   1      21.629  41.305  -0.098  1.00  0.00           H
+MODEL     2
+ATOM      2  H   ASN A   1      21.629  41.305  -0.098  1.00  0.00           H
+ENDMDL
+END
