@@ -19,10 +19,26 @@
 Exceptions raised by modules and classes across interfacea.
 """
 
+# Warnings
+
 
 class PDBFormatWarning(Warning):
     pass
 
 
-class PDBFormatError(Exception):
+# Exceptions
+
+
+class InterfaceBaseException(Exception):
+    """Base class for exceptions in this module"""
+
+    def __init__(self, message):
+        self.message = message
+
+
+class DuplicateAltLocError(InterfaceBaseException):
+    pass
+
+
+class PDBFormatError(InterfaceBaseException):
     pass
