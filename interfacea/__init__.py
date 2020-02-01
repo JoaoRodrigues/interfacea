@@ -16,14 +16,14 @@
 # limitations under the License.
 
 """
-Code to calculate pairwise residue energies in macromolecular structures.
+The interfacea package contains tools to analyze features of protein interfaces.
 """
 
 import logging
 import random
 
-from io import read
-import _version
+from .io import read
+from .version import __version__
 
 # Setup logger
 # This is the parent logger since the library is supposed
@@ -34,7 +34,7 @@ logging.getLogger(__name__).setLevel(logging.CRITICAL)
 
 # Global Constants
 RANDOM_SEED = random.randint(0, 1000)  # user can set it manually later
-__version__ = _version.__version__
+
 
 # Methods
 def set_log_level(level='verbose'):

@@ -54,7 +54,7 @@ if sys.version_info < (3, 6):
 def get_version():
     """Read the variable version from interfacea/_version.py"""
 
-    f = Path('./interfacea') / '_version.py'
+    f = Path('./interfacea') / 'version.py'
     contents = f.read_text()
     version = contents.strip().split()[-1]
     return version[1:-1]
