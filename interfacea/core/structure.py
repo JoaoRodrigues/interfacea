@@ -22,8 +22,7 @@ Atomic structures in interfacea are represented internally by the Structure
 class, which stores both coordinate data and metadata. The metadata, e.g. atom
 and residue names, is stored in individual Atom objects.
 
-Structures are meant to be manipulated but _not created_ by users. Refer to the
-classes within the io module for that purpose.
+Structures are meant to be manipulated but _not created_ by users.
 """
 
 import logging
@@ -32,8 +31,8 @@ import weakref
 
 import numpy as np
 
-from ..exceptions import (
-    OrphanAtomError
+from interfacea.exceptions import (
+    DuplicateAltLocError,
 )
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
@@ -70,7 +69,7 @@ class DisorderedAtom(object):
             atom (Atom): child object to add.
 
         Raises:
-            NotAnAtomError: if the object being added is not an Atom instance.
+            TypeError: if the object being added is not an Atom instance.
             DuplicateAltLocError: if there is already a child with this
                 altloc identifier in the DisorderedAtom object.
         """
@@ -80,7 +79,7 @@ class DisorderedAtom(object):
                 raise DuplicateAltLocError(emsg) from None
         else:
             emsg = f"{atom} is not an Atom: {type(atom)}"
-            raise NotAnAtomError(emsg) from None
+            raise TypeError(emsg) from None
 
         self.children[atom.altloc] = atom
 
@@ -91,13 +90,13 @@ class DisorderedAtom(object):
             altloc (str): altloc identifier of the child Atom.
 
         Raises
-            AtomNotFoundError: if altloc is not in the DisorderedAtom wrapper.
+            KeyError: if altloc is not in the DisorderedAtom wrapper.
         """
         try:
             self.selected_child = self.children[altloc]
         except KeyError:
             emsg = f"Alternate location '{altloc}' not found in {self}"
-            raise AtomNotFoundError(emsg) from None
+            raise KeyError(emsg) from None
 
 
 class Atom(object):
@@ -132,10 +131,10 @@ class Atom(object):
                 create the Atom object
         """
 
-        attrs = record.__dict__
+        attrs = record.__dict__.copy()
         del attrs['name']
         del attrs['serial']
-        return cls(record.name, record.serial, attrs)
+        return cls(record.name, record.serial, **attrs)
 
     def __init__(self, name, serial, **kwargs):
         """Manually instantiates an Atom class instance."""
@@ -162,12 +161,16 @@ class Atom(object):
 
     @property
     def coord(self):
-        """Cartesian coordinates of the atom, stored in the parent Structure"""
+        """Cartesian coordinates of the atom
+
+        Raises:
+            AttributeError: atom is not bound to a structure object.
+        """
         if self._parent is not None:
-            return self.parent.coord[self.serial]
+            return self._parent.coord[self.serial]  # frame. broken
 
         emsg = f"Atom does not have a parent Structure with coordinate data"
-        raise OrphanAtomError(emsg)
+        raise AttributeError(emsg)
 
     @coord.setter
     def coord(self, value):
@@ -202,7 +205,6 @@ class Structure(object):
         self.atoms = atoms
 
         self.precision = coords.dtype
-        self.precision = kwargs.get('precision', np.float16)
 
         # self._make_atom_dict()
         # self._atom_dict = {}  # for __getitem__
@@ -234,34 +236,39 @@ class Structure(object):
         }
         _args.update(kwargs)
 
-        if not _args.get('discard_altloc'):  # build DisorderedAtoms if needed
+        # if not _args.get('discard_altloc'):  # build DisorderedAtoms if needed
 
-            disordered = {}  # uniq id -> alternates
-            for atom in atomrecords:
-                uniq_id = (atom.model, atom.chain, atom.resid, atom.name)
-                existing = disordered.get(uniq_id)
-                if existing:
-                    existing.append(atom)
-                    continue
+        #     disordered = {}  # uniq id -> alternates
+        #     for atom in atomrecords:
+        #         uniq_id = (atom.model, atom.chain, atom.resid, atom.name)
+        #         existing = disordered.get(uniq_id)
+        #         if existing:
+        #             existing.append(atom)
+        #             continue
 
-                disordered[uniq_id] = atom
+        #         disordered[uniq_id] = atom
 
-            atomrecords = sorted(atomdict.values(), key=lambda a: a.serial)
-            logging.debug(f"Discarded {len(atomrecords) - len(atomdict)} altlocs")
+        #     atomrecords = sorted(atomdict.values(), key=lambda a: a.serial)
+        #     logging.debug(f"Discarded {len(atomrecords) - len(atomdict)} altlocs")
+        atoms = []
+        packed_coords = []  # [ [model1], [model2] ]
+        for r in atomrecords:
+            if r.model > len(packed_coords):
+                packed_coords.append([])
 
-            nmodels = len({a.model for a in atomrecords})
-            atoms = [Atom.from_atomrecord(r) for r in atomrecords]
+            atom = Atom.from_atomrecord(r)
+            atoms.append(atom)
+            packed_coords[-1].append((r.x, r.y, r.z))
 
-            s = Structure(name=name, natoms=len(atoms), nmodels=nmodels, kwargs)
-            s.coord = np.asarray(
-                ((a.x, a.y, a.z) for a in atomrecords),
-                dtype=kwargs.get('precision', np.float16)
-            )
+        coords = np.asarray(
+            packed_coords,
+            dtype=_args.get('precision')
+        )
 
-            return s
+        s = Structure(name, coords, atoms)
+        s.nmodels, s.natoms, _ = coords.shape
 
-        else:  # build DisorderedAtoms if necessary
-            raise NotImplementedError
+        return s
 
     # Internal dunder methods
     def __hash__(self):
@@ -280,33 +287,18 @@ class Structure(object):
                 e.g. 'A:65::CA', 'X:12:B:CB'
 
         Returns:
-            Atom object corresponding to the key.
+            Atom object corresponding to the input key.
 
         Raises:
-            AtomNotFoundError: the specified key was not found in the
-                Structure object.
+            KeyError: the atom was not found in the structure.
         """
 
         try:
             return self._atom_dict[key]
         except KeyError:
             emsg = f"Atom '{key}' not found in structure"
-            raise AtomNotFoundError(emsg) from None
+            raise KeyError(emsg) from None
 
     # 'Private' Methods
 
     # Public Methods
-
-
-# Exceptions
-
-class AtomNotFoundError(Exception):
-    pass
-
-
-class DuplicateAltLocError(Exception):
-    pass
-
-
-class NotAnAtomError(Exception):
-    pass
