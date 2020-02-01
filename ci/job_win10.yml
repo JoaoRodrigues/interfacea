@@ -48,5 +48,5 @@
           steps:
             - script: |
                 call activate $(condaEnvName)
-                python setup.py test  # soon to be deprecated, move to pytest
+                pytest .
               displayName: Run Unit Tests
