@@ -22,11 +22,11 @@ Module containing classes to build molecular structures from PDB files.
 import logging
 import warnings
 
-from . import AtomRecord
-from ..exceptions import (
+from interfacea.exceptions import (
     PDBFormatError,
     PDBFormatWarning
 )
+import interfacea.io.base as io_base
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
@@ -52,60 +52,102 @@ class PDBReader(object):
 
     def __init__(self, filepath, permissive=False):
 
+        self._line_parsers = {
+            'ATOM': self._parse_atom,
+            'HETATM': self._parse_atom,
+            'MODEL': self._parse_model,
+            'ENDMDL': self._parse_model,
+        }
+
+        self._data = []
+
         self.path = filepath
         self.permissive = permissive
         self.read_file()
 
+    @property
+    def data(self):
+        return self._data
+
     def read_file(self):
         """Parses the contents of a PDB-formatted file."""
 
-        atom_list = []
+        self._inmodel = False  # flag
+        self._serial = 0  # we do not read serials from the file.
+        self._model_no = 0
+        with self.path.open('r') as pdbfile:
+            for lineno, line in enumerate(pdbfile, start=1):
+                self.lineno, self.line = lineno, line
+                self._parse_line()
 
-        model = None
-        serial = 0  # we do not read serials from the file.
-        with self.path.open('rU') as pdbfile:
-            for lineno, line in pdbfile:
-                if line.startswith('MODEL'):  # we got ourselves an ensemble!
-                    if model is not None:
-                        emsg = f"PDB file is missing ENDMDL records before line {lineno}"
-                        raise PDBFormatError(emsg) from None
-                    try:
-                        model = int(line[10:14])
-                    except Exception:
-                        emsg = f"Could not parse MODEL record on line {lineno}"
-                        raise PDBFormatError(emsg) from None
-                elif line.startswith(('ATOM', 'HETATM')):
-                    if model is None:
-                        model = 0
-                    try:
-                        atom = AtomRecord(
-                            serial,
-                            model,
-                            line[:6].strip(),
-                            line[12:16].strip(),
-                            line[16].strip(),
-                            line[17:20],
-                            line[21],
-                            int(line[22:26]),
-                            line[26],
-                            float(line[30:38]),
-                            float(line[38:46]),
-                            float(line[46:54]),
-                            float(line[54:60]),
-                            float(line[60:66]),
-                            line[72:76],
-                            line[76:78],
-                        )
-                    except Exception as err:
-                        emsg = f"Could not parse line no. {lineno}."
-                        if self.permissive:
-                            emsg += " Ignoring."
-                            warnings.warn(emsg, PDBFormatWarning)
-                        else:
-                            raise PDBFormatError(emsg) from err
-                    else:
-                        atom_list.append(atom)
-                        serial += 1
+        logging.debug(f"Read {self._serial + 1} atoms from file: {self.path}")
 
-        logging.debug(f"Parsed {serial + 1} records from file: {self.filepath}")
-        return atom_list
+    def _parse_line(self):
+        """Delegates parsing to appropriate methods"""
+
+        self.rectype = self.line[:6].strip()
+        try:
+            p = self._line_parsers[self.rectype]
+        except Exception:
+            pass  # unsupported record
+        else:
+            p()  # run parser
+
+    def _parse_model(self):
+        """Parses MODEL/ENDMDL records"""
+
+        if self.rectype == 'MODEL':
+            if self._inmodel:
+                emsg = f"Missing ENDMDL record before line {self.lineno}"
+                raise PDBFormatError(emsg) from None
+
+            try:
+                self._model_no = int(self.line[10:14])
+            except Exception:
+                emsg = f"Could not parse MODEL record on line {self.lineno}"
+                raise PDBFormatError(emsg) from None
+
+            self._inmodel = True
+
+        else:
+            if not self._inmodel:
+                emsg = f"ENDMDL record outside of MODEL on line {self.lineno}"
+                raise PDBFormatError(emsg) from None
+
+            self._inmodel = False
+
+    def _parse_atom(self):
+        """Parses ATOM/HETATM records"""
+
+        if not self._inmodel:
+            self._model_no = 1  # dummy value
+        try:
+            line = self.line
+            atom = io_base.AtomRecord(
+                self._serial,
+                self._model_no,
+                self.rectype,
+                line[12:16].strip(),
+                line[16].strip(),
+                line[17:20],
+                line[21],
+                int(line[22:26]),
+                line[26],
+                float(line[30:38]),
+                float(line[38:46]),
+                float(line[46:54]),
+                float(line[54:60]),
+                float(line[60:66]),
+                line[72:76].strip(),
+                line[76:78],
+            )
+        except Exception as err:
+            emsg = f"Could not parse atom on line {self.lineno}"
+            if self.permissive:
+                emsg += " Ignoring."
+                warnings.warn(emsg, PDBFormatWarning)
+            else:
+                raise PDBFormatError(emsg) from err
+        else:
+            self._data.append(atom)
+            self._serial += 1
