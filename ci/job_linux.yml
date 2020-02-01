@@ -48,5 +48,6 @@
           steps:
             - script: |
                 source activate $(condaEnvName)
+                pip install -e .
                 pytest .
               displayName: Run Unit Tests
