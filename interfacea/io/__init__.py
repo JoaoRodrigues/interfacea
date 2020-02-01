@@ -19,40 +19,13 @@
 Module containing classes to parse structural data files.
 """
 
-from dataclasses import dataclass
 import pathlib
 
-from core import Structure
-from pdb import PDBReader
+from interfacea.core import structure
+from interfacea.io.base import Reader
 
-__all__ = ['readers']
+__all__ = ['read']
 
-# Mapping between extension and reader class
-readers = {
-    '.pdb': PDBReader,
-}
-
-# Data class to store atomic data _before_ building a structure.
-@dataclass
-class AtomRecord:
-    """Stores data on an ATOM/HETATM line."""
-
-    serial: int
-    model: int
-    rectype: str
-    name: str
-    altloc: str
-    resname: str
-    chain: str
-    resid: int
-    icode: str
-    x: float
-    y: float
-    z: float
-    occ: float
-    b: float
-    segid: str
-    element_name: str
 
 # High-level IO
 def read(filepath, **kwargs):
@@ -73,22 +46,14 @@ def read(filepath, **kwargs):
     # Validate Path
     try:
         path = pathlib.Path(filepath).resolve(strict=True)
-    except FileNotFoundError:
+    except FileNotFoundError as err:
         emsg = f"File not found or not readable: {filepath}"
-        raise FileNotFoundError(emsg) from None
+        raise FileNotFoundError(emsg) from err
     except Exception as err:
         emsg = f"Unexpected error when parsing file path: {filepath}"
         raise IOError(emsg) from err
 
     # Parse Data
-    try:
-        r = readers[path.suffix]
-    except KeyError:
-        emsg = f"Extension not supported ({path.suffix}) for file {path}"
-        raise IOError(emsg) from None
-    else:
-        data = r(path, kwargs)
-
-    # Build Structure
+    r = Reader(path, **kwargs)
     name = kwargs.get('name', path.name)
-    return Structure.build(name, data, kwargs)
+    return structure.Structure.build(name, r.data, **kwargs)
