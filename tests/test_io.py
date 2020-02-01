@@ -27,14 +27,28 @@ import interfacea.io as _io
 import interfacea.exceptions as e
 
 
-def test_read():
-    """Test top-level read function"""
+def test_io_read():
+    """Successfully runs top-level read function"""
 
-    rootdir = pathlib.Path('.')
-    fpath = rootdir / 'tests' / 'data' / 'pdb' / 'default.pdb'
+    rootdir = pathlib.Path(".")
+    fpath = rootdir / "tests" / "data" / "pdb" / "default.pdb"
     fpath_str = str(fpath.resolve())
 
     _io.read(fpath_str)
+
+
+@pytest.mark.parametrize(
+    "ifile, error",
+    [
+        (str(pathlib.Path("tests/data/pdb/foo.bar")), FileNotFoundError),
+        (1, Exception)
+    ]
+)
+def test_io_read_fail(ifile, error):
+    """Top-level read function fails on missing file"""
+
+    with pytest.raises(error):
+        _io.read(ifile)
 
 
 class TestReader:
@@ -43,18 +57,18 @@ class TestReader:
     def setup(self):
         """Pre-test setup."""
 
-        rootdir = pathlib.Path('.')  # rootdir
-        self.datadir = rootdir / 'tests' / 'data'
+        rootdir = pathlib.Path(".")  # rootdir
+        self.datadir = rootdir / "tests" / "data"
 
     def test_read_known(self):
         """Successfully loads PDBReader"""
 
-        _ = _io.base.Reader(self.datadir / 'pdb' / 'default.pdb')
+        _ = _io.base.Reader(self.datadir / "pdb" / "default.pdb")
 
     def test_unknown_extension(self):
         """Fails when extension is unknown/unsupported"""
         with pytest.raises(IOError):
-            _ = _io.base.Reader(self.datadir / 'pdb' / 'foo.bar')
+            _ = _io.base.Reader(self.datadir / "pdb" / "foo.bar")
 
 
 class TestPDBReader:
@@ -63,12 +77,12 @@ class TestPDBReader:
     def setup(self):
         """Pre-test setup."""
 
-        rootdir = pathlib.Path('.')  # rootdir
-        self.datadir = rootdir / 'tests' / 'data' / 'pdb'
+        rootdir = pathlib.Path(".")  # rootdir
+        self.datadir = rootdir / "tests" / "data" / "pdb"
 
     @pytest.mark.parametrize(
         "ifile, expected",
-        [('default.pdb', 106), ('multimodel.pdb', 212)]
+        [("default.pdb", 106), ("multimodel.pdb", 212)]
     )
     def test_read_pdb(self, ifile, expected):
         """Successfully load and parse a PDB file."""
@@ -80,10 +94,10 @@ class TestPDBReader:
     @pytest.mark.parametrize(
         "ifile, errmessage",
         [
-            ('nomodel.pdb', 'ENDMDL record outside of MODEL on line 4'),
-            ('noendmdl.pdb', 'Missing ENDMDL record before line 4'),
-            ('badmodel.pdb', 'Could not parse MODEL record on line 2'),
-            ('badatom.pdb', 'Could not parse atom on line 3')
+            ("nomodel.pdb", "ENDMDL record outside of MODEL on line 4"),
+            ("noendmdl.pdb", "Missing ENDMDL record before line 4"),
+            ("badmodel.pdb", "Could not parse MODEL record on line 2"),
+            ("badatom.pdb", "Could not parse atom on line 3")
         ]
     )
     def test_read_pdb_fail(self, ifile, errmessage):
@@ -99,6 +113,6 @@ class TestPDBReader:
 
         with pytest.warns(e.PDBFormatWarning):
             _io.pdb.PDBReader(
-                self.datadir / 'badatom.pdb',
+                self.datadir / "badatom.pdb",
                 permissive=True
             )
