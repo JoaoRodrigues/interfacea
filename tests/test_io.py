@@ -30,7 +30,7 @@ import interfacea.exceptions as e
     "ifile, altloc_flag",
     [
         (str(pathlib.Path("tests/data/pdb/default.pdb")), True),
-        # (str(pathlib.Path("tests/data/pdb/default.pdb")), False),
+        (str(pathlib.Path("tests/data/pdb/default.pdb")), False),
     ]
 )
 def test_io_read(ifile, altloc_flag):
