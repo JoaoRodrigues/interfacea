@@ -26,15 +26,17 @@ import pytest
 import interfacea.io as _io
 import interfacea.exceptions as e
 
-
-def test_io_read():
+@pytest.mark.parametrize(
+    "ifile, altloc_flag",
+    [
+        (str(pathlib.Path("tests/data/pdb/default.pdb")), True),
+        # (str(pathlib.Path("tests/data/pdb/default.pdb")), False),
+    ]
+)
+def test_io_read(ifile, altloc_flag):
     """Successfully runs top-level read function"""
 
-    rootdir = pathlib.Path(".")
-    fpath = rootdir / "tests" / "data" / "pdb" / "default.pdb"
-    fpath_str = str(fpath.resolve())
-
-    _io.read(fpath_str)
+    _io.read(ifile, discard_altloc=altloc_flag)
 
 
 @pytest.mark.parametrize(
@@ -90,7 +92,7 @@ class TestPDBReader:
         r = _io.pdb.PDBReader(self.datadir / ifile)
         atom_records = r.data
         assert len(atom_records) == natoms
-        assert r._model_no == nmodels
+        assert len({r.model for r in atom_records}) == nmodels
 
     @pytest.mark.parametrize(
         "ifile, errmessage",
