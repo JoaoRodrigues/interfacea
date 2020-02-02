@@ -51,9 +51,14 @@ class DisorderedAtom(object):
         self.__dict__['children'] = {}  # holds Atom objects
         self.__dict__['selected_child'] = None
 
-    def __repr__(self):
+    def __str__(self):
         """Pretty printing."""
         return f"<Disordered name={self.name} naltlocs={len(self.children)}>"
+
+    def __iter__(self):
+        """Returns an iterator over child atoms."""
+        for child in self.children.values():
+            yield child
 
     def __getattr__(self, attr):
         """Forward all unknown calls to selected child."""
@@ -177,7 +182,7 @@ class Atom(object):
 
         # self._guess_element()
 
-    def __repr__(self):
+    def __str__(self):
         """Pretty string representation of the Atom object."""
         return f"<Atom name={self.name} serial={self.serial}>"
 
@@ -188,8 +193,11 @@ class Atom(object):
 
     @parent.setter
     def parent(self, value):
-        if value is not None and isinstance(value, Structure):
+        if isinstance(value, Structure):
             self._parent = weakref.ref(value)  # avoid uncollected garbage
+        else:
+            emsg = f"Parent object must be a Structure type."
+            raise TypeError(emsg)
 
     @parent.deleter
     def parent(self):
@@ -294,11 +302,9 @@ class Structure(object):
                 coords
             )
         else:
-            raise NotImplementedError('Not yet ...')
-            # atoms, coords = cls._build_with_altlocs(
-            #     record_dict,
-            #     coords
-            # )
+            atoms = cls._build_with_altlocs(
+                record_dict,
+            )
 
         return cls(name, coords, atoms)
 
@@ -362,11 +368,36 @@ class Structure(object):
 
         return (atoms, coords)
 
+    def _build_with_altlocs(recdict):
+        """Builds DisorderedAtom wrappers if necessary.
+
+        Args:
+            recdict (dict): dictionary with unique atom identifiers as keys and
+                lists of AtomRecord objects as values.
+
+        Returns:
+            atoms   (list): a list of Atom/DisorderedAtom objects.
+        """
+
+        atoms = []
+        for r in recdict:
+            locs = recdict[r]
+            if len(locs) > 1:
+                atom = DisorderedAtom()
+                atomlist = (Atom.from_atomrecord(l) for l in locs)
+                atom.from_list(atomlist)
+            else:
+                atom = Atom.from_atomrecord(locs[0])
+
+            atoms.append(atom)
+
+        return atoms
+
     # Internal dunder methods
     def __hash__(self):
         return hash(self.coord.tobytes())  # coordinate hash
 
-    def __repr__(self):
+    def __str__(self):
         """String representation of the Structure."""
         return f"<Structure name='{self.name}' natoms={self.natoms}>"
 
@@ -400,7 +431,7 @@ class Structure(object):
     def _bind_atoms(self):
         """Attaches current Atom objects to this Structure object."""
 
-        for atom in self.atoms:
+        for atom in self.unpack_atoms():
             atom.parent = self
 
     def _make_atom_dict(self):
@@ -414,6 +445,14 @@ class Structure(object):
         logging.debug(f'Built atom mapping for __getitem__')
 
     # Public Methods
+    def unpack_atoms(self):
+        """Returns a generator over all atoms, including all altlocs."""
+        for atom in self:
+            if isinstance(atom, DisorderedAtom):
+                yield from atom
+            else:
+                yield atom
+
     @property
     def model(self):
         """Returns the active model."""
