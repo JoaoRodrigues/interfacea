@@ -81,22 +81,22 @@ class TestPDBReader:
         self.datadir = rootdir / "tests" / "data" / "pdb"
 
     @pytest.mark.parametrize(
-        "ifile, expected",
-        [("default.pdb", 106), ("multimodel.pdb", 212)]
+        "ifile, natoms, nmodels",
+        [("default.pdb", 106, 1), ("multimodel.pdb", 212, 2)]
     )
-    def test_read_pdb(self, ifile, expected):
+    def test_read_pdb(self, ifile, natoms, nmodels):
         """Successfully load and parse a PDB file."""
 
         r = _io.pdb.PDBReader(self.datadir / ifile)
         atom_records = r.data
-        assert len(atom_records) == expected
+        assert len(atom_records) == natoms
+        assert r._model_no == nmodels
 
     @pytest.mark.parametrize(
         "ifile, errmessage",
         [
             ("nomodel.pdb", "ENDMDL record outside of MODEL on line 4"),
             ("noendmdl.pdb", "Missing ENDMDL record before line 4"),
-            ("badmodel.pdb", "Could not parse MODEL record on line 2"),
             ("badatom.pdb", "Could not parse atom on line 3")
         ]
     )
