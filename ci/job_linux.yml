@@ -53,8 +53,9 @@
                 pytest . --cov=interfacea --cov-report=xml --cov-report=html
               displayName: Run Unit Tests
 
-  - stage: "Pushing Coverage to Code Climate"
+  - stage: "Uploading to CodeClimate"
     dependsOn: "Tester_${{ parameters.OS }}"
+    condition: succeeded('Tester_${{ parameters.OS }}')
 
     jobs:
       - template: job_backbone.yml
@@ -62,10 +63,10 @@
           displayName: ${{ parameters.OS }}
           vmImage: ${{ parameters.image }}
           steps:
-            -script: |
-              source activate $(condaEnvName)
-              curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
-              chmod +x ./cc-test-reporter
-              ./cc-test-reporter format-coverage -t lcov -o coverage/codeclimate.json coverage/lcov.info
-              ./cc-test-reporter upload-coverage
-            displayName: Upload coverage to CodeClimate
+            - script: |
+                source activate $(condaEnvName)
+                curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+                chmod +x ./cc-test-reporter
+                ./cc-test-reporter format-coverage -t lcov -o coverage/codeclimate.json coverage/lcov.info
+                ./cc-test-reporter upload-coverage
+              displayName: Run Unit Tests
