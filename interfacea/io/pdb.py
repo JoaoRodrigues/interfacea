@@ -159,5 +159,5 @@ class PDBReader(object):
             a_p_m[r.model] += 1
 
         if len(set(a_p_m.values())) != 1:
-            emsg = 'Number of atom records differs between models.'
+            emsg = 'Models have different number of atoms'
             raise PDBFormatError(emsg)
