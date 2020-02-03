@@ -54,6 +54,7 @@
               env:
                 GIT_BRANCH: $(Build.SourceBranchName)
                 GIT_COMMIT: $(Build.SourceVersion)
+                CC_TEST_REPORTER_ID: $(CC_TEST_REPORTER_ID)
               displayName: Setup Test Coverage Report
             - script: |
                 source activate $(condaEnvName)
@@ -61,9 +62,6 @@
                 pip install pytest-azurepipelines
                 pytest . --cov=interfacea --cov-report=xml
               displayName: Run Tests
-              env:
-                GIT_BRANCH: $(Build.SourceBranchName)
-                GIT_COMMIT: $(Build.SourceVersion)
             - script: |
                 source activate $(condaEnvName)
                 ./cc-test-reporter format-coverage -t coverage.py -o coverage/codeclimate.json coverage.xml
@@ -72,3 +70,4 @@
               env:
                 GIT_BRANCH: $(Build.SourceBranchName)
                 GIT_COMMIT: $(Build.SourceVersion)
+                CC_TEST_REPORTER_ID: $(CC_TEST_REPORTER_ID)
