@@ -57,14 +57,18 @@
     dependsOn: "Tester_${{ parameters.OS }}"
 
     jobs:
-      steps:
-        -script: |
-          source activate $(condaEnvName)
-          curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
-          chmod +x ./cc-test-reporter
-          ./cc-test-reporter format-coverage -t lcov -o coverage/codeclimate.json coverage/lcov.info
-          ./cc-test-reporter upload-coverage
-        env:
-          GIT_BRANCH: $(Build.SourceBranchName)
-          GIT_COMMIT: $(Build.SourceVersion)
-        displayName: Upload coverage to CodeClimate
+      - template: job_backbone.yml
+        parameters:
+          displayName: ${{ parameters.OS }}
+          vmImage: ${{ parameters.image }}
+          steps:
+            -script: |
+              source activate $(condaEnvName)
+              curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+              chmod +x ./cc-test-reporter
+              ./cc-test-reporter format-coverage -t lcov -o coverage/codeclimate.json coverage/lcov.info
+              ./cc-test-reporter upload-coverage
+            env:
+              GIT_BRANCH: $(Build.SourceBranchName)
+              GIT_COMMIT: $(Build.SourceVersion)
+            displayName: Upload coverage to CodeClimate
