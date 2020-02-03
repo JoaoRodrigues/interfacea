@@ -66,7 +66,7 @@
                 source activate $(condaEnvName)
                 ./cc-test-reporter format-coverage -t coverage.py -o coverage/codeclimate.json coverage.xml
                 ./cc-test-reporter upload-coverage
-              displayName: Run Unit Tests
+              displayName: Upload to CodeClimate
               env:
                 GIT_BRANCH: $(Build.SourceBranchName)
                 GIT_COMMIT: $(Build.SourceVersion)
