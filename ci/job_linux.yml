@@ -68,7 +68,4 @@
               chmod +x ./cc-test-reporter
               ./cc-test-reporter format-coverage -t lcov -o coverage/codeclimate.json coverage/lcov.info
               ./cc-test-reporter upload-coverage
-            env:
-              GIT_BRANCH: $(Build.SourceBranchName)
-              GIT_COMMIT: $(Build.SourceVersion)
             displayName: Upload coverage to CodeClimate
