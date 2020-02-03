@@ -26,6 +26,7 @@ import pytest
 import interfacea.io as _io
 import interfacea.exceptions as e
 
+
 @pytest.mark.parametrize(
     "ifile, altloc_flag",
     [

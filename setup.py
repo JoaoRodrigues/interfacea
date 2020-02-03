@@ -32,12 +32,11 @@ As a developer, to test your changes without installing the package please use:
 # Borrows a lot from Biopython's setup.py script
 #
 
-import os
 from pathlib import Path
 import sys
 
 from setuptools import setup
-from setuptools import Extension
+# from setuptools import Extension
 
 from setuptools.command.install import install
 from setuptools.command.build_py import build_py
@@ -115,8 +114,11 @@ setup(name='interfacea',
       author='Joao Rodrigues',
       author_email='j.p.g.l.m.rodrigues@gmail.com',
       url='https://github.com/joaorodrigues/interfacea',
-    #   download_url=''  # TODO: add url to release using version string.
-      description='Open-source library to analyze the structure and energetics of protein interfaces',
+      # download_url='',  # TODO: add url to release using version string.
+      description=(
+          'Open-source library to analyze the chemistry'
+          ' and energetics of protein interfaces'
+      ),
       long_description=get_long_description(),
       classifiers=[
           'Development Status :: 3 - Alpha',
@@ -134,9 +136,9 @@ setup(name='interfacea',
       cmdclass={
           "install": install_library,
           "build_py": build_py_modules,
-        #   "build_ext": build_extensions,
+          # "build_ext": build_extensions,
       },
       packages=PACKAGES,
-    #   ext_modules=EXTENSIONS,
+      # ext_modules=EXTENSIONS,
       install_requires=REQUIRES,
       )
