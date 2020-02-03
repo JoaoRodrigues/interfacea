@@ -7,12 +7,12 @@ stages:
       OS: 'Windows'
       image: 'vs2017-win2016'
 
-  - template: ./ci/job_linux.yml
-    parameters:
-      OS: 'Linux'
-      image: 'ubuntu-latest'
+  # - template: ./ci/job_linux.yml
+  #   parameters:
+  #     OS: 'Linux'
+  #     image: 'ubuntu-latest'
 
-  - template: ./ci/job_osx.yml
-    parameters:
-      OS: 'OSX'
-      image: 'macOS-10.13'
+  # - template: ./ci/job_osx.yml
+  #   parameters:
+  #     OS: 'OSX'
+  #     image: 'macOS-10.13'

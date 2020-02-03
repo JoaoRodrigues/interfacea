@@ -49,5 +49,6 @@
             - script: |
                 call activate $(condaEnvName)
                 pip install -e .
-                pytest .
+                pip install pytest-azurepipelines
+                pytest . --cov=interfacea --cov-report=xml --cov-report=html
               displayName: Run Unit Tests
