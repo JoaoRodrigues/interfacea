@@ -2,15 +2,15 @@ variables:
   condaEnvName: interfacea-ci
 
 stages:
-  - template: ./ci/job_win10.yml
-    parameters:
-      OS: 'Windows'
-      image: 'vs2017-win2016'
-
-  # - template: ./ci/job_linux.yml
+  # - template: ./ci/job_win10.yml
   #   parameters:
-  #     OS: 'Linux'
-  #     image: 'ubuntu-latest'
+  #     OS: 'Windows'
+  #     image: 'vs2017-win2016'
+
+  - template: ./ci/job_linux.yml
+    parameters:
+      OS: 'Linux'
+      image: 'ubuntu-latest'
 
   # - template: ./ci/job_osx.yml
   #   parameters:
