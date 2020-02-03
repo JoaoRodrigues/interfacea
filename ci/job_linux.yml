@@ -53,7 +53,7 @@
                 pytest . --cov=interfacea --cov-report=xml --cov-report=html
               displayName: Run Unit Tests
 
-  - stage: "Uploading to CodeClimate"
+  - stage: "CodeClimate_Upload"
     dependsOn: "Tester_${{ parameters.OS }}"
     condition: succeeded('Tester_${{ parameters.OS }}')
 
