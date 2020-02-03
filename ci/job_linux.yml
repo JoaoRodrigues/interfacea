@@ -70,3 +70,6 @@
                 ./cc-test-reporter format-coverage -t lcov -o coverage/codeclimate.json coverage/lcov.info
                 ./cc-test-reporter upload-coverage
               displayName: Run Unit Tests
+              env:
+                GIT_BRANCH: $(Build.SourceBranchName)
+                GIT_COMMIT: $(Build.SourceVersion)
