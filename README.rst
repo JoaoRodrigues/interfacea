@@ -3,10 +3,7 @@ interfacea
 
 .. image:: https://zenodo.org/badge/136096537.svg
    :target: https://zenodo.org/badge/latestdoi/136096537
-
-.. image:: https://api.codeclimate.com/v1/badges/ca054443ee84f96d748a/test_coverage
-   :target: https://codeclimate.com/github/JoaoRodrigues/interfacea/test_coverage
-   :alt: Test Coverage
+   :alt: Zenodo DOI
 
 .. image:: https://dev.azure.com/jpglmrodrigues/interfacea-ci/_apis/build/status/JoaoRodrigues.interfacea?branchName=reorg&label=Build
    :target: https://dev.azure.com/jpglmrodrigues/interfacea-ci/_build/latest?definitionId=1&branchName=reorg
