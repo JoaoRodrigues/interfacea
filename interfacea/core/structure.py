@@ -333,7 +333,6 @@ class Structure(object):
             dtype=dtype
         )
 
-
     @staticmethod
     def _build_without_altlocs(recdict, coords):
         """Keeps only highest occupancy instances when altlocs exist.
