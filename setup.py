@@ -70,20 +70,21 @@ def get_long_description():
 PACKAGES = [
     'interfacea',
     'interfacea.core',
+    'interfacea.io',
     'interfacea.analyzers',
     'interfacea.chemistry',
 ]
 
 EXTENSIONS = [
-    Extension('interfacea.src.kdtree.kdtrees',
-              [os.path.join('interfacea', 'src', 'kdtree', 'kdtrees.c')]),
+    # Extension('interfacea.src.kdtree.kdtrees',
+    #           [os.path.join('interfacea', 'src', 'kdtree', 'kdtrees.c')]),
 ]
 
 REQUIRES = [
-    'networkx',
+    # 'networkx',
     'numpy',
-    'openmm',
-    'pdbfixer',
+    # 'openmm',
+    # 'pdbfixer',
 ]
 
 #
@@ -133,9 +134,9 @@ setup(name='interfacea',
       cmdclass={
           "install": install_library,
           "build_py": build_py_modules,
-          "build_ext": build_extensions,
+        #   "build_ext": build_extensions,
       },
       packages=PACKAGES,
-      ext_modules=EXTENSIONS,
+    #   ext_modules=EXTENSIONS,
       install_requires=REQUIRES,
       )
