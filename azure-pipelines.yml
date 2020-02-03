@@ -15,4 +15,4 @@ stages:
   - template: ./ci/job_osx.yml
     parameters:
       OS: 'OSX'
-      image: 'macOS-10.13'
+      image: 'macOS-10.14'
