@@ -14,10 +14,10 @@ jobs:
 
     strategy:
       matrix:
-        Python36:
-          python.version: '3.7'
         Python37:
-          python.version: '3.8'
+          python.version: '3.7'
+        # Python38:
+        #   python.version: '3.8'
 
     steps:
 
