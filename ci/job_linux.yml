@@ -48,26 +48,25 @@
           steps:
             - script: |
                 source activate $(condaEnvName)
-                pip install -e .
-                pip install pytest-azurepipelines
-                pytest . --cov=interfacea --cov-report=xml --cov-report=html
-              displayName: Run Unit Tests
-
-  - stage: "CodeClimate_Upload"
-    dependsOn: "Tester_${{ parameters.OS }}"
-    condition: succeeded('Tester_${{ parameters.OS }}')
-
-    jobs:
-      - template: job_backbone.yml
-        parameters:
-          displayName: ${{ parameters.OS }}
-          vmImage: ${{ parameters.image }}
-          steps:
-            - script: |
-                source activate $(condaEnvName)
                 curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
                 chmod +x ./cc-test-reporter
-                ./cc-test-reporter format-coverage -t lcov -o coverage/codeclimate.json coverage/lcov.info
+                ./cc-test-reporter before-build
+              env:
+                GIT_BRANCH: $(Build.SourceBranchName)
+                GIT_COMMIT: $(Build.SourceVersion)
+              displayName: Setup Test Coverage Report
+            - script: |
+                source activate $(condaEnvName)
+                pip install -e .
+                pip install pytest-azurepipelines
+                pytest . --cov=interfacea --cov-report=xml
+              displayName: Run Tests
+              env:
+                GIT_BRANCH: $(Build.SourceBranchName)
+                GIT_COMMIT: $(Build.SourceVersion)
+            - script: |
+                source activate $(condaEnvName)
+                ./cc-test-reporter format-coverage -t coverage.py -o coverage/codeclimate.json coverage.xml
                 ./cc-test-reporter upload-coverage
               displayName: Run Unit Tests
               env:
