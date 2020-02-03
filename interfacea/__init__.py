@@ -22,23 +22,23 @@ The interfacea package contains tools to analyze features of protein interfaces.
 import logging
 import random
 
-from .io import read
-from .version import __version__
+from .io import read  # noqa: F401
+from .version import __version__  # noqa: F401
 
 # Setup logger
 # This is the parent logger since the library is supposed
 # to be loaded from here. Hence, configs set here apply to
 # all module-level loggers
 logging.getLogger(__name__).addHandler(logging.NullHandler())
-logging.getLogger(__name__).setLevel(logging.CRITICAL)
+logging.getLogger(__name__).setLevel(logging.WARNING)
 
 # Global Constants
 RANDOM_SEED = random.randint(0, 1000)  # user can set it manually later
 
 
-# Methods
+# Global Methods
 def set_log_level(level='verbose'):
-    """Enables logging to a certain level.
+    """Controls verbosity of the logs.
 
     Useful for interactive/debugging applications.
 
@@ -48,55 +48,54 @@ def set_log_level(level='verbose'):
             - 'minimal': only warnings and other critical messages
             - 'verbose': informative/descriptive messages (default).
             - 'debug': very verbose internal/diagnostic messages.
+
+    Raises:
+        ValueError: logging level is not supported.
     """
 
     # Logging levels
-    _lc = {
-           'minimal': logging.WARNING,
-           'verbose': logging.INFO,
-           'debug': logging.DEBUG
-          }
+    _level_dict = {
+        'minimal': logging.WARNING,
+        'verbose': logging.INFO,
+        'debug': logging.DEBUG
+    }
 
-    if level not in _lc and level != 'silent':
-        emsg = f"Unknown or unsupported log level: {level}"
+    log_level = _level_dict.get(level)
+    if log_level is None:
+        emsg = f"Unsupported log level: {level}"
         raise ValueError(emsg)
-
-    # Treat 'silent' differently
-    if level == 'silent':
-        root_logger = logging.getLogger()
-        root_logger.handlers = []  # clear handler list
-        root_logger.setLevel(logging.CRITICAL)
-        return
 
     handler = logging.StreamHandler()
     formatter = logging.Formatter(fmt='[%(asctime)s] %(message)s',
                                   datefmt='%H:%M:%S')
     handler.setFormatter(formatter)
 
-    # We override the root logger here, assuming this function is only called
-    # interactively ...
+    # Override root logger - assume we only call this function interactively.
     root_logger = logging.getLogger()
     root_logger.handlers = []  # clear handler list
     root_logger.addHandler(handler)
 
-    log_level = _lc.get(level)
     root_logger.setLevel(log_level)
-    logging.warn(f"Logging activated and set to '{level}'")  # always show
+    logging.critical(f"Logging enabled (level={level})")  # always show
 
 
 # Randomness
 def set_random_seed(seed=917):
-    """Sets a defined seed for reproducible operations across the library.
+    """Defines the numerical random seed for reproducibility.
 
-    This does not ensure *complete reproducibility*. Some methods in OpenMM,
-    for example, are not deterministic across different hardware configurations
-    even with the same random seed.
+    Setting this seed does not ensure *complete reproducibility*. Some methods
+    are not deterministic across different hardware configurations even with
+    the same random seed.
+
+    Args:
+        seed (int): positive integer to use as a random seed.
+
+    Raises:
+        TypeError: seed number is not a valid positive number.
     """
 
-    global RANDOM_SEED
+    if not (isinstance(seed, int) and seed > 0):
+        raise TypeError(f"Seed must be a positive integer: {seed}")
 
-    if isinstance(seed, int) and seed > 0:
-        RANDOM_SEED = seed
-    else:
-        emsg = f"Random seed must be a positive integer: {seed}"
-        raise TypeError(emsg)
+    global RANDOM_SEED
+    RANDOM_SEED = seed
