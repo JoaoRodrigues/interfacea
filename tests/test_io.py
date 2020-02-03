@@ -28,16 +28,15 @@ import interfacea.exceptions as e
 
 
 @pytest.mark.parametrize(
-    "ifile, altloc_flag",
+    "ifile",
     [
-        (str(pathlib.Path("tests/data/pdb/default.pdb")), True),
-        (str(pathlib.Path("tests/data/pdb/default.pdb")), False),
+        str(pathlib.Path("tests/data/pdb/default.pdb")),
     ]
 )
-def test_io_read(ifile, altloc_flag):
+def test_io_read(ifile):
     """Successfully runs top-level read function"""
 
-    _io.read(ifile, discard_altloc=altloc_flag)
+    _io.read(ifile)
 
 
 @pytest.mark.parametrize(
@@ -82,10 +81,11 @@ class TestPDBReader:
 
         rootdir = pathlib.Path(".")  # rootdir
         self.datadir = rootdir / "tests" / "data" / "pdb"
+        self.bad_datadir = self.datadir / 'bad'
 
     @pytest.mark.parametrize(
         "ifile, natoms, nmodels",
-        [("default.pdb", 106, 1), ("multimodel.pdb", 212, 2)]
+        [("default.pdb", 107, 1), ("multimodel.pdb", 212, 2)]
     )
     def test_read_pdb(self, ifile, natoms, nmodels):
         """Successfully load and parse a PDB file."""
@@ -100,14 +100,15 @@ class TestPDBReader:
         [
             ("nomodel.pdb", "ENDMDL record outside of MODEL on line 4"),
             ("noendmdl.pdb", "Missing ENDMDL record before line 4"),
-            ("badatom.pdb", "Could not parse atom on line 3")
+            ("badatom.pdb", "Could not parse atom on line 3"),
+            ("badmultimodel.pdb", "Models have different number of atoms")
         ]
     )
     def test_read_pdb_fail(self, ifile, errmessage):
         """Fail when parsing a bad PDB (PDBFormatError)."""
 
         with pytest.raises(e.PDBFormatError) as excinfo:
-            _io.pdb.PDBReader(self.datadir / ifile)
+            _io.pdb.PDBReader(self.bad_datadir / ifile)
 
         assert excinfo.value.message == errmessage
 
@@ -116,6 +117,6 @@ class TestPDBReader:
 
         with pytest.warns(e.PDBFormatWarning):
             _io.pdb.PDBReader(
-                self.datadir / "badatom.pdb",
+                self.bad_datadir / "badatom.pdb",
                 permissive=True
             )
