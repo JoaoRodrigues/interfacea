@@ -44,8 +44,8 @@ from setuptools.command.build_py import build_py
 from setuptools.command.build_ext import build_ext
 
 # Check for Python version
-if sys.version_info < (3, 6):
-    sys.stderr.write("interfacea requires Python 3.6+. "
+if sys.version_info < (3, 7):
+    sys.stderr.write("interfacea requires Python 3.7+. "
                      "Python %d.%d detected.\n" % sys.version_info[:2])
     sys.exit(1)
 

@@ -41,7 +41,7 @@ Getting Started
     cd interfacea
 
     # Setup a dedicated conda environment to install interfacea
-    conda create --yes --quiet --name interfacea python=3.6
+    conda create --yes --quiet --name interfacea python=3.7
     conda env update --name interfacea --file environment.yml
 
     # Activate the environment and install the library
@@ -78,7 +78,7 @@ Read the full documentation at `interfacea.readthedocs.io <https://interfacea.re
 Software Dependencies
 ---------------------
 
-interfacea requires Python 3.6 or a more recent version, as well as the following packages:
+interfacea requires Python 3.7 or a more recent version, as well as the following packages:
 
 - networkx (https://networkx.github.io)
 - pandas (https://http://pandas.pydata.org)
