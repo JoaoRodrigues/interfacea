@@ -12,6 +12,14 @@ interfacea
    :target: https://dev.azure.com/jpglmrodrigues/interfacea-ci/_build/latest?definitionId=1&branchName=reorg
    :alt: Azure Build Check
 
+.. image:: https://api.codeclimate.com/v1/badges/ca054443ee84f96d748a/test_coverage
+   :target: https://codeclimate.com/github/JoaoRodrigues/interfacea/test_coverage
+   :alt: Test Coverage
+
+.. image:: https://api.codeclimate.com/v1/badges/ca054443ee84f96d748a/maintainability
+   :target: https://codeclimate.com/github/JoaoRodrigues/interfacea/maintainability
+   :alt: Maintainability
+
 .. start-description
 
 interfacea is a Python library to analyze geometric and energetic features of
