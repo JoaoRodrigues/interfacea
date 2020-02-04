@@ -4,7 +4,6 @@ parameters:
 
 stages:
   - stage: "${{ parameters.displayName }}"  # stage names must be unique
-    dependsOn: []
 
     jobs:
       # Linux & macOS
@@ -14,9 +13,9 @@ stages:
 
         strategy:
           matrix:
-            linux:
+            Linux:
               imageName: 'ubuntu-latest'
-            mac:
+            macOs:
               imageName: 'macOS-10.14'
 
         pool:
@@ -89,7 +88,7 @@ stages:
 
       # Windows
       - job:
-        displayName: 'windows'
+        displayName: 'Windows'
         workspace:
             clean: all
 
