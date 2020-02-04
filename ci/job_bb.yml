@@ -27,7 +27,7 @@ stages:
           # Define how to call/source conda envs based on Agent.OS
           - script: |
               echo "##vso[task.setvariable variable=activate]call"
-              Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
+              echo "##vso[task.prependpath]$env:CONDA\Scripts"
             condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
           - script: |
