@@ -25,12 +25,10 @@ stages:
           - script: |
               echo "##vso[task.setvariable variable=activate]call"
             condition: eq( variables['Agent.OS'], 'Windows_NT' )
-            name: conda
 
           - script: |
               echo "##vso[task.setvariable variable=activate]source"
             condition: ne( variables['Agent.OS'], 'Windows_NT' )
-            name: conda
 
           - task: UsePythonVersion@0
             inputs:
