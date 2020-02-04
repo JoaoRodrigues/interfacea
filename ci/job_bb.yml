@@ -66,13 +66,13 @@ stages:
             displayName: Linting
             continueOnError: true
 
-          # PyTest (only push to CodeClimate on Linux and master branch commits/PRs)
+          # PyTest (only push to CodeClimate on Linux and master branch commits)
           - script: |
               $ACTIVATE activate $(condaEnvName)
               curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
               chmod +x ./cc-test-reporter
               ./cc-test-reporter before-build
-            condition: and( eq(variables['Agent.OS'], 'Linux'), contains(variables['Build.SourceBranch'], 'refs/heads/reorg') )
+            condition: and( eq(variables['Agent.OS'], 'Linux'), in(variables['Build.Reason'], 'IndividualCI', 'BatchedCI') )
             env:
               GIT_BRANCH: $(Build.SourceBranchName)
               GIT_COMMIT: $(Build.SourceVersion)
@@ -88,7 +88,7 @@ stages:
               $ACTIVATE activate $(condaEnvName)
               ./cc-test-reporter format-coverage -t coverage.py -o coverage/codeclimate.json coverage.xml
               ./cc-test-reporter upload-coverage
-            condition: and( eq(variables['Agent.OS'], 'Linux'), contains(variables['Build.SourceBranch'], 'refs/heads/reorg') )
+            condition: and( eq(variables['Agent.OS'], 'Linux'), in(variables['Build.Reason'], 'IndividualCI', 'BatchedCI') )
             env:
               GIT_BRANCH: $(Build.SourceBranchName)
               GIT_COMMIT: $(Build.SourceVersion)
