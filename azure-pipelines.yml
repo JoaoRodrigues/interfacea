@@ -13,7 +13,7 @@ variables:
   condaEnvName: interfacea-ci
 
 stages:
-  - template: ./job_bb.yml
+  - template: ci/job_bb.yml
     parameters:
       displayName: Py37
       pyVersion: 3.7
