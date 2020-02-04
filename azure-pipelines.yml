@@ -1,0 +1,24 @@
+trigger:
+  batch: true
+  branches:
+    include:
+      - reorg
+
+pr:
+  branches:
+    include:
+      - reorg
+
+variables:
+  condaEnvName: interfacea-ci
+
+stages:
+  - template: ci/jobs.yml
+    parameters:
+      displayName: Py37
+      pyVersion: 3.7
+
+  # - template: ci/jobs.yml
+  #   parameters:
+  #     displayName: Py38
+  #     pyVersion: 3.8

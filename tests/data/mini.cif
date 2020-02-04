@@ -1,0 +1,136 @@
+data_cell
+# Created with OpenMM 7.2.1, 2018-10-14
+#
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_entity_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.Cartn_x_esd
+_atom_site.Cartn_y_esd
+_atom_site.Cartn_z_esd
+_atom_site.occupancy_esd
+_atom_site.B_iso_or_equiv_esd
+_atom_site.pdbx_formal_charge
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.pdbx_PDB_model_num
+ATOM      1 N   N    . ASN  A ?     1 .    22.0660    40.5570     0.4200  0.0  0.0  ?  ?  ?  ?  ?  .      1  ASN A    N     1
+ATOM      2 H   H    . ASN  A ?     1 .    21.6290    41.3050    -0.0980  0.0  0.0  ?  ?  ?  ?  ?  .      1  ASN A    H     1
+ATOM      3 H   H2   . ASN  A ?     1 .    23.2360    40.7980     0.3690  0.0  0.0  ?  ?  ?  ?  ?  .      1  ASN A   H2     1
+ATOM      4 H   H3   . ASN  A ?     1 .    21.8660    40.7360     1.5900  0.0  0.0  ?  ?  ?  ?  ?  .      1  ASN A   H3     1
+ATOM      5 C   CA   . ASN  A ?     1 .    21.4110    39.3110     0.0540  0.0  0.0  ?  ?  ?  ?  ?  .      1  ASN A   CA     1
+ATOM      6 H   HA   . ASN  A ?     1 .    21.2740    38.5600     0.9730  0.0  0.0  ?  ?  ?  ?  ?  .      1  ASN A   HA     1
+ATOM      7 C   CB   . ASN  A ?     1 .    19.9940    39.7630    -0.3710  0.0  0.0  ?  ?  ?  ?  ?  .      1  ASN A   CB     1
+ATOM      8 H   HB2  . ASN  A ?     1 .    19.3900    40.3290     0.4930  0.0  0.0  ?  ?  ?  ?  ?  .      1  ASN A  HB2     1
+ATOM      9 H   HB3  . ASN  A ?     1 .    19.9510    40.4260    -1.3650  0.0  0.0  ?  ?  ?  ?  ?  .      1  ASN A  HB3     1
+ATOM     10 C   CG   . ASN  A ?     1 .    18.9560    38.7120    -0.6770  0.0  0.0  ?  ?  ?  ?  ?  .      1  ASN A   CG     1
+ATOM     11 O   OD1  . ASN  A ?     1 .    19.0930    37.6850     0.0110  0.0  0.0  ?  ?  ?  ?  ?  .      1  ASN A  OD1     1
+ATOM     12 N   ND2  . ASN  A ?     1 .    17.9580    38.7970    -1.5310  0.0  0.0  ?  ?  ?  ?  ?  .      1  ASN A  ND2     1
+ATOM     13 H   HD21 . ASN  A ?     1 .    17.0730    39.5900    -1.4900  0.0  0.0  ?  ?  ?  ?  ?  .      1  ASN A HD21     1
+ATOM     14 H   HD22 . ASN  A ?     1 .    17.7460    37.9480    -2.3370  0.0  0.0  ?  ?  ?  ?  ?  .      1  ASN A HD22     1
+ATOM     15 C   C    . ASN  A ?     1 .    22.1430    38.6290    -1.1020  0.0  0.0  ?  ?  ?  ?  ?  .      1  ASN A    C     1
+ATOM     16 O   O    . ASN  A ?     1 .    21.5810    38.2970    -2.1760  0.0  0.0  ?  ?  ?  ?  ?  .      1  ASN A    O     1
+ATOM     17 N   N    . ARG  A ?     2 .    23.4080    38.3950    -0.8290  0.0  0.0  ?  ?  ?  ?  ?  .      2  ARG A    N     1
+ATOM     18 H   H    . ARG  A ?     2 .    23.6830    38.1990     0.3130  0.0  0.0  ?  ?  ?  ?  ?  .      2  ARG A    H     1
+ATOM     19 C   CA   . ARG  A ?     2 .    24.3840    37.8230    -1.7570  0.0  0.0  ?  ?  ?  ?  ?  .      2  ARG A   CA     1
+ATOM     20 H   HA   . ARG  A ?     2 .    24.2820    38.4220    -2.7860  0.0  0.0  ?  ?  ?  ?  ?  .      2  ARG A   HA     1
+ATOM     21 C   CB   . ARG  A ?     2 .    25.8100    37.9660    -1.2110  0.0  0.0  ?  ?  ?  ?  ?  .      2  ARG A   CB     1
+ATOM     22 H   HB2  . ARG  A ?     2 .    26.5670    37.5650    -2.0490  0.0  0.0  ?  ?  ?  ?  ?  .      2  ARG A  HB2     1
+ATOM     23 H   HB3  . ARG  A ?     2 .    26.0010    37.2090    -0.3060  0.0  0.0  ?  ?  ?  ?  ?  .      2  ARG A  HB3     1
+ATOM     24 C   CG   . ARG  A ?     2 .    26.1640    39.4360    -0.9310  0.0  0.0  ?  ?  ?  ?  ?  .      2  ARG A   CG     1
+ATOM     25 H   HG2  . ARG  A ?     2 .    26.3050    39.9210    -2.0150  0.0  0.0  ?  ?  ?  ?  ?  .      2  ARG A  HG2     1
+ATOM     26 H   HG3  . ARG  A ?     2 .    25.3980    40.1590    -0.3730  0.0  0.0  ?  ?  ?  ?  ?  .      2  ARG A  HG3     1
+ATOM     27 C   CD   . ARG  A ?     2 .    27.4340    39.5270    -0.0750  0.0  0.0  ?  ?  ?  ?  ?  .      2  ARG A   CD     1
+ATOM     28 H   HD2  . ARG  A ?     2 .    27.3300    38.9010     0.9450  0.0  0.0  ?  ?  ?  ?  ?  .      2  ARG A  HD2     1
+ATOM     29 H   HD3  . ARG  A ?     2 .    28.4420    39.0420    -0.5070  0.0  0.0  ?  ?  ?  ?  ?  .      2  ARG A  HD3     1
+ATOM     30 N   NE   . ARG  A ?     2 .    27.5710    40.9260     0.4420  0.0  0.0  ?  ?  ?  ?  ?  .      2  ARG A   NE     1
+ATOM     31 H   HE   . ARG  A ?     2 .    27.3060    41.1760     1.5740  0.0  0.0  ?  ?  ?  ?  ?  .      2  ARG A   HE     1
+ATOM     32 C   CZ   . ARG  A ?     2 .    28.1710    41.8560    -0.2980  0.0  0.0  ?  ?  ?  ?  ?  .      2  ARG A   CZ     1
+ATOM     33 N   NH1  . ARG  A ?     2 .    28.6940    41.5610    -1.4840  0.0  0.0  ?  ?  ?  ?  ?  .      2  ARG A  NH1     1
+ATOM     34 H   HH11 . ARG  A ?     2 .    28.0890    41.8090    -2.4800  0.0  0.0  ?  ?  ?  ?  ?  .      2  ARG A HH11     1
+ATOM     35 H   HH12 . ARG  A ?     2 .    29.7660    41.0660    -1.6340  0.0  0.0  ?  ?  ?  ?  ?  .      2  ARG A HH12     1
+ATOM     36 N   NH2  . ARG  A ?     2 .    28.2850    43.0990     0.0950  0.0  0.0  ?  ?  ?  ?  ?  .      2  ARG A  NH2     1
+ATOM     37 H   HH21 . ARG  A ?     2 .    27.5360    43.9670    -0.2320  0.0  0.0  ?  ?  ?  ?  ?  .      2  ARG A HH21     1
+ATOM     38 H   HH22 . ARG  A ?     2 .    28.9550    43.4370     1.0190  0.0  0.0  ?  ?  ?  ?  ?  .      2  ARG A HH22     1
+ATOM     39 C   C    . ARG  A ?     2 .    24.0610    36.4210    -2.1890  0.0  0.0  ?  ?  ?  ?  ?  .      2  ARG A    C     1
+ATOM     40 O   O    . ARG  A ?     2 .    24.4110    36.1060    -3.3250  0.0  0.0  ?  ?  ?  ?  ?  .      2  ARG A    O     1
+ATOM     41 N   N    . GLU  A ?     3 .    23.4560    35.5700    -1.4080  0.0  0.0  ?  ?  ?  ?  ?  .      3  GLU A    N     1
+ATOM     42 H   H    . GLU  A ?     3 .    23.0280    35.8440    -0.3340  0.0  0.0  ?  ?  ?  ?  ?  .      3  GLU A    H     1
+ATOM     43 C   CA   . GLU  A ?     3 .    23.0640    34.2190    -1.7800  0.0  0.0  ?  ?  ?  ?  ?  .      3  GLU A   CA     1
+ATOM     44 H   HA   . GLU  A ?     3 .    23.6790    33.7940    -2.7100  0.0  0.0  ?  ?  ?  ?  ?  .      3  GLU A   HA     1
+ATOM     45 C   CB   . GLU  A ?     3 .    23.0670    33.2930    -0.5680  0.0  0.0  ?  ?  ?  ?  ?  .      3  GLU A   CB     1
+ATOM     46 H   HB2  . GLU  A ?     3 .    22.6470    32.1970    -0.8110  0.0  0.0  ?  ?  ?  ?  ?  .      3  GLU A  HB2     1
+ATOM     47 H   HB3  . GLU  A ?     3 .    22.2720    33.6050     0.2710  0.0  0.0  ?  ?  ?  ?  ?  .      3  GLU A  HB3     1
+ATOM     48 C   CG   . GLU  A ?     3 .    24.4310    33.2150     0.0880  0.0  0.0  ?  ?  ?  ?  ?  .      3  GLU A   CG     1
+ATOM     49 H   HG2  . GLU  A ?     3 .    24.2980    32.5890     1.1010  0.0  0.0  ?  ?  ?  ?  ?  .      3  GLU A  HG2     1
+ATOM     50 H   HG3  . GLU  A ?     3 .    25.1220    34.1270     0.4320  0.0  0.0  ?  ?  ?  ?  ?  .      3  GLU A  HG3     1
+ATOM     51 C   CD   . GLU  A ?     3 .    25.3400    32.3270    -0.7140  0.0  0.0  ?  ?  ?  ?  ?  .      3  GLU A   CD     1
+ATOM     52 O   OE1  . GLU  A ?     3 .    24.8910    31.7450    -1.7240  0.0  0.0  ?  ?  ?  ?  ?  .      3  GLU A  OE1     1
+ATOM     53 O   OE2  . GLU  A ?     3 .    26.5270    32.1350    -0.4550  0.0  0.0  ?  ?  ?  ?  ?  .      3  GLU A  OE2     1
+ATOM     54 C   C    . GLU  A ?     3 .    21.6820    34.2410    -2.3800  0.0  0.0  ?  ?  ?  ?  ?  .      3  GLU A    C     1
+ATOM     55 O   O    . GLU  A ?     3 .    21.2390    33.1900    -2.7860  0.0  0.0  ?  ?  ?  ?  ?  .      3  GLU A    O     1
+ATOM     56 N   N    . ARG  B ?     4 .    36.8980    42.1750    -2.6880  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B    N     1
+ATOM     57 H   H    . ARG  B ?     4 .    37.6730    41.5700    -2.9160  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B    H     1
+ATOM     58 H   H2   . ARG  B ?     4 .    35.9290    41.4700    -2.7580  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B   H2     1
+ATOM     59 H   H3   . ARG  B ?     4 .    37.0990    42.3920    -1.5240  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B   H3     1
+ATOM     60 C   CA   . ARG  B ?     4 .    37.0800    43.4550    -3.4210  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B   CA     1
+ATOM     61 H   HA   . ARG  B ?     4 .    38.1020    43.9600    -3.0650  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B   HA     1
+ATOM     62 C   CB   . ARG  B ?     4 .    37.0640    43.1720    -4.9260  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B   CB     1
+ATOM     63 H   HB2  . ARG  B ?     4 .    36.9370    44.2380    -5.4500  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B  HB2     1
+ATOM     64 H   HB3  . ARG  B ?     4 .    36.1460    42.5500    -5.3810  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B  HB3     1
+ATOM     65 C   CG   . ARG  B ?     4 .    38.3660    42.3670    -5.1670  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B   CG     1
+ATOM     66 H   HG2  . ARG  B ?     4 .    38.0440    41.2630    -5.5010  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B  HG2     1
+ATOM     67 H   HG3  . ARG  B ?     4 .    39.2140    42.1560    -4.3500  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B  HG3     1
+ATOM     68 C   CD   . ARG  B ?     4 .    39.1910    43.0080    -6.2340  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B   CD     1
+ATOM     69 H   HD2  . ARG  B ?     4 .    39.6520    44.0530    -5.8730  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B  HD2     1
+ATOM     70 H   HD3  . ARG  B ?     4 .    40.2110    42.4250    -6.4790  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B  HD3     1
+ATOM     71 N   NE   . ARG  B ?     4 .    38.5570    43.0810    -7.4860  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B   NE     1
+ATOM     72 H   HE   . ARG  B ?     4 .    38.4210    41.9800    -7.9200  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B   HE     1
+ATOM     73 C   CZ   . ARG  B ?     4 .    38.2660    43.9510    -8.4270  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B   CZ     1
+ATOM     74 N   NH1  . ARG  B ?     4 .    38.5540    45.2340    -8.3960  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B  NH1     1
+ATOM     75 H   HH11 . ARG  B ?     4 .    39.0850    45.9500    -7.6070  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B HH11     1
+ATOM     76 H   HH12 . ARG  B ?     4 .    38.3920    45.9170    -9.3590  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B HH12     1
+ATOM     77 N   NH2  . ARG  B ?     4 .    37.6090    43.4580    -9.4930  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B  NH2     1
+ATOM     78 H   HH21 . ARG  B ?     4 .    36.4800    43.7500    -9.7390  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B HH21     1
+ATOM     79 H   HH22 . ARG  B ?     4 .    38.0860    42.8130   -10.3730  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B HH22     1
+ATOM     80 C   C    . ARG  B ?     4 .    36.1020    44.5240    -2.9980  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B    C     1
+ATOM     81 O   O    . ARG  B ?     4 .    36.5770    45.6770    -2.8790  0.0  0.0  ?  ?  ?  ?  ?  .      4  ARG B    O     1
+ATOM     82 N   N    . GLU  B ?     5 .    34.8490    44.1670    -2.7100  0.0  0.0  ?  ?  ?  ?  ?  .      5  GLU B    N     1
+ATOM     83 H   H    . GLU  B ?     5 .    34.4440    43.1550    -3.1750  0.0  0.0  ?  ?  ?  ?  ?  .      5  GLU B    H     1
+ATOM     84 C   CA   . GLU  B ?     5 .    33.8610    45.1270    -2.2330  0.0  0.0  ?  ?  ?  ?  ?  .      5  GLU B   CA     1
+ATOM     85 H   HA   . GLU  B ?     5 .    33.8710    46.0900    -2.9390  0.0  0.0  ?  ?  ?  ?  ?  .      5  GLU B   HA     1
+ATOM     86 C   CB   . GLU  B ?     5 .    32.4800    44.5380    -2.0410  0.0  0.0  ?  ?  ?  ?  ?  .      5  GLU B   CB     1
+ATOM     87 H   HB2  . GLU  B ?     5 .    32.3050    43.7810    -1.1330  0.0  0.0  ?  ?  ?  ?  ?  .      5  GLU B  HB2     1
+ATOM     88 H   HB3  . GLU  B ?     5 .    31.7930    45.5040    -1.8510  0.0  0.0  ?  ?  ?  ?  ?  .      5  GLU B  HB3     1
+ATOM     89 C   CG   . GLU  B ?     5 .    31.9680    43.8310    -3.2610  0.0  0.0  ?  ?  ?  ?  ?  .      5  GLU B   CG     1
+ATOM     90 H   HG2  . GLU  B ?     5 .    32.2280    42.6820    -3.4610  0.0  0.0  ?  ?  ?  ?  ?  .      5  GLU B  HG2     1
+ATOM     91 H   HG3  . GLU  B ?     5 .    32.0590    44.4480    -4.2810  0.0  0.0  ?  ?  ?  ?  ?  .      5  GLU B  HG3     1
+ATOM     92 C   CD   . GLU  B ?     5 .    30.4400    43.6760    -3.1900  0.0  0.0  ?  ?  ?  ?  ?  .      5  GLU B   CD     1
+ATOM     93 O   OE1  . GLU  B ?     5 .    29.8160    44.2080    -2.2100  0.0  0.0  ?  ?  ?  ?  ?  .      5  GLU B  OE1     1
+ATOM     94 O   OE2  . GLU  B ?     5 .    30.0050    43.0600    -4.2040  0.0  0.0  ?  ?  ?  ?  ?  .      5  GLU B  OE2     1
+ATOM     95 C   C    . GLU  B ?     5 .    34.1800    45.6290    -0.8200  0.0  0.0  ?  ?  ?  ?  ?  .      5  GLU B    C     1
+ATOM     96 O   O    . GLU  B ?     5 .    33.9140    46.7750    -0.4640  0.0  0.0  ?  ?  ?  ?  ?  .      5  GLU B    O     1
+ATOM     97 N   N    . ALA  B ?     6 .    34.7250    44.6790    -0.0870  0.0  0.0  ?  ?  ?  ?  ?  .      6  ALA B    N     1
+ATOM     98 H   H    . ALA  B ?     6 .    34.8130    43.7140    -0.3710  0.0  0.0  ?  ?  ?  ?  ?  .      6  ALA B    H     1
+ATOM     99 C   CA   . ALA  B ?     6 .    35.0810    45.0360     1.3050  0.0  0.0  ?  ?  ?  ?  ?  .      6  ALA B   CA     1
+ATOM    100 H   HA   . ALA  B ?     6 .    34.2000    45.6040     1.8760  0.0  0.0  ?  ?  ?  ?  ?  .      6  ALA B   HA     1
+ATOM    101 C   CB   . ALA  B ?     6 .    35.3810    43.8100     2.1400  0.0  0.0  ?  ?  ?  ?  ?  .      6  ALA B   CB     1
+ATOM    102 H   HB1  . ALA  B ?     6 .    34.3820    43.2290     2.4560  0.0  0.0  ?  ?  ?  ?  ?  .      6  ALA B  HB1     1
+ATOM    103 H   HB2  . ALA  B ?     6 .    36.1670    42.9730     1.8020  0.0  0.0  ?  ?  ?  ?  ?  .      6  ALA B  HB2     1
+ATOM    104 H   HB3  . ALA  B ?     6 .    35.8470    44.1800     3.1810  0.0  0.0  ?  ?  ?  ?  ?  .      6  ALA B  HB3     1
+ATOM    105 C   C    . ALA  B ?     6 .    36.2130    46.0670     1.2580  0.0  0.0  ?  ?  ?  ?  ?  .      6  ALA B    C     1
+ATOM    106 O   O    . ALA  B ?     6 .    36.2870    47.0460     2.0280  0.0  0.0  ?  ?  ?  ?  ?  .      6  ALA B    O     1
