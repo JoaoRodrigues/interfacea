@@ -24,6 +24,7 @@ import pathlib
 import pytest
 
 import interfacea.io as _io
+import interfacea.io.pdb as _pdb
 import interfacea.exceptions as e
 
 
@@ -62,10 +63,17 @@ class TestReader:
         rootdir = pathlib.Path(".")  # rootdir
         self.datadir = rootdir / "tests" / "data"
 
-    def test_read_known(self):
-        """Successfully loads PDBReader"""
+    @pytest.mark.parametrize(
+        "ifile, reader_class",
+        (
+            (pathlib.Path("pdb") / "default.pdb", _pdb.PDBReader),
+        )
+    )
+    def test_read_known(self, ifile, reader_class):
+        """Dispatches appropriate reader based on file extension"""
 
-        _ = _io.base.Reader(self.datadir / "pdb" / "default.pdb")
+        r = _io.base.Reader(self.datadir / ifile)
+        assert isinstance(r, reader_class)
 
     def test_unknown_extension(self):
         """Fails when extension is unknown/unsupported"""
@@ -88,7 +96,7 @@ class TestPDBReader:
         [("default.pdb", 107, 1), ("multimodel.pdb", 212, 2)]
     )
     def test_read_pdb(self, ifile, natoms, nmodels):
-        """Successfully load and parse a PDB file."""
+        """Successfully loads and parses a PDB file."""
 
         r = _io.pdb.PDBReader(self.datadir / ifile)
         atom_records = r.data
@@ -105,17 +113,17 @@ class TestPDBReader:
         ]
     )
     def test_read_pdb_fail(self, ifile, errmessage):
-        """Fail when parsing a bad PDB (PDBFormatError)."""
+        """Fails when parsing a bad PDB (PDBReaderError)."""
 
-        with pytest.raises(e.PDBFormatError) as excinfo:
+        with pytest.raises(e.PDBReaderError) as excinfo:
             _io.pdb.PDBReader(self.bad_datadir / ifile)
 
         assert excinfo.value.message == errmessage
 
     def test_permissive(self):
-        """Ignore badly formatted lines when permissive=True"""
+        """Ignores badly formatted lines when permissive=True"""
 
-        with pytest.warns(e.PDBFormatWarning):
+        with pytest.warns(e.PDBReaderWarning):
             _io.pdb.PDBReader(
                 self.bad_datadir / "badatom.pdb",
                 permissive=True
