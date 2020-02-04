@@ -47,7 +47,12 @@ stages:
               displayName: Add Conda to PATH
 
           # Build environment
-          - template: setup_conda_env.yml
+          - script: |
+              conda update -n base conda pip setuptools -y
+              conda create --yes --quiet --name $(condaEnvName) python=%PYTHON_VERSION%
+              conda env update --name $(condaEnvName) --file devtools/dev-environment.yml
+            displayName: Create and Setup Conda Environment
+            continueOnError: false
 
           # OSX-specific
           - ${{ if eq(parameters.displayName, 'OSX') }}:
