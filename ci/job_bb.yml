@@ -7,6 +7,7 @@ stages:
     dependsOn: []
 
     jobs:
+      # Linux & macOS
       - job:
         workspace:
             clean: all
@@ -17,27 +18,18 @@ stages:
               imageName: 'ubuntu-latest'
             mac:
               imageName: 'macOS-10.14'
-            windows:
-              imageName: 'vs2017-win2016'
 
         pool:
           vmImage: $(imageName)
 
         steps:
-          # Define how to call/source conda envs based on Agent.OS
-          - powershell: |
-              Write-Host "##vso[task.setvariable variable=activate]call"
-              Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
-            condition: eq( variables['Agent.OS'], 'Windows_NT' )
-
-          - script: |
-              echo "##vso[task.setvariable variable=activate]source"
-              echo "##vso[task.prependpath]$CONDA/bin"
-            condition: ne( variables['Agent.OS'], 'Windows_NT' )
-
           - task: UsePythonVersion@0
             inputs:
               versionSpec: ${{ parameters.pyVersion }}
+
+          - script: |
+              echo "##vso[task.prependpath]$CONDA/bin"
+            displayName: Add conda to PATH
 
           # Build environment
           - script: |
@@ -55,21 +47,21 @@ stages:
           # Package Steps
           # Install
           - script: |
-              $ACTIVATE activate $(condaEnvName)
+              source activate $(condaEnvName)
               python -m pip install -e .
             displayName: Building
             continueOnError: false
 
           # Linter
           - script: |
-              $ACTIVATE activate $(condaEnvName)
+              source activate $(condaEnvName)
               flake8 .
             displayName: Linting
             continueOnError: true
 
           # PyTest (only push to CodeClimate on Linux and master branch commits)
           - script: |
-              $ACTIVATE activate $(condaEnvName)
+              source activate $(condaEnvName)
               curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
               chmod +x ./cc-test-reporter
               ./cc-test-reporter before-build
@@ -81,12 +73,12 @@ stages:
 
           # Run tests for all images/versions
           - script: |
-              $ACTIVATE activate $(condaEnvName)
+              source activate $(condaEnvName)
               pytest . --cov=interfacea --cov-report=xml
             displayName: Testing
 
           - script: |
-              $ACTIVATE activate $(condaEnvName)
+              source activate $(condaEnvName)
               ./cc-test-reporter format-coverage -t coverage.py -o coverage/codeclimate.json coverage.xml
               ./cc-test-reporter upload-coverage
             condition: and( eq(variables['Agent.OS'], 'Linux'), in(variables['Build.Reason'], 'IndividualCI', 'BatchedCI') )
@@ -94,3 +86,50 @@ stages:
               GIT_BRANCH: $(Build.SourceBranchName)
               GIT_COMMIT: $(Build.SourceVersion)
               CC_TEST_REPORTER_ID: $(CC_TEST_REPORTER_ID)
+
+      # Windows
+      - job:
+        workspace:
+            clean: all
+
+        pool:
+          vmImage: 'vs2017-win2016'
+
+        steps:
+
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: ${{ parameters.pyVersion }}
+
+          - powershell: |
+              Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
+            displayName: add conda to PATH
+
+          # Build environment
+          - script: |
+              conda update -n base conda pip setuptools -y
+              conda create --yes --quiet --name $(condaEnvName) python=${{ parameters.pyVersion }}
+              conda env update --name $(condaEnvName) --file devtools/dev-environment.yml
+            displayName: Create and Setup Conda Environment
+            continueOnError: false
+
+          # Package Steps
+          # Install
+          - script: |
+              call activate $(condaEnvName)
+              python -m pip install -e .
+            displayName: Building
+            continueOnError: false
+
+          # Linter
+          - script: |
+              call activate $(condaEnvName)
+              flake8 .
+            displayName: Linting
+            continueOnError: true
+
+          # Run tests
+          - script: |
+              call activate $(condaEnvName)
+              pytest . --cov=interfacea --cov-report=xml
+            displayName: Testing
