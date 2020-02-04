@@ -1,0 +1,8 @@
+steps:
+  # Build environment
+  - script: |
+      conda update -n base conda pip setuptools -y
+      conda create --yes --quiet --name $(condaEnvName) python=%PYTHON_VERSION%
+      conda env update --name $(condaEnvName) --file devtools/dev-environment.yml
+    displayName: Create and Setup Conda Environment
+    continueOnError: false

@@ -1,0 +1,54 @@
+parameters:
+  displayName: ''
+  pyVersion: ''
+
+jobs:
+  - job:
+    workspace:
+        clean: all
+
+    displayName: ${{ parameters.displayName }}
+
+    strategy:
+      matrix:
+        linux:
+          imageName: 'ubuntu-latest'
+        mac:
+          imageName: 'macOS-10.14'
+        windows:
+          imageName: 'vs2017-win2016'
+
+    variables:
+      - ${{ if eq(variables['Agent.OS'], 'Windows_NT') }}:
+        source_or_call: 'call'
+      - ${{ if ne(variables['Agent.OS'], 'Windows_NT') }}:
+        source_or_call: 'source'
+
+    steps:
+
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: ${{ parameters.pyVersion }}
+
+      # Modify PATH depending on the OS
+      - ${{ if ne(parameters.displayName, 'Windows') }}:
+        - script: echo "##vso[task.prependpath]$CONDA/bin"
+          displayName: Add Conda to PATH
+
+      - ${{ if eq(parameters.displayName, 'Windows') }}:
+        - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
+          displayName: Add Conda to PATH
+
+      # Build environment
+      - template: setup_conda_env.yml
+
+      # OSX-specific
+      - ${{ if eq(parameters.displayName, 'OSX') }}:
+        - bash: sudo chown -R $USER $CONDA
+          displayName: Take ownership of conda installation
+
+      # Install Package
+      - script: |
+          $(source_or_call) activate $(condaEnvName)
+          python -m pip install -e .
+        displayName: Build & Install
