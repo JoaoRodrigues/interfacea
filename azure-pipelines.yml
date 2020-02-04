@@ -1,9 +1,13 @@
 trigger:
   batch: true
-  - reorg
+  branches:
+    include:
+      - reorg
 
 pr:
-  - reorg
+  branches:
+    include:
+      - reorg
 
 variables:
   condaEnvName: interfacea-ci
