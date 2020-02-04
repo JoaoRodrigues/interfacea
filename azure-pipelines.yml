@@ -1,3 +1,9 @@
+trigger:
+  - reorg
+
+pr:
+  - reorg
+
 variables:
   condaEnvName: interfacea-ci
 
