@@ -22,6 +22,7 @@ Module containing generic classes for reading/parsing molecular data.
 from dataclasses import dataclass
 
 from interfacea.io.pdb import PDBReader
+from interfacea.chemistry.elements import Element, unk
 
 # Maps extensions to reader classes.
 readers = {
@@ -48,7 +49,7 @@ class AtomRecord:
     occ: float
     b: float
     segid: str
-    element_name: str
+    element: Element = unk  # default to unknown
 
 
 class Reader(object):

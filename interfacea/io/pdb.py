@@ -24,10 +24,11 @@ import logging
 import warnings
 
 from interfacea.exceptions import (
-    PDBFormatError,
-    PDBFormatWarning
+    PDBReaderError,
+    PDBReaderWarning
 )
 import interfacea.io.base as io_base
+from interfacea.chemistry.elements import mapping as elem_map
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
@@ -45,8 +46,8 @@ class PDBReader(object):
             file if set to True. Defaults to False.
     Raises:
         FileNotFoundError: if the input file cannot be read.
-        PDBFormatError: if a record line cannot be parsed correctly.
-        PDBFormatWarning: if PDBFormatError is raised on an ATOM/HETATM line
+        PDBReaderError: if a record line cannot be parsed correctly.
+        PDBReaderWarning: if PDBReaderError is raised on an ATOM/HETATM line
             but permissive it set to True.
     """
 
@@ -100,14 +101,14 @@ class PDBReader(object):
         if self.rectype == 'MODEL':
             if self._inmodel:
                 emsg = f"Missing ENDMDL record before line {self.lineno}"
-                raise PDBFormatError(emsg) from None
+                raise PDBReaderError(emsg) from None
 
             self._inmodel = True
 
         else:
             if not self._inmodel:
                 emsg = f"ENDMDL record outside of MODEL on line {self.lineno}"
-                raise PDBFormatError(emsg) from None
+                raise PDBReaderError(emsg) from None
 
             self._inmodel = False
             self._model_no += 1  # increment
@@ -134,24 +135,55 @@ class PDBReader(object):
                 float(line[54:60]),
                 float(line[60:66]),
                 line[72:76].strip(),
-                line[76:78],
+                # line[76:78].strip(),  # auto-guess element
             )
         except Exception as err:
             emsg = f"Could not parse atom on line {self.lineno}"
             if self.permissive:
                 emsg += " Ignoring."
-                warnings.warn(emsg, PDBFormatWarning)
+                warnings.warn(emsg, PDBReaderWarning)
             else:
-                raise PDBFormatError(emsg) from err
+                raise PDBReaderError(emsg) from err
         else:
+            atom.element = self._guess_element(line[12:16])
             self._data.append(atom)
             self._serial += 1
+
+    def _guess_element(self, name_string):
+        """Tries to infer the atomic element from the atom name.
+
+        Adapted from Biopython's Atom.py code.
+
+        Args:
+            name_string (str): the full 4-char string defined in ATOM records.
+
+        Returns:
+            Element object.
+        """
+
+        stripped_name = name_string.strip()
+
+        if name_string[0].isalpha() and not name_string[2:].isdigit():
+            putative_elem = stripped_name
+        elif stripped_name[0].isdigit():  # e.g. 1HE2
+            putative_elem = stripped_name[1]
+        else:
+            putative_elem = stripped_name[0]
+
+        element = elem_map.get(putative_elem.capitalize())
+        if element.symbol is None:
+            warnings.warn(
+                f"Could not assign element from atom name: '{name_string}'",
+                PDBReaderWarning
+            )
+
+        return element
 
     def check_models(self):
         """Asserts number of atoms is the same in all models.
 
         Raises:
-            PDBFormatError: if the check fails.
+            PDBReaderError: if the check fails.
         """
 
         a_p_m = collections.defaultdict(lambda: 0)  # atoms per model
@@ -160,4 +192,4 @@ class PDBReader(object):
 
         if len(set(a_p_m.values())) != 1:
             emsg = 'Models have different number of atoms'
-            raise PDBFormatError(emsg)
+            raise PDBReaderError(emsg)
