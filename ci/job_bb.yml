@@ -2,7 +2,7 @@ parameters:
   displayName: ''
   pyVersion: ''
 
- stages:
+stages:
   - stage: "${{ parameters.displayName }}"  # stage names must be unique
     dependsOn: []
 
