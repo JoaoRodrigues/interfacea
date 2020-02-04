@@ -27,9 +27,9 @@ import dataclasses
 class Element:
     """Base class to represent an atomic element."""
 
-    symbol: str
-    fullname: str
-    atomic_number: int
+    symbol: str = None
+    fullname: str = None
+    atomic_number: int = None
 
     def __len__(self):
         """bool(Element) == False if the symbol is empty"""
@@ -37,7 +37,7 @@ class Element:
 
 
 # Singletons
-unk = Element(None, None, None)
+unk = Element()
 hydrogen = Element("H", "hydrogen", 1)
 carbon = Element("C", "carbon", 6)
 nitrogen = Element("N", "nitrogen", 7)
