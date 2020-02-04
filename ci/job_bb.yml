@@ -39,15 +39,6 @@ stages:
             inputs:
               versionSpec: ${{ parameters.pyVersion }}
 
-          # Modify PATH depending on the OS
-          - script: echo "##vso[task.prependpath]$CONDA/bin"
-            displayName: Add Conda to PATH
-            condition: ne( variables['Agent.OS'], 'Windows_NT' )
-
-          - powershell:
-            displayName: Add Conda to PATH
-            condition: eq( variables['Agent.OS'], 'Windows_NT' )
-
           # Build environment
           - script: |
               conda update -n base conda pip setuptools -y
