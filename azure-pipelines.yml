@@ -18,18 +18,7 @@ stages:
       displayName: Py37
       pyVersion: 3.7
 
-# stages:
-#   - template: ./ci/job_win10.yml
-#     parameters:
-#       OS: 'Windows'
-#       image: 'vs2017-win2016'
-
-#   - template: ./ci/job_linux.yml
-#     parameters:
-#       OS: 'Linux'
-#       image: 'ubuntu-latest'
-
-#   - template: ./ci/job_osx.yml
-#     parameters:
-#       OS: 'OSX'
-#       image: 'macOS-10.14'
+  # - template: ci/job_bb.yml
+  #   parameters:
+  #     displayName: Py38
+  #     pyVersion: 3.8
