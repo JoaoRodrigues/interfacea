@@ -38,13 +38,13 @@ stages:
               versionSpec: ${{ parameters.pyVersion }}
 
           # Modify PATH depending on the OS
-          - ${{ if ne(parameters.displayName, 'Windows') }}:
-            - script: echo "##vso[task.prependpath]$CONDA/bin"
-              displayName: Add Conda to PATH
+          - script: echo "##vso[task.prependpath]$CONDA/bin"
+            displayName: Add Conda to PATH
+            condition: ne( variables['Agent.OS'], 'Windows_NT' )
 
-          - ${{ if eq(parameters.displayName, 'Windows') }}:
-            - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
-              displayName: Add Conda to PATH
+          - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
+            displayName: Add Conda to PATH
+            condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
           # Build environment
           - script: |
@@ -55,9 +55,9 @@ stages:
             continueOnError: false
 
           # OSX-specific
-          - ${{ if eq(parameters.displayName, 'OSX') }}:
-            - bash: sudo chown -R $USER $CONDA
-              displayName: Take ownership of conda installation
+          - bash: sudo chown -R $USER $CONDA
+            displayName: Take ownership of conda installation
+            condition: ne( variables['Agent.OS'], 'Darwin' )
 
           # Package Steps
           # Install
