@@ -21,7 +21,7 @@ stages:
               imageName: 'vs2017-win2016'
 
         variables:
-          - ${{ if eq($env:imageName, 'vs2017-win2016') }}:
+          - ${{ if eq('$(imageName)', 'vs2017-win2016') }}:
               source_or_call: 'call'
           - ${{ if ne($env:imageName, 'vs2017-win2016') }}:
               source_or_call: 'source'
