@@ -16,5 +16,45 @@
 # limitations under the License.
 
 """
-Module containing classes to represent atomic elements.
+Module containing data and classes to handle atomic elements.
 """
+
+import collections
+import dataclasses
+
+
+@dataclasses.dataclass
+class Element:
+    """Base class to represent an atomic element."""
+
+    symbol: str
+    fullname: str
+    atomic_number: int
+
+    def __len__(self):
+        """bool(Element) == False if the symbol is empty"""
+        return self.symbol is not None
+
+
+# Singletons
+unk = Element(None, None, None)
+hydrogen = Element("H", "hydrogen", 1)
+carbon = Element("C", "carbon", 6)
+nitrogen = Element("N", "nitrogen", 7)
+oxygen = Element("O", "oxygen", 8)
+sulfur = Element("S", "sulfur", 16)
+
+# Mapping: defaults to empty element
+# No need to keep a large dictionary with
+# all elements...
+mapping = collections.defaultdict(lambda: unk)
+
+_knowns = {
+    "H": hydrogen,
+    "C": carbon,
+    "N": nitrogen,
+    "O": oxygen,
+    "S": sulfur,
+}
+
+mapping.update(_knowns)
