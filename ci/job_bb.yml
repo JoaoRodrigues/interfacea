@@ -22,9 +22,9 @@ stages:
 
         variables:
           - ${{ if eq(variables['Agent.OS'], 'Windows_NT') }}:
-            source_or_call: 'call'
+              source_or_call: 'call'
           - ${{ if ne(variables['Agent.OS'], 'Windows_NT') }}:
-            source_or_call: 'source'
+              source_or_call: 'source'
 
         steps:
 
