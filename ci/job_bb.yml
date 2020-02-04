@@ -27,10 +27,12 @@ stages:
           # Define how to call/source conda envs based on Agent.OS
           - script: |
               echo "##vso[task.setvariable variable=activate]call"
+              Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
             condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
           - script: |
               echo "##vso[task.setvariable variable=activate]source"
+              echo "##vso[task.prependpath]$CONDA/bin"
             condition: ne( variables['Agent.OS'], 'Windows_NT' )
 
           - task: UsePythonVersion@0
@@ -42,14 +44,14 @@ stages:
             displayName: Add Conda to PATH
             condition: ne( variables['Agent.OS'], 'Windows_NT' )
 
-          - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
+          - powershell:
             displayName: Add Conda to PATH
             condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
           # Build environment
           - script: |
               conda update -n base conda pip setuptools -y
-              conda create --yes --quiet --name $(condaEnvName) python=%PYTHON_VERSION%
+              conda create --yes --quiet --name $(condaEnvName) python=${{ parameters.pyVersion }}
               conda env update --name $(condaEnvName) --file devtools/dev-environment.yml
             displayName: Create and Setup Conda Environment
             continueOnError: false
@@ -57,7 +59,7 @@ stages:
           # OSX-specific
           - bash: sudo chown -R $USER $CONDA
             displayName: Take ownership of conda installation
-            condition: ne( variables['Agent.OS'], 'Darwin' )
+            condition: eq( variables['Agent.OS'], 'Darwin' )
 
           # Package Steps
           # Install
