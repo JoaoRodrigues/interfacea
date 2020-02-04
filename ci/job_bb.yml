@@ -1,6 +1,7 @@
 parameters:
   displayName: ''
   pyVersion: ''
+  OS: variables['Agent.OS']
 
 stages:
   - stage: "${{ parameters.displayName }}"  # stage names must be unique
@@ -21,9 +22,9 @@ stages:
               imageName: 'vs2017-win2016'
 
         variables:
-          - ${{ if eq(variables['Agent.OS'], 'Windows_NT') }}:
+          - ${{ if eq(parameters.OS, 'Windows_NT') }}:
               source_or_call: 'call'
-          - ${{ if ne(variables['Agent.OS'], 'Windows_NT') }}:
+          - ${{ if ne(parameters.OS, 'Windows_NT') }}:
               source_or_call: 'source'
 
         steps:
