@@ -1,24 +1,24 @@
 trigger:
-  - reorg
+  batch: true
+  branches:
+    include:
+      - reorg
 
 pr:
-  - reorg
+  branches:
+    include:
+      - reorg
 
 variables:
   condaEnvName: interfacea-ci
 
 stages:
-  - template: ./ci/job_win10.yml
+  - template: ci/jobs.yml
     parameters:
-      OS: 'Windows'
-      image: 'vs2017-win2016'
+      displayName: Py37
+      pyVersion: 3.7
 
-  - template: ./ci/job_linux.yml
-    parameters:
-      OS: 'Linux'
-      image: 'ubuntu-latest'
-
-  - template: ./ci/job_osx.yml
-    parameters:
-      OS: 'OSX'
-      image: 'macOS-10.14'
+  # - template: ci/jobs.yml
+  #   parameters:
+  #     displayName: Py38
+  #     pyVersion: 3.8
