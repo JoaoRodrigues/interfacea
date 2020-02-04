@@ -21,16 +21,12 @@ stages:
               imageName: 'vs2017-win2016'
 
         variables:
-          - ${{ if eq(variables.imageName, 'vs2017-win2016') }}:
+          - ${{ if eq('$(imageName)', 'vs2017-win2016') }}:
               source_or_call: 'call'
-          - ${{ if ne(variables.imageName, 'vs2017-win2016') }}:
+          - ${{ if ne($env:imageName, 'vs2017-win2016') }}:
               source_or_call: 'source'
 
         steps:
-          # Define how to call/source conda envs based on Agent.OS
-          # - script: |
-
-          #   condition: eq( variables['Agent.OS'], 'Linux' )
 
           - task: UsePythonVersion@0
             inputs:
