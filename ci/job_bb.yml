@@ -53,6 +53,6 @@ stages:
 
           # Install Package
           - script: |
-              $(conda.activate) activate $(condaEnvName)
+              $ACTIVATE activate $(condaEnvName)
               python -m pip install -e .
             displayName: Build & Install
