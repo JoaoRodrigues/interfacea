@@ -22,7 +22,7 @@ Exceptions raised by modules and classes across interfacea.
 # Warnings
 
 
-class PDBFormatWarning(Warning):
+class PDBReaderWarning(Warning):
     pass
 
 
@@ -40,5 +40,5 @@ class DuplicateAltLocError(InterfaceBaseException):
     pass
 
 
-class PDBFormatError(InterfaceBaseException):
+class PDBReaderError(InterfaceBaseException):
     pass
