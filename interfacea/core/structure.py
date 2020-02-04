@@ -180,19 +180,14 @@ class DisorderedAtom(object):
             DuplicateAltLocError: if there is already a child with this
                 altloc identifier in the DisorderedAtom object.
         """
-        if isinstance(atom, Atom):
-            if atom.altloc in self.children:
-                emsg = f"Altloc '{atom.altloc}' already exists in {self}"
-                raise DuplicateAltLocError(emsg) from None
-        else:
-            emsg = f"{atom} is not an Atom: {type(atom)}"
-            raise TypeError(emsg) from None
+
+        if atom.altloc in self.children:
+            emsg = f"Altloc '{atom.altloc}' already exists in {self}"
+            raise DuplicateAltLocError(emsg) from None
 
         self.children[atom.altloc] = atom
-        try:
-            if atom.occ > self.selected_child.occ:
-                self.selected_child = atom
-        except AttributeError:  # selected is None
+
+        if not (self.selected_child and self.selected_child.occ >= atom.occ):
             self.selected_child = atom
 
     def from_list(self, atomlist):
