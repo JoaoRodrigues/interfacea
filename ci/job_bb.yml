@@ -51,8 +51,45 @@ stages:
             - bash: sudo chown -R $USER $CONDA
               displayName: Take ownership of conda installation
 
-          # Install Package
+          # Package Steps
+          # Install
           - script: |
               $ACTIVATE activate $(condaEnvName)
               python -m pip install -e .
-            displayName: Build & Install
+            displayName: Building
+            continueOnError: false
+
+          # Linter
+          - script: |
+              $ACTIVATE activate $(condaEnvName)
+              flake8 .
+            displayName: Linting
+            continueOnError: true
+
+          # PyTest (only push to CodeClimate on Linux and master branch commits/PRs)
+          - script: |
+              $ACTIVATE activate $(condaEnvName)
+              curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+              chmod +x ./cc-test-reporter
+              ./cc-test-reporter before-build
+            condition: and( eq(variables['Agent.OS'], 'Linux'), contains(variables['Build.SourceBranch'], 'refs/heads/master') )
+            env:
+              GIT_BRANCH: $(Build.SourceBranchName)
+              GIT_COMMIT: $(Build.SourceVersion)
+              CC_TEST_REPORTER_ID: $(CC_TEST_REPORTER_ID)
+
+          # Run tests for all images/versions
+          - script: |
+              $ACTIVATE activate $(condaEnvName)
+              pytest . --cov=interfacea --cov-report=xml
+            displayName: Testing
+
+          - script: |
+              $ACTIVATE activate $(condaEnvName)
+              ./cc-test-reporter format-coverage -t coverage.py -o coverage/codeclimate.json coverage.xml
+              ./cc-test-reporter upload-coverage
+            condition: and( eq(variables['Agent.OS'], 'Linux'), contains(variables['Build.SourceBranch'], 'refs/heads/master') )
+            env:
+              GIT_BRANCH: $(Build.SourceBranchName)
+              GIT_COMMIT: $(Build.SourceVersion)
+              CC_TEST_REPORTER_ID: $(CC_TEST_REPORTER_ID)
