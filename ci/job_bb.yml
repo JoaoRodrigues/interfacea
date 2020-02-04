@@ -20,13 +20,17 @@ stages:
             windows:
               imageName: 'vs2017-win2016'
 
-        variables:
-          - ${{ if eq('$(imageName)', 'vs2017-win2016') }}:
-              source_or_call: 'call'
-          - ${{ if ne($env:imageName, 'vs2017-win2016') }}:
-              source_or_call: 'source'
-
         steps:
+          # Define how to call/source conda envs based on Agent.OS
+          - script: |
+              echo "##vso[task.setvariable variable=activate]call"
+            condition: eq( variables['Agent.OS'], 'Windows_NT' )
+            name: conda
+
+          - script: |
+              echo "##vso[task.setvariable variable=activate]source"
+            condition: ne( variables['Agent.OS'], 'Windows_NT' )
+            name: conda
 
           - task: UsePythonVersion@0
             inputs:
@@ -51,6 +55,6 @@ stages:
 
           # Install Package
           - script: |
-              $(source_or_call) activate $(condaEnvName)
+              $(conda.activate) activate $(condaEnvName)
               python -m pip install -e .
             displayName: Build & Install
