@@ -57,7 +57,7 @@ class PDBReader(object):
             'ATOM': self._parse_atom,
             'HETATM': self._parse_atom,
             'MODEL': self._parse_model,
-            'ENDMDL': self._parse_model,
+            'ENDMDL': self._parse_endmdl,
         }
 
         self._data = []
@@ -96,23 +96,23 @@ class PDBReader(object):
             p()  # parse line
 
     def _parse_model(self):
-        """Parses MODEL/ENDMDL records"""
+        """Parses MODEL records"""
 
-        if self.rectype == 'MODEL':
-            if self._inmodel:
-                emsg = f"Missing ENDMDL record before line {self.lineno}"
-                raise PDBReaderError(emsg) from None
+        if self._inmodel:
+            emsg = f"Missing ENDMDL record before line {self.lineno}"
+            raise PDBReaderError(emsg) from None
 
-            self._inmodel = True
+        self._inmodel = True
 
-        else:
-            if not self._inmodel:
-                emsg = f"ENDMDL record outside of MODEL on line {self.lineno}"
-                raise PDBReaderError(emsg) from None
+    def _parse_endmdl(self):
+        """Parses ENDMDL records"""
+        if not self._inmodel:
+            emsg = f"ENDMDL record outside of MODEL on line {self.lineno}"
+            raise PDBReaderError(emsg) from None
 
-            self._inmodel = False
-            self._model_no += 1  # increment
-            self._serial = 0  # reset
+        self._inmodel = False
+        self._model_no += 1  # increment
+        self._serial = 0  # reset
 
     def _parse_atom(self):
         """Parses ATOM/HETATM records"""
