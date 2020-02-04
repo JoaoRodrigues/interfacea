@@ -39,6 +39,94 @@ from interfacea.exceptions import (
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
+###############################################################################
+class Atom(object):
+    """Container class to store atomic metadata.
+
+    Args:
+        name (str): string to identify the atom.
+        serial  (int): numerical index of the atom.
+
+        hetatm  (bool, optional): flag to identify HETATMs.
+        altloc  (str, optional): identifier for alternate location.
+        resname (str, optional): name of the parent residue.
+        resid   (int, optional): residue sequence number.
+        icode   (str, optional): residue insertion code.
+        chain   (str, optional): name of the parent chain.
+        b       (float, optional): temperature factor.
+        occ     (float, optional): fractional occupancy.
+        segid   (str, optional): segment identifier.
+        element (Element, optional): atomic element.
+
+    Attributes:
+        coords  (np.array): array of shape (,3) representing cartesian
+            coordinates of the atom in Angstrom. Only defined when bound
+            to a parent Structure, otherwise raises an error on access.
+    """
+
+    def __init__(self, name, serial, **kwargs):
+        """Manually instantiates an Atom class instance."""
+
+        self._parent = None
+        self._coords = None
+
+        self.name = name
+        self.serial = serial
+
+        self.__dict__.update(kwargs)
+
+    # Dunder methods
+    def __str__(self):
+        """Pretty string representation of the Atom object."""
+        return f"<Atom name={self.name} serial={self.serial}>"
+
+    # Public Methods/Attributes
+    @classmethod
+    def from_atomrecord(cls, record):
+        """Creates an Atom class instance from an AtomRecord dataclass.
+
+        Args:
+            atomdata (io.AtomRecord): data class containing information to
+                create the Atom object
+        """
+
+        attrs = record.__dict__.copy()
+        del attrs['name']
+        del attrs['serial']
+        return cls(record.name, record.serial, **attrs)
+
+    @property
+    def parent(self):
+        """Returns the structure the Atom belongs to or None if unbound."""
+        return self._parent()
+
+    @parent.setter
+    def parent(self, value):
+        if isinstance(value, Structure):
+            self._parent = weakref.ref(value)  # avoid uncollected garbage
+        else:
+            emsg = f"Parent object must be a Structure type."
+            raise TypeError(emsg)
+
+    @parent.deleter
+    def parent(self):
+        del self._parent
+
+    @property
+    def coords(self):
+        """Cartesian coordinates of the atom.
+
+        Raises:
+            AttributeError: atom is not bound to a Structure object.
+        """
+        try:
+            return self.parent.coords[self.serial]
+        except AttributeError:
+            emsg = f"Atom is not bound to a parent Structure."
+            raise AttributeError(emsg) from None
+
+
+###############################################################################
 class DisorderedAtom(object):
     """Wrapper class for several Atoms sharing the same metadata.
 
@@ -132,96 +220,7 @@ class DisorderedAtom(object):
             raise KeyError(emsg) from None
 
 
-class Atom(object):
-    """Container class to store atomic metadata.
-
-    Args:
-        name (str): string to identify the atom (e.g. 'CA').
-        serial  (int): numerical index of the atom.
-
-        hetatm  (bool, optional): flag to identify HETATMs.
-        altloc  (str, optional): identifier for alternate location.
-        resname (str, optional): name of the parent residue.
-        resid   (int, optional): residue sequence number.
-        icode   (str, optional): residue insertion code.
-        chain   (str, optional): name of the parent chain.
-        b       (float, optional): temperature factor.
-        occ     (float, optional): fractional occupancy.
-        segid   (str, optional): segment identifier.
-
-    Attributes:
-        coords  (np.array): array of shape (,3) representing cartesian
-            coordinates of the atom in Angstrom.
-        element (Element): atomic element.
-    """
-
-    @classmethod
-    def from_atomrecord(cls, record):
-        """Creates an Atom class instance from an AtomRecord dataclass.
-
-        Args:
-            atomdata (io.AtomRecord): data class containing information to
-                create the Atom object
-        """
-
-        attrs = record.__dict__.copy()
-        del attrs['name']
-        del attrs['serial']
-        return cls(record.name, record.serial, **attrs)
-
-    def __init__(self, name, serial, **kwargs):
-        """Manually instantiates an Atom class instance."""
-
-        self._parent = None
-        self._coords = None
-
-        self.name = name
-        self.serial = serial
-
-        self.__dict__.update(kwargs)
-
-        # self._guess_element()
-
-    def __str__(self):
-        """Pretty string representation of the Atom object."""
-        return f"<Atom name={self.name} serial={self.serial}>"
-
-    @property
-    def parent(self):
-        """Returns the structure the Atom belongs to or None if unbound."""
-        return self._parent()
-
-    @parent.setter
-    def parent(self, value):
-        if isinstance(value, Structure):
-            self._parent = weakref.ref(value)  # avoid uncollected garbage
-        else:
-            emsg = f"Parent object must be a Structure type."
-            raise TypeError(emsg)
-
-    @parent.deleter
-    def parent(self):
-        del self._parent
-
-    @property
-    def coords(self):
-        """Cartesian coordinates of the atom.
-
-        Raises:
-            AttributeError: atom is not bound to a Structure object.
-        """
-        try:
-            return self.parent.coords[self.serial]
-        except AttributeError:
-            emsg = f"Atom is not bound to a parent Structure."
-            raise AttributeError(emsg) from None
-
-    # def _guess_element(self):
-    #     """Guesses atomic element from atom name."""
-
-    #     alpha = re.sub("[^a-zA-Z]", "", self.name)
-
-
+###############################################################################
 class Structure(object):
     """Represents 3D molecules as collections of atoms.
 
