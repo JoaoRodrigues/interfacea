@@ -89,6 +89,7 @@ stages:
 
       # Windows
       - job:
+        displayName: 'windows'
         workspace:
             clean: all
 
