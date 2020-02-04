@@ -124,8 +124,14 @@ following commands:
 
     # Develop away...
 
-    # ADD TESTS HERE
-    # ....
+    # Run unit tests to make sure there are no regressions
+    # both in test failures and coverage %
+    coverage run -m pytest
+    coverage report
+
+    # Push to a feature branch, open an issue describing the problem
+    # if you haven't done already, and create a pull request so that
+    # we can check your contribution and accept it!
 
 Contributing Documentation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -240,8 +246,8 @@ actions is setup in a *stage* in Azure DevOps terminology.
 
 These pipelines are controlled by the :code:`azure-pipelines.yml` file, as
 well as its dependencies in the :code:`ci/` folder. By default, we run
-builds and the testing framework against several versions of Python - using
-tox - and all three major OSes (Windows, Mac OSX, and Linux).
+builds and the testing framework against multiple version of Python and
+all three major OSes (Windows, Mac OSX, and Linux).
 
 As with the rest of the library, we welcome pull requests that improve or
 correct our continuous integration practices!
