@@ -47,7 +47,7 @@ stages:
           # Install
           - script: |
               source activate $(condaEnvName)
-              python -m pip install -e .
+              python setup.py develop --no-deps
             displayName: Building
             continueOnError: false
 
@@ -117,7 +117,7 @@ stages:
           # Install
           - script: |
               call activate $(condaEnvName)
-              python -m pip install -e .
+              python setup.py develop --no-deps
             displayName: Building
             continueOnError: false
 
