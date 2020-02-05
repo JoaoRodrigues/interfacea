@@ -19,6 +19,9 @@ interfacea
 
 .. start-description
 
+**Disclaimer**
+Our code is undergoing a drastic remodelling - for production, use `this version <https://github.com/JoaoRodrigues/interfacea/releases/tag/0.1-beta>`_
+
 interfacea is a Python library to analyze geometric and energetic features of
 protein interfaces. It implements a graph-based functional group
 representation that allows for fast detection of several types of chemical
@@ -28,8 +31,6 @@ operations on atomic structures under a variety of force fields.
 
 We welcome contributions and suggestions to our project - please read our
 contributing guidelines.
-
-**Our code is undergoing a drastic remodelling - for production, use `this version <https://github.com/JoaoRodrigues/interfacea/releases/tag/0.1-beta>`_**
 
 .. end-description
 
