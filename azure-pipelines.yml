@@ -2,12 +2,12 @@ trigger:
   batch: true
   branches:
     include:
-      - reorg
+      - refactor_v1
 
 pr:
   branches:
     include:
-      - reorg
+      - refactor_v1
 
 variables:
   condaEnvName: interfacea-ci
