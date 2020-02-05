@@ -29,6 +29,8 @@ operations on atomic structures under a variety of force fields.
 We welcome contributions and suggestions to our project - please read our
 contributing guidelines.
 
+**Our code is undergoing a drastic remodelling - for production, use `this version <https://github.com/JoaoRodrigues/interfacea/releases/tag/0.1-beta>`_**
+
 .. end-description
 
 .. start-intro
