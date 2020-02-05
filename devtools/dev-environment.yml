@@ -7,11 +7,13 @@ dependencies:
   - networkx
   - openmm
   - pdbfixer
+
   # dev deps
   - flake8
   - pytest
+  - codecov
   - pip
   - pip:
     - pre-commit
-    - coverage
     - pytest-cov
+
