@@ -361,6 +361,7 @@ class Structure(object):
 
         return (atoms, coords)
 
+    @staticmethod
     def _build_with_altlocs(recdict):
         """Builds DisorderedAtom wrappers if necessary.
 
