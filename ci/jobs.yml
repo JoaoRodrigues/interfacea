@@ -80,7 +80,7 @@ stages:
               source activate $(condaEnvName)
               codecov
             # condition: and( eq(variables['Agent.OS'], 'Linux'), in(variables['Build.Reason'], 'IndividualCI', 'BatchedCI') )
-            condition: eq(variables['Agent.OS'], 'Linux')
+            # condition: eq(variables['Agent.OS'], 'Linux')
             env:
               GIT_BRANCH: $(Build.SourceBranchName)
               GIT_COMMIT: $(Build.SourceVersion)
