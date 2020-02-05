@@ -9,13 +9,13 @@ interfacea
    :target: https://dev.azure.com/jpglmrodrigues/interfacea-ci/_build/latest?definitionId=1&branchName=reorg
    :alt: Azure Build Check
 
-.. image:: https://api.codeclimate.com/v1/badges/ca054443ee84f96d748a/test_coverage
-   :target: https://codeclimate.com/github/JoaoRodrigues/interfacea/test_coverage
+.. image:: https://codecov.io/gh/JoaoRodrigues/interfacea/branch/refactor_v1/graph/badge.svg
+   :target: https://codecov.io/gh/JoaoRodrigues/interfacea
    :alt: Test Coverage
 
-.. image:: https://api.codeclimate.com/v1/badges/ca054443ee84f96d748a/maintainability
-   :target: https://codeclimate.com/github/JoaoRodrigues/interfacea/maintainability
-   :alt: Maintainability
+.. image:: https://img.shields.io/lgtm/alerts/g/JoaoRodrigues/interfacea.svg?logo=lgtm&logoWidth=18
+   :target: https://lgtm.com/projects/g/JoaoRodrigues/interfacea/alerts/
+   :alt: LGTM Maintainability Score
 
 .. start-description
 
