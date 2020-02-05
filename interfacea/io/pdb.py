@@ -27,7 +27,7 @@ from interfacea.exceptions import (
     PDBReaderError,
     PDBReaderWarning
 )
-import interfacea.io.base as io_base
+from interfacea.io.atomrecord import AtomRecord
 from interfacea.chemistry.elements import mapping as elem_map
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
@@ -119,7 +119,7 @@ class PDBReader(object):
 
         try:
             line = self.line
-            atom = io_base.AtomRecord(
+            atom = AtomRecord(
                 self._serial,
                 self._model_no,
                 self.rectype,
