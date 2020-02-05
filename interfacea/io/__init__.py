@@ -22,7 +22,7 @@ Module containing classes to parse structural data files.
 import pathlib
 
 from interfacea.core import structure
-from interfacea.io.base import Reader
+from .base import Reader
 
 __all__ = ['read']
 

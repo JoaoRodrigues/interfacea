@@ -16,25 +16,32 @@
 # limitations under the License.
 
 """
-Adapter class to resolve parsers.
+Contains AtomRecord class to store information read from coordinate files.
 """
 
-from .pdb import PDBReader
+from dataclasses import dataclass
 
-# Maps extensions to reader classes.
-readers = {
-    '.pdb': PDBReader
-}
+import interfacea.chemistry.elements as e
 
 
-class Reader(object):
-    """Delegates parsing of a file to an appropriate reader class."""
+# Data class to store atomic data _before_ building a structure.
+@dataclass
+class AtomRecord:
+    """Stores data on an ATOM/HETATM line."""
 
-    def __new__(cls, path, **kwargs):
-        try:
-            r = readers[path.suffix]
-        except KeyError:
-            emsg = f"File format not supported ({path.suffix})"
-            raise IOError(emsg) from None
-        else:
-            return r(path, kwargs)
+    serial: int
+    model: int
+    rectype: str
+    name: str
+    altloc: str
+    resname: str
+    chain: str
+    resid: int
+    icode: str
+    x: float
+    y: float
+    z: float
+    occ: float
+    b: float
+    segid: str
+    element: e.Element = e.unk  # default to unknown
