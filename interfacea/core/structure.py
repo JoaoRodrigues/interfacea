@@ -388,9 +388,6 @@ class Structure(object):
         return atoms
 
     # Internal dunder methods
-    def __hash__(self):
-        return hash(self.coord.tobytes())  # coordinate hash
-
     def __str__(self):
         """String representation of the Structure."""
         return f"<Structure name='{self.name}' natoms={self.natoms}>"
