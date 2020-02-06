@@ -197,7 +197,11 @@ class DisorderedAtom(object):
 
         self.children[atom.altloc] = atom
 
-        if not (self.selected_child and self.selected_child.occ >= atom.occ):
+        if not self.selected_child:
+            self.selected_child = atom
+
+        # Replace if atom.occ is larger
+        if self.selected_child.occ < atom.occ:
             self.selected_child = atom
 
     def from_list(self, atomlist):
