@@ -303,6 +303,7 @@ class Structure(object):
                 record_dict,
             )
 
+        logging.debug(f"Successfully built structure with {len(atoms)} atoms")
         return cls(name, coords, atoms)
 
     # Auxiliary methods for build
@@ -351,6 +352,7 @@ class Structure(object):
         for r in recdict:
             locs = recdict[r]
             if len(locs) > 1:
+                logging.debug(f"{r} is disordered: ignoring")
                 locs.sort(key=lambda x: x.occ, reverse=True)
                 locs.sort(key=lambda x: x.serial)
                 to_remove.update((l.serial for l in locs[1:]))
@@ -380,6 +382,7 @@ class Structure(object):
         for r in recdict:
             locs = recdict[r]
             if len(locs) > 1:
+                logging.debug(f"{r} is disordered: nloc={len(locs)}")
                 atom = DisorderedAtom()
                 atomlist = (Atom.from_atomrecord(l) for l in locs)
                 atom.from_list(atomlist)
@@ -427,6 +430,7 @@ class Structure(object):
 
         for atom in self.unpack_atoms():
             atom.parent = self
+        logging.debug('Bound Atoms to self')
 
     def _make_atom_dict(self):
         """Builds a mapping to retrieve individual atoms directly."""
@@ -476,6 +480,7 @@ class Structure(object):
             raise ValueError(emsg)
 
         self._active_model = index
+        logging.debug(f"Set active model to: {index}")
 
     def _bad_access(self):
         """Stub to tell users how to modify attributes in-place."""
