@@ -93,11 +93,21 @@ class Atom(object):
         attrs = record.__dict__.copy()
         del attrs['name']
         del attrs['serial']
+
+        # Ignore x, y, z fields if present
+        for f in ('x', 'y', 'z'):
+            try:
+                del attrs[f]
+            except Exception:
+                pass
+
         return cls(record.name, record.serial, **attrs)
 
     @property
     def parent(self):
         """Returns the structure the Atom belongs to or None if unbound."""
+        if self._parent is None:
+            return None  # unbound
         return self._parent()
 
     @parent.setter
@@ -110,7 +120,7 @@ class Atom(object):
 
     @parent.deleter
     def parent(self):
-        del self._parent
+        self._parent = None
 
     @property
     def coords(self):
@@ -187,7 +197,11 @@ class DisorderedAtom(object):
 
         self.children[atom.altloc] = atom
 
-        if not (self.selected_child and self.selected_child.occ >= atom.occ):
+        if not self.selected_child:
+            self.selected_child = atom
+
+        # Replace if atom.occ is larger
+        if self.selected_child.occ < atom.occ:
             self.selected_child = atom
 
     def from_list(self, atomlist):
@@ -214,6 +228,11 @@ class DisorderedAtom(object):
             emsg = f"Alternate location '{altloc}' not found in {self}"
             raise KeyError(emsg) from None
 
+    @property
+    def nlocs(self):
+        """Returns the number of children in the DisorderedAtom"""
+        return len(self.children)
+
 
 ###############################################################################
 class Structure(object):
@@ -236,6 +255,8 @@ class Structure(object):
     def __init__(self, name, coords, atoms):
         """Creates an instance of the class."""
 
+        assert isinstance(coords, np.ndarray) and coords.ndim == 3
+
         self.name = name
         self._coords = coords
         self.atoms = atoms
@@ -246,7 +267,6 @@ class Structure(object):
         self.model = 0  # default
 
         self._bind_atoms()
-        self._make_atom_dict()
 
     # Class method to build structure from parser data.
     @classmethod
@@ -300,6 +320,7 @@ class Structure(object):
                 record_dict,
             )
 
+        logging.debug(f"Successfully built structure with {len(atoms)} atoms")
         return cls(name, coords, atoms)
 
     # Auxiliary methods for build
@@ -348,6 +369,7 @@ class Structure(object):
         for r in recdict:
             locs = recdict[r]
             if len(locs) > 1:
+                logging.debug(f"{r} is disordered: ignoring")
                 locs.sort(key=lambda x: x.occ, reverse=True)
                 locs.sort(key=lambda x: x.serial)
                 to_remove.update((l.serial for l in locs[1:]))
@@ -377,6 +399,7 @@ class Structure(object):
         for r in recdict:
             locs = recdict[r]
             if len(locs) > 1:
+                logging.debug(f"{r} is disordered: nloc={len(locs)}")
                 atom = DisorderedAtom()
                 atomlist = (Atom.from_atomrecord(l) for l in locs)
                 atom.from_list(atomlist)
@@ -388,9 +411,6 @@ class Structure(object):
         return atoms
 
     # Internal dunder methods
-    def __hash__(self):
-        return hash(self.coord.tobytes())  # coordinate hash
-
     def __str__(self):
         """String representation of the Structure."""
         return f"<Structure name='{self.name}' natoms={self.natoms}>"
@@ -400,43 +420,13 @@ class Structure(object):
         for atom in self.atoms:
             yield atom
 
-    def __getitem__(self, key):
-        """Returns an Atom from the structure.
-
-        Args:
-            key (str): The key is a unique identifier for an Atom formed by
-                four elements: 'chain:residue number:icode:atom name'.
-                e.g. 'A:65::CA', 'X:12:B:CB'
-
-        Returns:
-            Atom object corresponding to the input key.
-
-        Raises:
-            KeyError: the atom was not found in the structure.
-        """
-
-        try:
-            return self.atoms[self._atom_dict[key]]
-        except KeyError:
-            emsg = f"Atom '{key}' not found in structure"
-            raise KeyError(emsg) from None
-
     # 'Private' Methods
     def _bind_atoms(self):
         """Attaches current Atom objects to this Structure object."""
 
         for atom in self.unpack_atoms():
             atom.parent = self
-
-    def _make_atom_dict(self):
-        """Builds a mapping to retrieve individual atoms directly."""
-
-        _atom_dict = {}
-        for a in self.atoms:
-            key = f"{a.chain}:{a.resid}:{a.icode}:{a.name}"
-            _atom_dict[key] = a.serial  # serial or ref?
-        self._atom_dict = _atom_dict
-        logging.debug(f'Built atom mapping for __getitem__')
+        logging.debug('Bound Atoms to self')
 
     # Public Methods
     def unpack_atoms(self):
@@ -465,6 +455,7 @@ class Structure(object):
             raise ValueError(emsg)
 
         self._active_model = index
+        logging.debug(f"Set active model to: {index}")
 
     def _bad_access(self):
         """Stub to tell users how to modify attributes in-place."""
@@ -486,10 +477,10 @@ class Structure(object):
         self._bad_access()
 
     @property
-    def coords_array(self):
+    def full_coords(self):
         """Returns a view of the entire coordinate array (all models)."""
         return self._coords
 
-    @coords_array.setter
-    def coords_array(self, value):
+    @full_coords.setter
+    def full_coords(self, value):
         self._bad_access()

@@ -28,22 +28,12 @@ import interfacea.io.pdb as _pdb
 import interfacea.exceptions as e
 
 
-@pytest.mark.parametrize(
-    "ifile",
-    [
-        str(pathlib.Path("tests/data/pdb/default.pdb")),
-    ]
-)
-def test_io_read(ifile):
-    """Successfully runs top-level read function"""
-
-    _io.read(ifile)
-
-
+# Test Failure only. Success tested in TestReader
+# and TestStructure (test_structure.py)
 @pytest.mark.parametrize(
     "ifile, error",
     [
-        (str(pathlib.Path("tests/data/pdb/foo.bar")), FileNotFoundError),
+        ("whatever/hello", FileNotFoundError),
         (1, Exception)
     ]
 )
