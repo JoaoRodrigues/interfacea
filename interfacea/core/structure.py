@@ -99,6 +99,8 @@ class Atom(object):
     @property
     def parent(self):
         """Returns the structure the Atom belongs to or None if unbound."""
+        if self._parent is None:
+            return None  # unbound
         return self._parent()
 
     @parent.setter
