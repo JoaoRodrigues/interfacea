@@ -224,6 +224,11 @@ class DisorderedAtom(object):
             emsg = f"Alternate location '{altloc}' not found in {self}"
             raise KeyError(emsg) from None
 
+    @property
+    def nlocs(self):
+        """Returns the number of children in the DisorderedAtom"""
+        return len(self.children)
+
 
 ###############################################################################
 class Structure(object):
