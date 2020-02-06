@@ -36,6 +36,8 @@ from interfacea.core.structure import (
 )
 import interfacea.exceptions as e
 
+from . import defaultmdl
+
 
 def test_dummy_structure():
     """Successfully creates a small structure from Atoms"""
@@ -205,27 +207,45 @@ class TestStructure:
         with pytest.raises(KeyError):
             da.select('Z')
 
+    @pytest.fixture(params=[defaultmdl])
+    def structure_from_defaultmdl(self, request):
+        """Read a structure from defaultmdl"""
+        s = read_structure(request.param)
+        return s
+
     # class Structure
-    def test_Structure_io_read(self):
-        """io.read() successfully builds Structure"""
+    #def test_Structure_io_read(self):
+    #    """io.read() successfully builds Structure"""
+    #    s = read_structure(self.defaultmdl)  # io.read()
+    
+    def test_structure_defaultmdl_name(self, structure_from_defaultmdl):
+        print(type(structure_from_defaultmdl))
+        assert structure_from_defaultmdl.name == 'default.pdb'
 
-        s = read_structure(self.defaultmdl)  # io.read()
 
-        assert s.name == 'default.pdb'
-        assert s.natoms == 107
-        assert s.nmodels == 1
-        assert s.precision == np.float16
+    def test_structure_defaultmdl_natoms(self, structure_from_defaultmdl):
+        assert structure_from_defaultmdl.natoms == 107
 
+
+    def test_structure_defaultmdl_nmodels(self, structure_from_defaultmdl):
+        assert structure_from_defaultmdl.nmodels == 1
+
+
+    def test_structure_defaultmdl_precision(self, structure_from_defaultmdl):
+        assert structure_from_defaultmdl.precision == np.float16
+
+    
+    def test_structure_defaultmdl_atoms(self, structure_from_defaultmdl):
         # Check DisorderedAtom
         # Check atoms are bound
-        for atom in s.atoms:
+        for atom in structure_from_defaultmdl.atoms:
             if atom.serial == 18:
                 assert isinstance(atom, DisorderedAtom)
                 assert atom.nlocs == 2
             else:
                 assert isinstance(atom, Atom)
 
-            assert atom.parent is s
+            assert atom.parent is structure_from_defaultmdl
 
     def test_Structure_io_read_noaltlocs(self):
         """io.read() successfully builds Structure (no altloc)"""
