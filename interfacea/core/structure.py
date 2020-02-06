@@ -34,7 +34,6 @@ import numpy as np
 
 from interfacea.exceptions import (
     DuplicateAltLocError,
-    StructureBuildError,
 )
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
@@ -259,7 +258,6 @@ class Structure(object):
         self.model = 0  # default
 
         self._bind_atoms()
-        self._make_atom_dict()
 
     # Class method to build structure from parser data.
     @classmethod
@@ -413,27 +411,6 @@ class Structure(object):
         for atom in self.atoms:
             yield atom
 
-    def __getitem__(self, key):
-        """Returns an Atom from the structure.
-
-        Args:
-            key (str): The key is a unique identifier for an Atom formed by
-                four elements: 'chain:residue number:icode:atom name'.
-                e.g. 'A:65::CA', 'X:12:B:CB'
-
-        Returns:
-            Atom object corresponding to the input key.
-
-        Raises:
-            KeyError: the atom was not found in the structure.
-        """
-
-        try:
-            return self.atoms[self._atom_dict[key]]
-        except KeyError:
-            emsg = f"Atom '{key}' not found in structure"
-            raise KeyError(emsg) from None
-
     # 'Private' Methods
     def _bind_atoms(self):
         """Attaches current Atom objects to this Structure object."""
@@ -441,27 +418,6 @@ class Structure(object):
         for atom in self.unpack_atoms():
             atom.parent = self
         logging.debug('Bound Atoms to self')
-
-    def _make_atom_dict(self):
-        """Builds a mapping to retrieve individual atoms directly."""
-
-        keys = ('chain', 'resid', 'icode', 'name')  # enough to uniq
-
-        _atom_dict = {}
-        for a in self.atoms:
-            key = ':'.join(map(str, (getattr(a, k, '') for k in keys)))
-            _atom_dict[key] = a.serial
-
-        nuniq = len(_atom_dict)
-        if nuniq != self.natoms:
-            emsg = (
-                "Ambiguous atom identifiers:"
-                f"{nuniq} unique vs {self.natoms} total"
-            )
-            raise StructureBuildError(emsg)
-
-        self._atom_dict = _atom_dict
-        logging.debug('Built atom mapping for __getitem__')
 
     # Public Methods
     def unpack_atoms(self):
