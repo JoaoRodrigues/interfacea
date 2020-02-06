@@ -98,15 +98,14 @@ import interfacea.io.atomrecord as _ar
 )
 def test_make_AtomRecord(attrs):
     """Successfully creates AtomRecord class"""
-    for trial in attrs:
-        if 'serial' in attrs and isinstance(attrs['serial'], int):
-            ar = _ar.AtomRecord(*attrs.values())
-            for key, value in attrs.items():
-                assert getattr(ar, key) == value
+    if 'serial' in attrs and isinstance(attrs['serial'], int):
+        ar = _ar.AtomRecord(*attrs.values())
+        for key, value in attrs.items():
+            assert getattr(ar, key) == value
 
-            if 'segid' not in attrs:  # default?
-                assert ar.segid == ''
+        if 'segid' not in attrs:  # default?
+            assert ar.segid == ''
 
-        else:
-            with pytest.raises(TypeError):
-                ar = _ar.AtomRecord(*attrs.values())
+    else:
+        with pytest.raises(TypeError):
+            _ar.AtomRecord(*attrs.values())
