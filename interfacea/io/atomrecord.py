@@ -43,5 +43,15 @@ class AtomRecord:
     z: float
     occ: float
     b: float
-    segid: str
+    segid: str = ''
     element: e.Element = e.unk  # default to unknown
+
+    def __post_init__(self):
+        """Enforce variable types as defined above."""
+
+        for name, defs in self.__dataclass_fields__.items():
+
+            attr = getattr(self, name)
+            if not isinstance(attr, defs.type):
+                emsg = f"Attribute {name} must be {defs.type}: {type(attr)}"
+                raise TypeError(emsg)
