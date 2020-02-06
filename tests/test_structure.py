@@ -34,7 +34,7 @@ from interfacea.core.structure import (
     DisorderedAtom,
     Structure
 )
-# import interfacea.exceptions as e
+import interfacea.exceptions as e
 
 
 def test_dummy_structure():
@@ -139,6 +139,71 @@ class TestStructure:
         a = Atom('N', 0)
         with pytest.raises(AttributeError):
             _ = a.coords
+
+    # class DisorderedAtom
+    def test_DisorderedAtom(self):
+        """Successfully creates DisorderedAtom"""
+        aa = Atom('N', 0, altloc='A', occ=0.8)
+        ab = Atom('C', 1, altloc='B', occ=0.2)
+
+        atoms = [aa, ab]
+
+        da = DisorderedAtom()
+
+        with pytest.raises(AttributeError):
+            _ = da.name  # no children yet
+
+        da.from_list(atoms)
+
+        assert da.nlocs == 2
+        assert da.selected_child == aa
+        assert da.name == 'N' and da.serial == 0
+
+        with pytest.raises(AttributeError):
+            _ = da.missing_attr  # unknown
+
+        # Change attributes (forwarding of setattr)
+        da.name = 'O'
+        assert da.name == 'O'
+
+    def test_DisorderedAtom_add(self):
+        """Successfully adds single Atoms to DisorderedAtom """
+        aa = Atom('N', 0, altloc='A', occ=0.2)
+        ab = Atom('C', 1, altloc='B', occ=0.8)
+
+        da = DisorderedAtom()
+
+        da.add(aa)
+        assert da.nlocs == 1
+        assert da.name == 'N'
+
+        da.add(ab)
+        assert da.nlocs == 2
+        assert da.name == 'C'  # occ(b) > occ(a)
+
+        with pytest.raises(e.DuplicateAltLocError):
+            da.add(aa)
+
+    def test_DisorderedAtom_select(self):
+        """Successfully swaps DisorderedAtom locs"""
+        aa = Atom('N', 0, altloc='A', occ=0.8)
+        ab = Atom('C', 1, altloc='B', occ=0.2)
+
+        atoms = [aa, ab]
+
+        da = DisorderedAtom()
+        da.from_list(atoms)
+
+        assert da.selected_child == aa
+        assert da.name == 'N' and da.serial == 0
+
+        da.select('B')
+
+        assert da.selected_child == ab
+        assert da.name == 'C' and da.serial == 1
+
+        with pytest.raises(KeyError):
+            da.select('Z')
 
     # class Structure
     def test_Structure_io_read(self):
