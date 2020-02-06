@@ -121,7 +121,7 @@ class Atom(object):
 
     @parent.deleter
     def parent(self):
-        del self._parent
+        self._parent = None
 
     @property
     def coords(self):
