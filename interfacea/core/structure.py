@@ -34,6 +34,7 @@ import numpy as np
 
 from interfacea.exceptions import (
     DuplicateAltLocError,
+    StructureBuildError,
 )
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
@@ -428,12 +429,23 @@ class Structure(object):
     def _make_atom_dict(self):
         """Builds a mapping to retrieve individual atoms directly."""
 
+        keys = ('chain', 'resid', 'icode', 'name')  # enough to uniq
+
         _atom_dict = {}
         for a in self.atoms:
-            key = f"{a.chain}:{a.resid}:{a.icode}:{a.name}"
-            _atom_dict[key] = a.serial  # serial or ref?
+            key = ':'.join(map(str, (getattr(a, k, '') for k in keys)))
+            _atom_dict[key] = a.serial
+
+        nuniq = len(_atom_dict)
+        if nuniq != self.natoms:
+            emsg = (
+                "Ambiguous atom identifiers:"
+                f"{nuniq} unique vs {self.natoms} total"
+            )
+            raise StructureBuildError(emsg)
+
         self._atom_dict = _atom_dict
-        logging.debug(f'Built atom mapping for __getitem__')
+        logging.debug('Built atom mapping for __getitem__')
 
     # Public Methods
     def unpack_atoms(self):
