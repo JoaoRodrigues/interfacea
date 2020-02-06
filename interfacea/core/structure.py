@@ -94,6 +94,14 @@ class Atom(object):
         attrs = record.__dict__.copy()
         del attrs['name']
         del attrs['serial']
+
+        # Ignore x, y, z fields if present
+        for f in ('x', 'y', 'z'):
+            try:
+                del attrs[f]
+            except Exception:
+                pass
+
         return cls(record.name, record.serial, **attrs)
 
     @property
