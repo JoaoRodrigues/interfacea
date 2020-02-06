@@ -237,6 +237,8 @@ class Structure(object):
     def __init__(self, name, coords, atoms):
         """Creates an instance of the class."""
 
+        assert isinstance(coords, np.ndarray) and coords.ndim == 3
+
         self.name = name
         self._coords = coords
         self.atoms = atoms
