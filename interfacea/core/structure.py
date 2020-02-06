@@ -473,10 +473,10 @@ class Structure(object):
         self._bad_access()
 
     @property
-    def coords_array(self):
+    def full_coords(self):
         """Returns a view of the entire coordinate array (all models)."""
         return self._coords
 
-    @coords_array.setter
-    def coords_array(self, value):
+    @full_coords.setter
+    def full_coords(self, value):
         self._bad_access()
