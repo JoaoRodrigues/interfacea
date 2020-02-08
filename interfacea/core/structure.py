@@ -34,6 +34,8 @@ from interfacea.exceptions import (
     DuplicateAltLocError,
 )
 
+from interfacea.spatial import kdtrees
+
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
@@ -104,6 +106,24 @@ class Atom(object):
 
         return cls(record.name, record.serial, **attrs)
 
+    # Public Methods
+    def neighbors(self, radius):
+        """Returns all Atoms within a radius of itself.
+
+        Args:
+            radius (float): distance cutoff in Angstrom to consider another
+                Atom a neighbor.
+
+        Raises:
+            ValueError: if the radius is negative or zero.
+        """
+
+        if radius > 0:
+            kdt = self.parent._kdtree
+            return kdt.neighbor_search(self.serial, radius)
+        raise ValueError(f"Radius is not a positive, non-zero number: {radius}")
+
+    # Properties
     @property
     def parent(self):
         """Returns the structure the Atom belongs to or None if unbound."""
@@ -256,6 +276,9 @@ class Structure(object):
     def __init__(self, name, atoms, coords):
         """Creates an instance of the class."""
 
+        # Sanity check if someone decides to make their own Structure
+        assert isinstance(coords, np.ndarray) and coords.ndim == 3
+
         self.name = name
         self._coords = coords
         self.atoms = atoms
@@ -265,7 +288,11 @@ class Structure(object):
 
         self.model = 0  # default
 
+        # Internal variables
+        self._kdtree = None
+
         self._bind_atoms()
+        self._generate_kdtree()
 
     # Class method to build structure from parser data.
     @classmethod
@@ -279,7 +306,7 @@ class Structure(object):
             discard_altloc (bool, optional): ignore atoms with more than one
                 alternate locations. Keeps only the first altloc. If False,
                 builds DisorderedAtom wrappers to store multiple locations.
-                Default is Fale.
+                Default is False.
             precision (np.dtype, optional): numerical precision for storing
                 atomic coordinates. Default is np.float16.
 
@@ -354,6 +381,21 @@ class Structure(object):
 
         for atom in self.unpack_atoms():
             atom.parent = self
+
+    def _generate_kdtree(self):
+        """Creates a KDTree for fast neighbor search.
+
+        KDTree implementation adapted from Biopython by Michiel de Hoon.
+        For details, read the source code at interfacea/src/kdtrees.c
+        """
+
+        if self._kdtree:
+            logging.debug(f"Updating KDTree")
+            del self._kdtree
+
+        xyz = self.coords  # only for active model
+        xyz = np.asarray(xyz, np.float64)  # kdtrees requires double precision
+        self._kdtree = kdtrees.KDTree(xyz)
 
     # Public Methods
     def unpack_atoms(self):
