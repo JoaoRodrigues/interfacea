@@ -60,6 +60,8 @@ class Atom(object):
         coords  (np.array): array of shape (,3) representing cartesian
             coordinates of the atom in Angstrom. Only defined when bound
             to a parent Structure, otherwise raises an error on access.
+        is_disordered (bool): True if the atom has multiple locations, i.e.,
+            is part of a DisorderedAtom object.
     """
 
     def __init__(self, name, serial, **kwargs):
@@ -70,6 +72,7 @@ class Atom(object):
 
         self.name = name
         self.serial = serial
+        self.is_disordered = False
 
         self.__dict__.update(kwargs)
 
@@ -149,12 +152,11 @@ class DisorderedAtom(object):
 
     def __str__(self):
         """Pretty printing."""
-        return f"<Disordered name={self.name} naltlocs={len(self.children)}>"
+        return f"<DisorderedAtom name={self.name} nlocs={self.nlocs}>"
 
     def __iter__(self):
         """Returns an iterator over child atoms."""
-        for child in self.children.values():
-            yield child
+        yield from self.children.values()
 
     def __getattr__(self, attr):
         """Forward all unknown calls to selected child."""
@@ -193,6 +195,7 @@ class DisorderedAtom(object):
             emsg = f"Altloc '{atom.altloc}' already exists in {self}"
             raise DuplicateAltLocError(emsg) from None
 
+        atom.is_disordered = True  # flag
         self.children[atom.altloc] = atom
 
         if not self.selected_child:
@@ -301,6 +304,7 @@ class Structure(object):
 
             if idx is None:  # new atom
                 atom = Atom.from_atomrecord(r)
+                record_dict[uniq_id] = len(atoms)
                 atoms.append(atom)
 
             elif not _args['discard_altloc']:  # new altloc for existing atom
@@ -319,6 +323,7 @@ class Structure(object):
 
             if r.model == len(coords):  # make new models
                 coords.append([])
+
             coords[-1].append((r.x, r.y, r.z))
 
         # Pack coordinates into numpy array
@@ -349,7 +354,6 @@ class Structure(object):
 
         for atom in self.unpack_atoms():
             atom.parent = self
-        logging.debug('Bound Atoms to self')
 
     # Public Methods
     def unpack_atoms(self):
@@ -359,6 +363,17 @@ class Structure(object):
                 yield from atom
             else:
                 yield atom
+
+    # Properties
+    def _bad_access(self):
+        """Stub to tell users how to modify attributes in-place."""
+        emsg = (
+            "This property cannot be modified in-place.\n"
+            "Bind it to a variable first, e.g.:\n"
+            "    xyz = s.coords\n"
+            "    xyz -= [100, 0, 0]\n"
+        )
+        raise NotImplementedError(emsg)
 
     @property
     def model(self):
@@ -379,16 +394,6 @@ class Structure(object):
 
         self._active_model = index
         logging.debug(f"Set active model to: {index}")
-
-    def _bad_access(self):
-        """Stub to tell users how to modify attributes in-place."""
-        emsg = (
-            "This property cannot be modified in-place.\n"
-            "Bind it to a variable first, e.g.:\n"
-            "    xyz = s.coords\n"
-            "    xyz -= [100, 0, 0]\n"
-        )
-        raise NotImplementedError(emsg)
 
     @property
     def coords(self):
