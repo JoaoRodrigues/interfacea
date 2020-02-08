@@ -108,11 +108,15 @@ class Atom(object):
 
     # Public Methods
     def neighbors(self, radius):
-        """Returns all Atoms within a radius of itself.
+        """Finds all Atoms within the given radius of itself.
 
         Args:
             radius (float): distance cutoff in Angstrom to consider another
                 Atom a neighbor.
+
+        Returns:
+            a generator with 2-item tuples containing the neighboring
+            Atom object and its distance to the query.
 
         Raises:
             ValueError: if the radius is negative or zero.
@@ -120,7 +124,14 @@ class Atom(object):
 
         if radius > 0:
             kdt = self.parent._kdtree
-            return kdt.neighbor_search(self.serial, radius)
+            coords_64bit = np.asarray(self.coords, dtype=np.float64)
+
+            return (
+                (self.parent.atoms[point.index], point.radius) for point in
+                kdt.search(coords_64bit, radius)
+                if point.index != self.serial
+            )
+
         raise ValueError(f"Radius is not a positive, non-zero number: {radius}")
 
     # Properties
@@ -396,6 +407,8 @@ class Structure(object):
         xyz = self.coords  # only for active model
         xyz = np.asarray(xyz, np.float64)  # kdtrees requires double precision
         self._kdtree = kdtrees.KDTree(xyz)
+
+        del xyz  # free
 
     # Public Methods
     def unpack_atoms(self):
