@@ -25,9 +25,7 @@ and residue names, is stored in individual Atom objects.
 Structures are meant to be manipulated but _not created_ by users.
 """
 
-import collections
 import logging
-# import re
 import weakref
 
 import numpy as np
@@ -240,9 +238,9 @@ class Structure(object):
 
     Args:
         name (str): string that identifies the structure.
-        coords (np.ndarray): array of shape (num_models, num_atoms, 3)
         atoms (list): Atom objects belonging to the structure, ordered
             by serial number.
+        coords (np.ndarray): array of shape (num_models, num_atoms, 3)
 
     Attributes:
         atoms       (list): ordered list of all atoms in the structure.
@@ -252,10 +250,8 @@ class Structure(object):
         active_model    (int): 0-based index of the active model.
     """
 
-    def __init__(self, name, coords, atoms):
+    def __init__(self, name, atoms, coords):
         """Creates an instance of the class."""
-
-        assert isinstance(coords, np.ndarray) and coords.ndim == 3
 
         self.name = name
         self._coords = coords
@@ -274,14 +270,13 @@ class Structure(object):
         """Creates and returns a Structure object from AtomRecord objects.
 
         Args:
-            name (str): string to use as the resulting Structure name.
-            atomrecords (list): list of Atom objects to include in the Structure.
+            name (str): name of the resulting structure.
+            atomrecords (list): AtomRecords to build Atoms from.
 
             discard_altloc (bool, optional): ignore atoms with more than one
-                instance, i.e. partial occupancies. If True, keeps the altloc
-                with the highest occupancy value (and the first in case of a
-                tie). If False, builds DisorderedAtom wrappers when needed.
-                Default is False.
+                alternate locations. Keeps only the first altloc. If False,
+                builds DisorderedAtom wrappers to store multiple locations.
+                Default is Fale.
             precision (np.dtype, optional): numerical precision for storing
                 atomic coordinates. Default is np.float16.
 
@@ -293,122 +288,50 @@ class Structure(object):
         """
 
         _args = {
-            'precision': np.float16,
             'discard_altloc': False,
+            'precision': np.float16,
         }
         _args.update(kwargs)
 
-        # Pack coordinates
-        coords = cls._build_coord_array(
-            atomrecords,
-            _args.get('precision')
-        )
-
-        # Filter altlocs
-        record_dict = collections.defaultdict(list)  # uniq -> [loc1, ..]
+        atoms, coords = [], []
+        record_dict = {}  # uniq -> serial
         for r in atomrecords:
             uniq_id = (r.model, r.chain, r.resid, r.icode, r.name)
-            record_dict[uniq_id].append(r)
+            idx = record_dict.get(uniq_id)
 
-        if _args.get('discard_altloc'):
-            atoms, coords = cls._build_without_altlocs(
-                record_dict,
-                coords
-            )
-        else:
-            atoms = cls._build_with_altlocs(
-                record_dict,
-            )
+            if idx is None:  # new atom
+                atom = Atom.from_atomrecord(r)
+                atoms.append(atom)
 
-        logging.debug(f"Successfully built structure with {len(atoms)} atoms")
-        return cls(name, coords, atoms)
+            elif not _args['discard_altloc']:  # new altloc for existing atom
+                existing = atoms[idx]
+                if isinstance(existing, Atom):
+                    logging.debug(f"New disordered atom at #{r.serial}")
+                    disatom = DisorderedAtom()
+                    disatom.add(existing)
+                    atoms[idx] = disatom
+                new_loc = Atom.from_atomrecord(r)
+                atoms[idx].add(new_loc)
 
-    # Auxiliary methods for build
-    @staticmethod
-    def _build_coord_array(reclist, dtype):
-        """Creates a coordinate array from a list of AtomRecords.
+            else:  # ignore
+                logging.debug(f"Ignoring duplicate atom: #{r.serial}")
+                continue
 
-        Args:
-            reclist (list): list of AtomRecords with coordinate data.
-            dtype (np.dtype): data type for the numpy array.
+            if r.model == len(coords):  # make new models
+                coords.append([])
+            coords[-1].append((r.x, r.y, r.z))
 
-        Returns:
-            A MxAx3 numpy array where M is the number of models and A is the
-            number of atoms in the structure.
-        """
-        coord_list = []  # [ [model1], [model2], ...]
-        for rec in reclist:
-            if rec.model == len(coord_list):
-                coord_list.append([])
-
-            coord_list[-1].append((rec.x, rec.y, rec.z))
-
-        return np.asarray(
-            coord_list,
-            dtype=dtype
+        # Pack coordinates into numpy array
+        coords = np.asarray(
+            coords,
+            dtype=_args.get('precision')
         )
 
-    @staticmethod
-    def _build_without_altlocs(recdict, coords):
-        """Keeps only highest occupancy instances when altlocs exist.
+        assert coords.ndim == 3, \
+            f'Wrong shape for coordinate array: {coords.shape}'
 
-        Args:
-            recdict (dict): dictionary with unique atom identifiers as keys and
-                lists of AtomRecord objects as values.
-            coords  (np.array): array with coordinate data for all atoms.
-
-        Returns:
-            atoms   (list): a list of Atom objects.
-            coords  (np.array): a filtered coordinate array without data for
-                altlocs.
-        """
-
-        atoms = []
-
-        to_remove = set()
-        for r in recdict:
-            locs = recdict[r]
-            if len(locs) > 1:
-                logging.debug(f"{r} is disordered: ignoring")
-                locs.sort(key=lambda x: x.occ, reverse=True)
-                locs.sort(key=lambda x: x.serial)
-                to_remove.update((l.serial for l in locs[1:]))
-
-            atom = Atom.from_atomrecord(locs[0])
-            atom.altloc = ''
-            atoms.append(atom)
-
-        # Filter coordinates
-        coords = np.delete(coords, sorted(to_remove), 1)
-
-        return (atoms, coords)
-
-    @staticmethod
-    def _build_with_altlocs(recdict):
-        """Builds DisorderedAtom wrappers if necessary.
-
-        Args:
-            recdict (dict): dictionary with unique atom identifiers as keys and
-                lists of AtomRecord objects as values.
-
-        Returns:
-            atoms   (list): a list of Atom/DisorderedAtom objects.
-        """
-
-        atoms = []
-        for r in recdict:
-            locs = recdict[r]
-            if len(locs) > 1:
-                logging.debug(f"{r} is disordered: nloc={len(locs)}")
-                atom = DisorderedAtom()
-                atomlist = (Atom.from_atomrecord(l) for l in locs)
-                atom.from_list(atomlist)
-            else:
-                atom = Atom.from_atomrecord(locs[0])
-
-            atoms.append(atom)
-
-        return atoms
+        logging.debug(f"Built new structure with {len(atoms)} atoms")
+        return cls(name, atoms, coords)
 
     # Internal dunder methods
     def __str__(self):
