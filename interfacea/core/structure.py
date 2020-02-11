@@ -412,8 +412,6 @@ class Structure(object):
         xyz = np.asarray(xyz, np.float64)  # kdtrees requires double precision
         self._kdtree = kdtrees.KDTree(xyz)
 
-        del xyz  # free
-
     def _map_indices(self):
         """Builds a mapping of raw indices to Atom/DisorderedAtom serials."""
 
