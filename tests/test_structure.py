@@ -41,8 +41,8 @@ def test_dummy_structure():
     """Successfully creates a small structure from Atoms"""
     _ = Structure(
         'dummy',
-        np.array([[[1.0, 1.0, 1.0]]]),
         [Atom('N', 0)],
+        np.array([[[1.0, 1.0, 1.0]]]),
     )
 
 
