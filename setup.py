@@ -36,7 +36,7 @@ from pathlib import Path
 import sys
 
 from setuptools import setup
-# from setuptools import Extension
+from setuptools import Extension
 
 from setuptools.command.install import install
 from setuptools.command.build_py import build_py
@@ -49,11 +49,14 @@ if sys.version_info < (3, 7):
     sys.exit(1)
 
 
+CURDIR = Path('.')
+
+
 # Get version from code
 def get_version():
     """Read the variable version from interfacea/_version.py"""
 
-    f = Path('./interfacea') / 'version.py'
+    f = CURDIR / 'interfacea' / 'version.py'
     contents = f.read_text()
     version = contents.strip().split()[-1]
     return version[1:-1]
@@ -62,7 +65,8 @@ def get_version():
 # Get long description
 def get_long_description():
     """Reads the contents of the README file"""
-    contents = Path('README.rst').read_text()
+    readme = CURDIR / 'README.rst'
+    contents = readme.read_text()
     return contents
 
 
@@ -75,8 +79,10 @@ PACKAGES = [
 ]
 
 EXTENSIONS = [
-    # Extension('interfacea.src.kdtree.kdtrees',
-    #           [os.path.join('interfacea', 'src', 'kdtree', 'kdtrees.c')]),
+    Extension(
+        'interfacea.spatial.kdtrees',
+        [str(CURDIR / 'interfacea' / 'spatial' / 'kdtrees.c')]
+    ),
 ]
 
 REQUIRES = [
@@ -136,9 +142,9 @@ setup(name='interfacea',
       cmdclass={
           "install": install_library,
           "build_py": build_py_modules,
-          # "build_ext": build_extensions,
+          "build_ext": build_extensions,
       },
       packages=PACKAGES,
-      # ext_modules=EXTENSIONS,
+      ext_modules=EXTENSIONS,
       install_requires=REQUIRES,
       )
