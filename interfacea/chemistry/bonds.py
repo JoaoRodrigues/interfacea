@@ -79,22 +79,25 @@ class SimpleBondAnalyzer(object):
         if self.structure._kdtree:
             self.structure.generate_kdtree()
 
-        max_radius = (max(COVALENT_RADII.values()) ** 2) + self.tolerance
-        get_radius = lambda a: COVALENT_RADII.get(a.element.atomic_number, 2.0)
+        max_r = (max(COVALENT_RADII.values()) ** 2) + self.tolerance
+        get_r = lambda a: COVALENT_RADII.get(a.element.atomic_number, 2.0)
 
         for atom in self.structure:
             if atom.element.atomic_number in ignore_set:
                 logging.debug(f"Skipping bonds for {atom}: ignored element")
                 continue
 
-            atom_r = get_radius(atom)
+            atom_r = get_r(atom)
 
-            nlist = atom.neighbors(radius=max_radius)
+            nlist = atom.neighbors(radius=max_r)
             for neighbor, d in nlist:
-                if neighbor in seen:
+                if (
+                    neighbor in seen or  # noqa: W504
+                    neighbor.element.atomic_number in ignore_set
+                ):
                     continue
 
-                neighbor_r = get_radius(neighbor)
+                neighbor_r = get_r(neighbor)
                 if d <= (atom_r + neighbor_r + self.tolerance):
                     yield (atom, neighbor)
 
