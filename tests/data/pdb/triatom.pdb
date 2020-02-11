@@ -1,0 +1,5 @@
+REMARK   1 CREATED WITH OPENMM 7.2.1, 2018-06-04
+ATOM      1  N   ASN A   1      22.066  40.557   0.420  1.00  0.00           N
+ATOM      2  H   ASN A   1      21.629  41.305  -0.098  1.00  0.00           H
+ATOM     10  N   ARG A   2      23.408  38.395  -0.829  1.00  0.00           N
+END
