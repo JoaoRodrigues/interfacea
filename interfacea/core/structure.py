@@ -122,17 +122,18 @@ class Atom(object):
             ValueError: if the radius is negative or zero.
         """
 
-        if radius > 0:
-            kdt = self.parent._kdtree
-            coords_64bit = np.asarray(self.coords, dtype=np.float64)
+        if radius <= 0:
+            emsg = f"Radius is not a positive, non-zero number: {radius}"
+            raise ValueError(emsg)
 
-            return (
-                (self.parent.atoms[point.index], point.radius) for point in
-                kdt.search(coords_64bit, radius)
-                if point.index != self.serial
-            )
+        kdt = self.parent._kdtree
+        coords_64bit = np.asarray(self.coords, dtype=np.float64)
 
-        raise ValueError(f"Radius is not a positive, non-zero number: {radius}")
+        dupes = set((self.serial,))
+        for point in kdt.search(coords_64bit, radius):
+            if point.index not in dupes:
+                yield (self.parent.get_atom(point.index), point.radius)
+                dupes.add(point.index)
 
     # Properties
     @property
@@ -275,6 +276,8 @@ class Structure(object):
         atoms (list): Atom objects belonging to the structure, ordered
             by serial number.
         coords (np.ndarray): array of shape (num_models, num_atoms, 3)
+        kdtree (bool, optional): automatically generate kdtree for instance.
+            Default is True.
 
     Attributes:
         atoms       (list): ordered list of all atoms in the structure.
@@ -284,7 +287,7 @@ class Structure(object):
         active_model    (int): 0-based index of the active model.
     """
 
-    def __init__(self, name, atoms, coords):
+    def __init__(self, name, atoms, coords, kdtree=True):
         """Creates an instance of the class."""
 
         # Sanity check if someone decides to make their own Structure
@@ -303,7 +306,8 @@ class Structure(object):
         self._kdtree = None
 
         self._bind_atoms()
-        self._generate_kdtree()
+        self.generate_kdtree()
+        self._map_indices()
 
     # Class method to build structure from parser data.
     @classmethod
@@ -393,7 +397,7 @@ class Structure(object):
         for atom in self.unpack_atoms():
             atom.parent = self
 
-    def _generate_kdtree(self):
+    def generate_kdtree(self):
         """Creates a KDTree for fast neighbor search.
 
         KDTree implementation adapted from Biopython by Michiel de Hoon.
@@ -410,7 +414,32 @@ class Structure(object):
 
         del xyz  # free
 
+    def _map_indices(self):
+        """Builds a mapping of raw indices to Atom/DisorderedAtom serials."""
+
+        idxdict = {}
+        for raw_idx, atom in enumerate(self):
+            if isinstance(atom, DisorderedAtom):
+                for loc in atom:
+                    idxdict[loc.serial] = raw_idx
+            else:
+                idxdict[atom.serial] = raw_idx
+        self._idxdict = idxdict
+
     # Public Methods
+    def get_atom(self, index):
+        """Returns one atom object from the structure.
+
+        Safer option to self.atoms[index], which accounts for DisorderedAtoms
+        and routes raw indices correctly.
+
+        Args:
+            index (int): positive integer
+        """
+
+        idx = self._idxdict[index]
+        return self.atoms[idx]
+
     def unpack_atoms(self):
         """Returns a generator over all atoms, including all altlocs."""
         for atom in self:
@@ -448,6 +477,7 @@ class Structure(object):
             raise ValueError(emsg)
 
         self._active_model = index
+        self._kdtree = None  # delete cached kdtree
         logging.debug(f"Set active model to: {index}")
 
     @property
