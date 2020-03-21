@@ -42,3 +42,7 @@ class DuplicateAltLocError(InterfaceBaseException):
 
 class PDBReaderError(InterfaceBaseException):
     pass
+
+
+class FunctionalGroupError(InterfaceBaseException):
+    pass
