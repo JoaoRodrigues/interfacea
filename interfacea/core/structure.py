@@ -45,27 +45,43 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 class Atom(object):
     """Container class to store atomic metadata.
 
-    Args:
-        name (str): string to identify the atom.
-        serial  (int): numerical index of the atom.
+    Arguments
+    ---------
+        name : str
+            string to identify the atom.
+        serial : int
+            numerical index of the atom.
 
-        hetatm  (bool, optional): flag to identify HETATMs.
-        altloc  (str, optional): identifier for alternate location.
-        resname (str, optional): name of the parent residue.
-        resid   (int, optional): residue sequence number.
-        icode   (str, optional): residue insertion code.
-        chain   (str, optional): name of the parent chain.
-        b       (float, optional): temperature factor.
-        occ     (float, optional): fractional occupancy.
-        segid   (str, optional): segment identifier.
-        element (Element, optional): atomic element.
+        hetatm : bool, optional
+            flag to identify HETATMs.
+        altloc : str, optional
+            identifier for alternate location.
+        resname : str, optional
+            name of the parent residue.
+        resid : int, optional
+            residue sequence number.
+        icode : str, optional
+            residue insertion code.
+        chain : str, optional
+            name of the parent chain.
+        b : float, optional
+            temperature factor.
+        occ : float, optional
+            fractional occupancy.
+        segid : str, optional
+            segment identifier.
+        element : Element, optional
+            atomic element.
 
-    Attributes:
-        coords  (np.array): array of shape (,3) representing cartesian
-            coordinates of the atom in Angstrom. Only defined when bound
-            to a parent Structure, otherwise raises an error on access.
-        is_disordered (bool): True if the atom has multiple locations, i.e.,
-            is part of a DisorderedAtom object.
+    Attributes
+    ----------
+        coords : np.array
+            array of shape (,3) representing cartesian coordinates of the atom
+            in Angstrom. Only defined when bound to a parent Structure,
+            otherwise raises an error on access.
+        is_disordered : bool
+            True if the atom has multiple locations, i.e., is part of a
+            DisorderedAtom object.
     """
 
     def __init__(self, name, serial, **kwargs):
@@ -94,9 +110,10 @@ class Atom(object):
     def from_atomrecord(cls, record):
         """Creates an Atom class instance from an AtomRecord dataclass.
 
-        Args:
-            atomdata (io.AtomRecord): data class containing information to
-                create the Atom object
+        Argument
+        --------
+            atomdata : io.AtomRecord
+                data class containing information to create the Atom object.
         """
 
         attrs = record.__dict__.copy()
@@ -126,8 +143,9 @@ class Atom(object):
         if isinstance(value, Structure):
             self._parent = weakref.ref(value)  # avoid uncollected garbage
         else:
-            emsg = f"Parent object must be a Structure type."
-            raise TypeError(emsg)
+            raise TypeError(
+                f"Parent object must be a Structure type."
+            )
 
     @parent.deleter
     def parent(self):
@@ -143,8 +161,9 @@ class Atom(object):
         try:
             return self.parent.coords[self.serial]
         except AttributeError:
-            emsg = f"Atom is not bound to a parent Structure."
-            raise AttributeError(emsg) from None
+            raise AttributeError(
+                f"Atom is not bound to a parent Structure."
+            ) from None
 
 
 ###############################################################################
@@ -202,13 +221,18 @@ class DisorderedAtom(object):
     def add(self, atom):
         """Adds an Atom object.
 
-        Args:
-            atom (Atom): child object to add.
+        Arguments
+        ---------
+            atom : Atom)
+                child Atom to add to container.
 
-        Raises:
-            TypeError: if the object being added is not an Atom instance.
-            DuplicateAltLocError: if there is already a child with this
-                altloc identifier in the DisorderedAtom object.
+        Raises
+        ------
+            TypeError
+                when the object being added is not an Atom instance.
+            DuplicateAltLocError
+                when there is already a child with this altloc identifier in the
+                DisorderedAtom object.
         """
 
         if atom.altloc in self.children:
@@ -228,8 +252,10 @@ class DisorderedAtom(object):
     def from_list(self, atomlist):
         """Adds Atom objects from a list.
 
-        Args:
-            atomlist (list): obviously, a list of Atoms.
+        Argument
+        --------
+            atomlist : list
+                obviously, a list of Atoms.
         """
         for atom in atomlist:
             self.add(atom)
@@ -237,11 +263,15 @@ class DisorderedAtom(object):
     def select(self, altloc):
         """Selects a child as representative.
 
-        Args:
-            altloc (str): altloc identifier of the child Atom.
+        Argument
+        --------
+            altloc : str
+                altloc identifier of the child Atom.
 
         Raises
-            KeyError: if altloc is not in the DisorderedAtom wrapper.
+        ------
+            KeyError
+                when altloc is not in the DisorderedAtom wrapper.
         """
         try:
             self.selected_child = self.children[altloc]
@@ -278,6 +308,10 @@ class Structure(object):
             ordered list of all atoms in the structure.
         bonds : networkX.Graph
             bond graph of all atoms in the structure.
+        coords : np.ndarray
+            coordinate array of the selected model.
+        all_coords : np.ndarray
+            coordinate array of all models.
         natoms : int
             number of atoms in the structure.
         nmodels : int
@@ -431,17 +465,24 @@ class Structure(object):
     def neighbors(self, atom, radius):
         """Finds all Atoms within the given radius of itself.
 
-        Args:
-            atom (Atom or DisorderedAtom): central atom to find neighbors of.
-            radius (float): distance cutoff in Angstrom to define neighbors.
+        Arguments
+        ---------
+            atom : Atom or DisorderedAtom
+                central atom to find neighbors of.
+            radius : float
+                distance cutoff in Angstrom to define neighbors.
 
-        Returns:
-            a generator with 2-item tuples containing the neighboring
-            Atom object and its distance to the query.
+        Returns
+        -------
+            an iterator with 2-item tuples containing all neighboring atoms of
+            the query, along with the distance between query and neighbors.
 
-        Raises:
-            TypeError: if 'atom' is not of type Atom or DisorderedAtom.
-            ValueError: if 'radius' is not a positive, non-zero, number.
+        Raises
+        ------
+            TypeError
+                when 'atom' is not of type Atom or DisorderedAtom.
+            ValueError
+                when 'radius' is not a positive, non-zero, number.
         """
 
         if not isinstance(atom, (Atom, DisorderedAtom)):
@@ -472,6 +513,7 @@ class Structure(object):
 
     def unpack_atoms(self):
         """Returns a generator over all atoms, including all altlocs."""
+
         for atom in self:
             if isinstance(atom, DisorderedAtom):
                 yield from atom
@@ -484,8 +526,10 @@ class Structure(object):
         Better than accessing self.atoms directly, as it accounts for
         DisorderedAtoms.
 
-        Args:
-            index (int): positive integer
+        Arguments
+        ---------
+            index : int
+                0-based index of the atom to retrieve.
         """
 
         try:
@@ -572,6 +616,6 @@ class Structure(object):
         return self._coords[self._model]
 
     @property
-    def full_coords(self):
+    def all_coords(self):
         """Returns a view of the entire coordinate array (all models)."""
         return self._coords
