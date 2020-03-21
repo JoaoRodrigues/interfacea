@@ -31,6 +31,16 @@ from interfacea.exceptions import (
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
+__all__ = [
+    # Individual Groups
+    'Carboxylate', 'Carboxyl', 'Guanidinium', 'Imidazole', 'Imidazolium',
+    'Phosphate', 'SingleCoordinatedPhosphate', 'QuaternaryAmine', 'Sulfonium',
+    'Sulfate', 'HydrogenSulfate', 'DivalentSulphur', 'AlkaneCarbon',
+    'AlkeneCarbon', 'AlkyneCarbon', 'Phenyl', 'Indole', 'HBondDonor',
+    # Collections
+    'AllCharged', 'AllBases', 'AllAcids', 'AllHydrophobics', 'AllAromatics',
+]
+
 
 class BaseFunctionalGroup(object):
     """Base class to represent functional group.
@@ -211,3 +221,300 @@ class BaseFunctionalGroup(object):
             f"Found {len(matches)} matches of '{self.name}' in structure"
         )
         return matches
+
+
+#
+# Common functional groups
+#
+
+# Charged
+class Carboxylate(BaseFunctionalGroup):
+    """Carboxylate."""
+
+    def __init__(self):
+
+        super().__init__(
+            name='carboxylate',
+            elements=[6, 8, 8],
+            bonds=[
+                (0, 1), (0, 2)
+            ],
+            max_bonds=[3, 1, 1]
+        )
+
+
+class Carboxyl(BaseFunctionalGroup):
+    """Carboxyl."""
+
+    def __init__(self):
+        super().__init__(
+            name='carboxyl',
+            elements=[6, 8, 8, 1],
+            # the graph matching algorithm will
+            # match either oxygens to the hydrogen
+            # effectively having 'fuzzy' edges
+            bonds=[
+                (0, 1), (0, 2), (1, 3)
+            ],
+            max_bonds=[3, 1, 2, 1]
+        )
+
+
+class Guanidinium(BaseFunctionalGroup):
+    """Guanidinium."""
+
+    def __init__(self):
+        super().__init__(
+            name='guanidinium',
+            elements=[7, 1, 6, 7, 7, 1, 1, 1, 1],
+            bonds=[
+                (0, 1), (0, 2), (2, 3), (2, 4),
+                (3, 5), (3, 6), (4, 7), (4, 8)
+            ],
+            max_bonds=[3, 1, 3, 3, 3, 1, 1, 1, 1]
+        )
+
+
+class Imidazole(BaseFunctionalGroup):
+    """Imidazole.
+
+    Without protons to avoid ambiguity between ND/NE protonation.
+    User can check for position of proton later.
+    """
+
+    def __init__(self):
+        super().__init__(
+            name='imidazole',
+            elements=[6, 6, 7, 6, 7],
+            bonds=[
+                (0, 1), (1, 2), (2, 3), (3, 4),
+                (4, 0)
+            ],
+            max_bonds=[3, 3, 3, 3, 3]
+        )
+
+
+class Imidazolium(BaseFunctionalGroup):
+    """Imidazolium.
+    """
+
+    def __init__(self):
+        super().__init__(
+            name='imidazolium',
+            elements=[6, 6, 7, 6, 7, 1, 1, 1, 1],
+            bonds=[
+                (0, 1), (1, 2), (1, 5), (2, 3),
+                (2, 6), (3, 4), (3, 7), (4, 0),
+                (4, 8)
+            ],
+            max_bonds=[3, 3, 3, 3, 3, 1, 1, 1, 1]
+        )
+
+
+class Phosphate(BaseFunctionalGroup):
+    """Phosphate.
+    """
+
+    def __init__(self):
+        super().__init__(
+            name='phosphate',
+            elements=[15, 8, 8, 8],
+            bonds=[
+                (0, 1), (0, 2), (0, 3)
+            ],
+            max_bonds=[4, 1, 1, 1]
+        )
+
+
+class SingleCoordinatedPhosphate(BaseFunctionalGroup):
+    """Phosphate bound to an atom.
+    """
+
+    def __init__(self):
+        super().__init__(
+            name='phosphate-h',
+            elements=[15, 8, 8, 8, 0],
+            bonds=[
+                (0, 1), (0, 2), (0, 3), (1, 4)
+            ],
+            max_bonds=[4, 2, 1, 1, 99]
+        )
+
+
+class QuaternaryAmine(BaseFunctionalGroup):
+    """Quaternary Amine.
+    """
+
+    def __init__(self):
+        super().__init__(
+            name='quaternary_amine',
+            elements=[7, 0, 0, 0, 0],
+            bonds=[
+                (0, 1), (0, 2), (0, 3), (0, 4)
+            ]
+        )
+
+
+class Sulfonium(BaseFunctionalGroup):
+    """Sulfonium.
+    """
+
+    def __init__(self):
+        super().__init__(
+            name='sulfonium',
+            elements=[16, (6, 1), (6, 1), (6, 1)],
+            bonds=[
+                (0, 1), (0, 2), (0, 3)
+            ],
+            max_bonds=[3, 4, 4, 4]
+        )
+
+
+class Sulfate(BaseFunctionalGroup):
+    """Sulfate.
+    """
+
+    def __init__(self):
+        super().__init__(
+            name='sulfate',
+            elements=[16, 8, 8, 8],
+            bonds=[
+                (0, 1), (0, 2), (0, 3)
+            ],
+            max_bonds=[4, 1, 1, 1]
+        )
+
+
+class HydrogenSulfate(BaseFunctionalGroup):
+    """Hydrogen Sulfate.
+    """
+
+    def __init__(self):
+        super().__init__(
+            name='sulfate-h',
+            elements=[16, 8, 8, 8, 1],
+            bonds=[
+                (0, 1), (0, 2), (0, 3), (1, 4)
+            ],
+            max_bonds=[4, 2, 1, 1, 1]
+        )
+
+
+# Hydrophobic
+class DivalentSulphur(BaseFunctionalGroup):
+    """Divalent Sulphur.
+    """
+
+    def __init__(self):
+        super().__init__(
+            name='divalent-sulphur',
+            elements=[16, 0, 0],
+            bonds=[
+                (0, 1), (0, 2)
+            ],
+            max_bonds=[2, 4, 4]
+        )
+
+
+class AlkaneCarbon(BaseFunctionalGroup):
+    """Alkanes - Aliphatic Saturated Carbon Chain.
+    """
+
+    def __init__(self):
+        super().__init__(
+            name='alkane',
+            elements=[6, (1, 6), (1, 6), (1, 6), (1, 6)],
+            bonds=[
+                (0, 1), (0, 2), (0, 3), (0, 4)
+            ]
+        )
+
+
+class AlkeneCarbon(BaseFunctionalGroup):
+    """Alkene - Aliphatic Unsaturated Carbon Chain.
+    """
+
+    def __init__(self):
+        super().__init__(
+            name='alkene',
+            elements=[6, (1, 6), (1, 6), (1, 6)],
+            bonds=[
+                (0, 1), (0, 2), (0, 3)
+            ],
+            max_bonds=[3, 4, 4, 4]
+        )
+
+
+class AlkyneCarbon(BaseFunctionalGroup):
+    """Alkyne - Aliphatic Unsaturated Carbon Chain.
+    """
+
+    def __init__(self):
+        super().__init__(
+            name='alkene',
+            elements=[6, (1, 6), (1, 6)],
+            bonds=[
+                (0, 1), (0, 2), (0, 3)
+            ],
+            max_bonds=[2, 4, 4]
+        )
+
+
+class Phenyl(BaseFunctionalGroup):
+    """Phenyl Group.
+    """
+
+    def __init__(self):
+        super().__init__(
+            name='phenyl',
+            elements=[6, 6, 6, 6, 6, 6, 0, 0, 0, 0, 0, 0],
+            bonds=[
+                (0, 1), (1, 2), (2, 3), (3, 4),
+                (4, 5), (5, 0), (0, 6), (1, 7),
+                (2, 8), (3, 9), (4, 10), (5, 11)
+            ]
+        )
+
+
+class Indole(BaseFunctionalGroup):
+    """Indole Group.
+    """
+
+    def __init__(self):
+        super().__init__(
+            name='indole',
+            elements=[7, 6, 6, 6, 6, 6, 6, 6, 6, 1, 1, 0, 1, 1, 1, 1],
+            bonds=[
+                (0, 1), (1, 2), (2, 3), (3, 4),
+                (4, 5), (5, 6), (6, 7), (7, 8),
+                (8, 0), (3, 8), (0, 9), (1, 10),
+                (2, 11), (4, 12), (5, 13), (6, 14),
+                (7, 15)
+            ]
+        )
+
+
+class HBondDonor(BaseFunctionalGroup):
+    """Hydrogen Bond Donor.
+    """
+
+    def __init__(self):
+        super().__init__(
+            name='hbond-donor',
+            elements=[(7, 8), 1],
+            bonds=[
+                (0, 1)
+            ],
+            max_bonds=[99, 1]
+        )
+
+
+#
+# Collections
+#
+AllAcids = [Carboxylate, Phosphate, SingleCoordinatedPhosphate, Sulfate]
+AllBases = [Guanidinium, Imidazolium, QuaternaryAmine, Sulfonium]
+AllCharged = AllBases + AllAcids
+
+AllHydrophobics = [AlkaneCarbon, Phenyl, Indole, DivalentSulphur]
+AllAromatics = [Phenyl, Indole]
