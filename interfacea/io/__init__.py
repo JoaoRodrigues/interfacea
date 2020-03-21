@@ -56,4 +56,4 @@ def read(filepath, **kwargs):
     # Parse Data
     r = Reader(path, **kwargs)
     name = kwargs.get('name', path.name)
-    return structure.Structure.build(name, r.data, **kwargs)
+    return structure.Structure.from_atomrecords(name, r.data, **kwargs)
