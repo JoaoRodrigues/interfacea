@@ -276,6 +276,8 @@ class Structure(object):
     ----------
         atoms : list
             ordered list of all atoms in the structure.
+        bonds : networkX.Graph
+            bond graph of all atoms in the structure.
         natoms : int
             number of atoms in the structure.
         nmodels : int
@@ -301,6 +303,7 @@ class Structure(object):
         self._coords = coords
         self._model = 0
 
+        self._bonds = None
         self._kdtree = None
         self._make_kdtree()
 
@@ -526,6 +529,42 @@ class Structure(object):
     def num_models(self):
         """Returns the number of models in the structure"""
         return self._coords.shape[0]
+
+    @property
+    def bonds(self):
+        """Returns a bond graph describing atom connectivity.
+
+        We use SimpleBondAnalyzer if the structure has no bond graph defined.
+        """
+
+        if self._bonds is None:
+            ba = SimpleBondAnalyzer()
+            self._bonds = ba.run(self)
+
+        return self._bonds
+
+    @bonds.setter
+    def bonds(self, bondgraph):
+        """Sets a bond graph describing atom connectivity
+
+        Arguments
+        ---------
+            bondgraph : nx.Graph
+                graph describing bonds between atoms in the structure. See
+                interfacea.chemistry.bonds for details on the structure of the
+                graph.
+        """
+
+        # Check bond graph (roughly) matches structure
+        if isinstance(bondgraph, nx.Graph):
+            assert len(bondgraph) == self.num_atoms, \
+                f"Number of nodes in bond graph differs from number of atoms."
+
+            self._bonds = bondgraph
+
+        raise TypeError(
+            f"Bond graph object must be a networkx Graph instance."
+        )
 
     @property
     def coords(self):
