@@ -578,7 +578,9 @@ class Structure(object):
     def bonds(self):
         """Returns a bond graph describing atom connectivity.
 
-        We use SimpleBondAnalyzer if the structure has no bond graph defined.
+        We use SimpleBondAnalyzer if the structure has no bond graph defined. It
+        returns a graph holding atoms as nodes with a Z (atomic number)
+        attribute.
         """
 
         if self._bonds is None:
