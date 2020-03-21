@@ -102,9 +102,10 @@ class SimpleBondAnalyzer(BaseBondAnalyzer):
         covradii = COVALENT_RADII
 
         # Initialize bond graph with atoms as nodes
+        # and atomic numbers as attributes
         bondgraph = nx.Graph()
         for atom in structure:
-            bondgraph.add_node(atom.serial, atom=atom)
+            bondgraph.add_node(atom.serial, Z=atom.element.atomic_number)
 
         max_r = (max(covradii.values()) ** 2) + self.tolerance
 
