@@ -36,11 +36,14 @@ def read(filepath, **kwargs):
     and readers is defined in io. Refer to that file and to each of the reader
     classes for more information on their arguments and options.
 
-    Args:
-        filepath (str): path to the file to be read.
+    Arguments
+    ---------
+        filepath : str
+            path to the file to be read.
 
-    Returns:
-        A Structure object containing atom coordinates and metadata.
+    Returns
+    -------
+        a Structure object containing atom coordinates and metadata.
     """
 
     # Validate Path
