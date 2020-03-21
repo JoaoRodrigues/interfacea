@@ -28,12 +28,14 @@ Structures are meant to be manipulated but _not created_ by users.
 import logging
 import weakref
 
+import networkx as nx
 import numpy as np
 
 from interfacea.exceptions import (
     DuplicateAltLocError,
 )
 
+from interfacea.chemistry.bonds import SimpleBondAnalyzer
 from interfacea.spatial import kdtrees
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
@@ -83,6 +85,10 @@ class Atom(object):
         """Pretty string representation of the Atom object."""
         return f"<Atom name={self.name} serial={self.serial}>"
 
+    def __repr__(self):
+        """Pretty string representation of the Atom object."""
+        return f"<Atom name={self.name} serial={self.serial}>"
+
     # Public Methods/Attributes
     @classmethod
     def from_atomrecord(cls, record):
@@ -107,34 +113,6 @@ class Atom(object):
         return cls(record.name, record.serial, **attrs)
 
     # Public Methods
-    def neighbors(self, radius):
-        """Finds all Atoms within the given radius of itself.
-
-        Args:
-            radius (float): distance cutoff in Angstrom to consider another
-                Atom a neighbor.
-
-        Returns:
-            a generator with 2-item tuples containing the neighboring
-            Atom object and its distance to the query.
-
-        Raises:
-            ValueError: if the radius is negative or zero.
-        """
-
-        if radius <= 0:
-            emsg = f"Radius is not a positive, non-zero number: {radius}"
-            raise ValueError(emsg)
-
-        kdt = self.parent._kdtree
-        coords_64bit = np.asarray(self.coords, dtype=np.float64)
-
-        dupes = set((self.serial,))
-        for point in kdt.search(coords_64bit, radius):
-            if point.index not in dupes:
-                yield (self.parent.get_atom(point.index), point.radius)
-                dupes.add(point.index)
-
     # Properties
     @property
     def parent(self):
@@ -184,7 +162,17 @@ class DisorderedAtom(object):
 
     def __str__(self):
         """Pretty printing."""
-        return f"<DisorderedAtom name={self.name} nlocs={self.nlocs}>"
+        return (
+            f"<DisorderedAtom name={self.name} "
+            f"serial={self.serial} nlocs={self.nlocs}>"
+        )
+
+    def __repr__(self):
+        """Pretty printing."""
+        return (
+            f"<DisorderedAtom name={self.name} "
+            f"serial={self.serial} nlocs={self.nlocs}>"
+        )
 
     def __iter__(self):
         """Returns an iterator over child atoms."""
@@ -271,72 +259,81 @@ class DisorderedAtom(object):
 class Structure(object):
     """Represents 3D molecules as collections of atoms.
 
-    Args:
-        name (str): string that identifies the structure.
-        atoms (list): Atom objects belonging to the structure, ordered
-            by serial number.
-        coords (np.ndarray): array of shape (num_models, num_atoms, 3)
-        kdtree (bool, optional): automatically generate kdtree for instance.
-            Default is True.
+    Arguments
+    ---------
+        name: str
+            string that identifies the structure.
+        atoms : list
+            Atom objects belonging to the structure, ordered by serial number.
+        coords : np.ndarray
+            array of shape (num_models, num_atoms, 3)
 
-    Attributes:
-        atoms       (list): ordered list of all atoms in the structure.
-        precision   (np.dtype): numerical precision of the atomic coordinates.
-        natoms      (int): number of atoms in the structure.
-        nmodels     (int): number of models in the structure.
-        active_model    (int): 0-based index of the active model.
+        make_kdtree : bool, optional
+            automatically generate kdtree on instance creation. KDTree objects
+            cannot be pickled/copied. Default is True.
+
+    Attributes
+    ----------
+        atoms : list
+            ordered list of all atoms in the structure.
+        natoms : int
+            number of atoms in the structure.
+        nmodels : int
+            number of models in the structure.
     """
 
-    def __init__(self, name, atoms, coords, kdtree=True):
+    def __init__(self, name, atoms, coords, **kwargs):
         """Creates an instance of the class."""
+
+        _defaults = {
+            'make_kdtree': True,
+        }
+
+        self.__dict__.update(_defaults)
+        self.__dict__.update(kwargs)
 
         # Sanity check if someone decides to make their own Structure
         assert isinstance(coords, np.ndarray) and coords.ndim == 3
 
         self.name = name
-        self._coords = coords
         self.atoms = atoms
 
-        self.precision = coords.dtype
-        self.nmodels, self.natoms, _ = coords.shape
+        self._coords = coords
+        self._model = 0
 
-        self.model = 0  # default
-
-        # Internal variables
         self._kdtree = None
+        self._make_kdtree()
 
+        # Bind atoms to structure and map indices
         self._bind_atoms()
-        self.generate_kdtree()
         self._map_indices()
 
     # Class method to build structure from parser data.
     @classmethod
-    def build(cls, name, atomrecords, **kwargs):
+    def from_atomrecords(cls, name, atomrecords, **kwargs):
         """Creates and returns a Structure object from AtomRecord objects.
 
-        Args:
-            name (str): name of the resulting structure.
-            atomrecords (list): AtomRecords to build Atoms from.
+        Arguments
+        ---------
+            name : str
+                name of the resulting structure.
+            atomrecords : list
+                AtomRecords to build Atoms from.
 
-            discard_altloc (bool, optional): ignore atoms with more than one
-                alternate locations. Keeps only the first altloc. If False,
-                builds DisorderedAtom wrappers to store multiple locations.
-                Default is False.
-            precision (np.dtype, optional): numerical precision for storing
-                atomic coordinates. Default is np.float16.
+            discard_altloc : bool, optional
+                ignore atoms with more than one alternate locations. Keeps only
+                the first altloc. If False (default), builds DisorderedAtom
+                wrappers to store multiple locations.
 
-        Returns:
-            A new Structure object with metadata and coordinate data.
-
-        Raises:
-            something
+        Returns
+        -------
+            Structure instance with metadata and coordinate data.
         """
 
-        _args = {
+        _defaults = {
             'discard_altloc': False,
-            'precision': np.float16,
         }
-        _args.update(kwargs)
+        _defaults.update(kwargs)
 
         atoms, coords = [], []
         record_dict = {}  # uniq -> serial
@@ -349,7 +346,7 @@ class Structure(object):
                 record_dict[uniq_id] = len(atoms)
                 atoms.append(atom)
 
-            elif not _args['discard_altloc']:  # new altloc for existing atom
+            elif not _defaults['discard_altloc']:  # new altloc for existing atom
                 existing = atoms[idx]
                 if isinstance(existing, Atom):
                     logging.debug(f"New disordered atom at #{r.serial}")
@@ -371,7 +368,7 @@ class Structure(object):
         # Pack coordinates into numpy array
         coords = np.asarray(
             coords,
-            dtype=_args.get('precision')
+            dtype=np.float64
         )
 
         assert coords.ndim == 3, \
@@ -383,10 +380,12 @@ class Structure(object):
     # Internal dunder methods
     def __str__(self):
         """String representation of the Structure."""
+
         return f"<Structure name='{self.name}' natoms={self.natoms}>"
 
     def __iter__(self):
         """Returns a generator to iterate over the children atoms."""
+
         for atom in self.atoms:
             yield atom
 
@@ -396,21 +395,6 @@ class Structure(object):
 
         for atom in self.unpack_atoms():
             atom.parent = self
-
-    def generate_kdtree(self):
-        """Creates a KDTree for fast neighbor search.
-
-        KDTree implementation adapted from Biopython by Michiel de Hoon.
-        For details, read the source code at interfacea/src/kdtrees.c
-        """
-
-        if self._kdtree:
-            logging.debug(f"Updating KDTree")
-            del self._kdtree
-
-        xyz = self.coords  # only for active model
-        xyz = np.asarray(xyz, np.float64)  # kdtrees requires double precision
-        self._kdtree = kdtrees.KDTree(xyz)
 
     def _map_indices(self):
         """Builds a mapping of raw indices to Atom/DisorderedAtom serials."""
@@ -424,19 +408,64 @@ class Structure(object):
                 idxdict[atom.serial] = raw_idx
         self._idxdict = idxdict
 
-    # Public Methods
-    def get_atom(self, index):
-        """Returns one atom object from the structure.
+    def _make_kdtree(self):
+        """Creates/Returns a KDTree for fast neighbor search.
 
-        Safer option to self.atoms[index], which accounts for DisorderedAtoms
-        and routes raw indices correctly.
-
-        Args:
-            index (int): positive integer
+        KDTree implementation adapted from Biopython by Michiel de Hoon.
+        For details, read the source code at interfacea/src/kdtrees.c
         """
 
-        idx = self._idxdict[index]
-        return self.atoms[idx]
+        if self._kdtree:
+            logging.debug(f"Deleting existing KDTree")
+            del self._kdtree
+
+        xyz = self.coords  # only for active model
+        xyz = np.asarray(xyz, np.float64)  # kdtrees requires double precision
+        self._kdtree = kdtrees.KDTree(xyz)
+        logging.debug(f"Created KDTree for model #{self.model}")
+
+    # Public Methods
+    def neighbors(self, atom, radius):
+        """Finds all Atoms within the given radius of itself.
+
+        Args:
+            atom (Atom or DisorderedAtom): central atom to find neighbors of.
+            radius (float): distance cutoff in Angstrom to define neighbors.
+
+        Returns:
+            a generator with 2-item tuples containing the neighboring
+            Atom object and its distance to the query.
+
+        Raises:
+            TypeError: if 'atom' is not of type Atom or DisorderedAtom.
+            ValueError: if 'radius' is not a positive, non-zero, number.
+        """
+
+        if not isinstance(atom, (Atom, DisorderedAtom)):
+            raise TypeError(
+                f"Atom must be of type 'Atom' or 'DisorderedAtom': {type(atom)}"
+            )
+
+        if radius <= 0:
+            raise ValueError(
+                f"Radius is not a positive, non-zero number: {radius}"
+            )
+
+        if self._kdtree is None:
+            self._make_kdtree()
+
+        kdt = self._kdtree
+        coords = np.asarray(atom.coords, dtype=np.float64)  # as 64-bit vector
+
+        dupes = set((atom.serial,))
+        for point in kdt.search(coords, radius):
+
+            if point.index not in dupes:
+                dupes.add(point.index)
+                yield (
+                    self.atom(point.index),
+                    point.radius
+                )
 
     def unpack_atoms(self):
         """Returns a generator over all atoms, including all altlocs."""
@@ -446,52 +475,64 @@ class Structure(object):
             else:
                 yield atom
 
-    # Properties
-    def _bad_access(self):
-        """Stub to tell users how to modify attributes in-place."""
-        emsg = (
-            "This property cannot be modified in-place.\n"
-            "Bind it to a variable first, e.g.:\n"
-            "    xyz = s.coords\n"
-            "    xyz -= [100, 0, 0]\n"
-        )
-        raise NotImplementedError(emsg)
+    def atom(self, index):
+        """Returns an Atom from the structure.
+
+        Better than accessing self.atoms directly, as it accounts for
+        DisorderedAtoms.
+
+        Args:
+            index (int): positive integer
+        """
+
+        try:
+            idx = self._idxdict[index]
+        except KeyError:
+            raise KeyError(
+                f"Unknown atom: #{index}. Known indexes: 0 to {self.num_atoms}"
+            )
+
+        return self.atoms[idx]
+
+    @property
+    def num_atoms(self):
+        """Returns the number of atoms in the structure"""
+        return len(self.atoms)
 
     @property
     def model(self):
-        """Returns the active model."""
-        return self._active_model
+        """Returns the index of the active model."""
+        return self._model
 
     @model.setter
     def model(self, index):
         """Defines which model to pick data from in multi-model structures.
 
-        Args:
-            index (int): (0-based) index of the model to activate.
+        Arguments
+        ---------
+            index : int
+                (0-based) index of a model to select.
         """
 
         if not (0 <= index < self.nmodels):
             emsg = f"Model index must be between 0 and {self.nmodels}"
             raise ValueError(emsg)
 
-        self._active_model = index
+        self._model = index
         self._kdtree = None  # delete cached kdtree
         logging.debug(f"Set active model to: {index}")
 
     @property
-    def coords(self):
-        """Returns a view of the coordinate array for the active model."""
-        return self._coords[self._active_model]
+    def num_models(self):
+        """Returns the number of models in the structure"""
+        return self._coords.shape[0]
 
-    @coords.setter
-    def coords(self, value):
-        self._bad_access()
+    @property
+    def coords(self):
+        """Returns a view of the coordinate array for the selected model."""
+        return self._coords[self._model]
 
     @property
     def full_coords(self):
         """Returns a view of the entire coordinate array (all models)."""
         return self._coords
-
-    @full_coords.setter
-    def full_coords(self, value):
-        self._bad_access()
