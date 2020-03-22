@@ -20,41 +20,45 @@ Module containing data and classes to handle atomic elements.
 """
 
 import collections
-import dataclasses
 
 
-@dataclasses.dataclass
-class Element:
-    """Base class to represent an atomic element."""
+__all__ = [
+    "Hydrogen", "Carbon", "Nitrogen", "Oxygen", "Phosphorous", "Sulfur",
+    "Unknown"
+]
 
-    symbol: str = None
-    fullname: str = None
-    atomic_number: int = None
 
-    def __len__(self):
-        """bool(Element) == False if the symbol is empty"""
-        return self.symbol is not None
-
+Element = collections.namedtuple(
+    'Element',
+    [
+        'symbol',
+        'name',
+        'z'  # atomic number
+    ]
+)
 
 # Singletons
-unk = Element()
-hydrogen = Element("H", "hydrogen", 1)
-carbon = Element("C", "carbon", 6)
-nitrogen = Element("N", "nitrogen", 7)
-oxygen = Element("O", "oxygen", 8)
-sulfur = Element("S", "sulfur", 16)
+Unknown = Element("X", "unknown", None)
+
+Hydrogen = Element("H", "hydrogen", 1)
+Carbon = Element("C", "carbon", 6)
+Nitrogen = Element("N", "nitrogen", 7)
+Oxygen = Element("O", "oxygen", 8)
+Phosphorous = Element("P", "phosphorous", 15)
+Sulfur = Element("S", "sulfur", 16)
 
 # Mapping: defaults to empty element
 # No need to keep a large dictionary with
 # all elements...
-mapping = collections.defaultdict(lambda: unk)
+mapping = collections.defaultdict(lambda: Unknown)
 
 _knowns = {
-    "H": hydrogen,
-    "C": carbon,
-    "N": nitrogen,
-    "O": oxygen,
-    "S": sulfur,
+    "H": Hydrogen,
+    "C": Carbon,
+    "N": Nitrogen,
+    "O": Oxygen,
+    "P": Phosphorous,
+    "S": Sulfur,
 }
 
 mapping.update(_knowns)
