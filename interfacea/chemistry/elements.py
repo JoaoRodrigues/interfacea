@@ -20,26 +20,22 @@ Module containing data and classes to handle atomic elements.
 """
 
 import collections
-import dataclasses
 
 
 __all__ = [
-    "Hydrogen", "Carbon", "Nitrogen", "Oxygen", "Phosphorous", "Sulfur"
+    "Hydrogen", "Carbon", "Nitrogen", "Oxygen", "Phosphorous", "Sulfur",
+    "Unknown"
 ]
 
 
-@dataclasses.dataclass
-class Element:
-    """Base class to represent an atomic element."""
-
-    symbol: str = None
-    fullname: str = None
-    atomic_number: int = None
-
-    def __len__(self):
-        """bool(Element) == False if the symbol is empty"""
-        return self.symbol is not None
-
+Element = collections.namedtuple(
+    'Element',
+    [
+        'symbol',
+        'name',
+        'z'  # atomic number
+    ]
+)
 
 # Singletons
 Unknown = Element("X", "unknown", None)

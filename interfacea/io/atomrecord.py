@@ -44,7 +44,7 @@ class AtomRecord:
     occ: float
     b: float
     segid: str = ''
-    element: e.Element = e.unk  # default to unknown
+    element: e.Element = e.Unknown  # default to unknown
 
     def __post_init__(self):
         """Enforce variable types as defined above."""
