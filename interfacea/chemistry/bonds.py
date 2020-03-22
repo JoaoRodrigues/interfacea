@@ -105,18 +105,18 @@ class SimpleBondAnalyzer(BaseBondAnalyzer):
         # and atomic numbers as attributes
         bondgraph = nx.Graph()
         for atom in structure:
-            bondgraph.add_node(atom.serial, Z=atom.element.atomic_number)
+            bondgraph.add_node(atom.serial, elem=atom.element)
 
         max_r = (max(covradii.values()) ** 2) + self.tolerance
 
         seen = set()  # store atoms we've visited not to repeat.
         for atom in structure:
-            if atom.element.atomic_number in self.ignoreset:
+            if atom.element.z in self.ignoreset:
                 logging.debug(f"Skipping bonds for {atom}: ignored element")
                 continue
 
             atom_r = covradii.get(
-                atom.element.atomic_number,
+                atom.element.z,
                 2.0
             )
 
@@ -124,12 +124,12 @@ class SimpleBondAnalyzer(BaseBondAnalyzer):
             for neighbor, d in nlist:
                 if (
                     neighbor in seen or  # noqa: W504
-                    neighbor.element.atomic_number in self.ignoreset
+                    neighbor.element in self.ignoreset
                 ):
                     continue
 
                 neighbor_r = covradii.get(
-                    neighbor.element.atomic_number,
+                    neighbor.element.z,
                     2.0
                 )
                 if d <= (atom_r + neighbor_r + self.tolerance):

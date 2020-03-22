@@ -16,7 +16,7 @@
 # limitations under the License.
 
 """
-Module containing classes to define and search functional groups.
+Module containing es to define and search functional groups.
 """
 
 import logging
@@ -25,6 +25,7 @@ import networkx as nx
 import networkx.algorithms.components as nxcomp
 import networkx.algorithms.isomorphism as nxiso
 
+from interfacea.chemistry import elements as elem
 from interfacea.exceptions import (
     FunctionalGroupError,
 )
@@ -41,9 +42,11 @@ __all__ = [
     'AllCharged', 'AllBases', 'AllAcids', 'AllHydrophobics', 'AllAromatics',
 ]
 
+MAX_BONDS_PER_ATOM = 99
 
-class BaseFunctionalGroup(object):
-    """Base class to represent functional group.
+
+class FunctionalGroup(object):
+    """Class to represent functional groups.
 
     A functional group is defined here as a collection of bonded atomic
     atomic elements. This simplistic representation is limited, but works well
@@ -55,31 +58,26 @@ class BaseFunctionalGroup(object):
             name of the functional group.
 
         elements : list
-            atomic numbers of the elements that make up the functional group.
-            Use 0 as a wildcard to match any element. You can also provide a
-            tuple of numbers to represent multiple choices, e.g. (8, 7) matches
-            oxygen or nitrogen.
+            Elements that make up the functional group. Use Unknown as a
+            wildcard to match any element. You can also provide a tuples to
+            represent multiple choices, e.g. (Oxygen, Nitrogen).
 
         bonds : list
             bonds between elements in the group, as tuples of numerical indices,
-            e.g. (0, 1) is a bond between element 0 and 1 as defined in the
-            elements list.
+            e.g. (0, 1) is a bond between the first and second elements defined
+            in the elements list above.
 
         max_bonds : list, optional
             maximum number of bonds that each element can make. We do this
             because we are unsure of bond orders and as such, cannot distinguish
-            between C=O and C-O-X.
+            between C=O and C-O-X. Defaults to 99 bonds per element.
 
     Attributes
     ----------
         g : nx.Graph
-            graph representation of the functional group, storing atoms as nodes
-            with a 'Z' attribute containing a set of allowed atomic numbers.
-            This attribute is used by the `match` method to compare and find
-            instances of g in a structure bond graph.
-
-        elementset : set
-            list of sets containing element composition of the functional group.
+            graph representation of the functional group, storing elements as
+            nodes. The 'element' attribute is used by the `match` method to
+            compare and find instances of g in a structure bond graph.
     """
 
     def __init__(self, name, elements, bonds, max_bonds=None):
@@ -91,14 +89,15 @@ class BaseFunctionalGroup(object):
         self.bonds = bonds
 
         if max_bonds is None:
-            max_bonds = [99 for _ in elements]
+            max_bonds = [MAX_BONDS_PER_ATOM for _ in elements]
         self.max_bonds = max_bonds
 
         assert len(elements) == len(max_bonds), \
             "Length of elements and max_bonds arguments must be equal."
 
-        self.elementset = [
-            set((e,)) if isinstance(e, int) else set(e) for e in elements
+        self.elements = [
+            set((e,)) if isinstance(e, elem.Element) else set(e)
+            for e in elements
         ]
 
         try:
@@ -115,8 +114,8 @@ class BaseFunctionalGroup(object):
         """Converts the elements/bonds into a valid graph representation."""
 
         g = nx.Graph()
-        for idx, eset in enumerate(self.elementset):
-            g.add_node(idx, Z=eset)
+        for idx, eset in enumerate(self.elements):
+            g.add_node(idx, elem=eset)
 
         for e1, e2 in self.bonds:
             g.add_edge(e1, e2)
@@ -131,36 +130,38 @@ class BaseFunctionalGroup(object):
     # Matching Methods
     def _node_matcher(self, bg_node, fg_node):
         """Returns True if a fg node matches a structure node."""
-        return bg_node['Z'] in fg_node['Z'] or 0 in fg_node['Z']
+        return (
+            bg_node['elem'] in fg_node['elem'] or  # noqa:W504
+            elem.Any in fg_node['elem']
+        )
 
-    def _map_subgraph_to_structure(self, subgraph):
-        """Returns a dictionary mapping Atom objects to FG nodes"""
-
-        return [
-            self.structure.atom(idx) for idx in subgraph
-        ]
-
-    def _exceeds_max_bonds(self, subgraph):
-        """Checks if any of the matched Atoms exceeed its max_bonds parameter"""
+    def _exceeds_max_bonds(self, bondgraph, subgraph):
+        """Returns True if any Atom exceeds the specified number of bonds."""
 
         for bg_idx, fg_idx in subgraph.items():
-            if len(self.bondgraph.adj[bg_idx]) > self.max_bonds[fg_idx]:
+            if len(bondgraph.adj[bg_idx]) > self.max_bonds[fg_idx]:
                 logging.debug(
                     f"Max bonds exceeded for atom #{bg_idx}"
                 )
                 return True
         return False
 
-    def _is_missing_fg_elements(self):
-        """Return True if any FG element is missing from the structure."""
+    def _is_missing_fg_elements(self, bondgraph):
+        """Return True if any FG element is missing from the bondgraph.
 
-        struct_elements = {
-            z for _, z in self.bondgraph.nodes.data('Z')
-        }
-        struct_elements.update((0,))  # add wildcard
+        Arguments
+        ---------
+            bondgraph : nx.Graph
+                bond graph calculated from a Structure object. Nodes must have
+                an 'elem' attribute containing that atom's element as an Element
+                object.
+        """
 
-        for eset in self.elementset:
-            if eset.isdisjoint(struct_elements):
+        bondgraph_elementset = set(dict(bondgraph.nodes.data('elem')).values())
+        bondgraph_elementset.update((elem.Any,))  # add wildcard
+
+        for e in self.elements:
+            if e.isdisjoint(bondgraph_elementset):
                 logging.debug(
                     f"Elements of '{self.name}' missing in structure"
                 )
@@ -181,23 +182,23 @@ class BaseFunctionalGroup(object):
             functional group.
         """
 
+        logging.debug(f'Searching for instances of {self.name} in structure')
+
         matches = []
 
         # Get bond graph from structure
-        self.structure = structure
-        self.bondgraph = structure.bonds
+        bondgraph = structure.bonds
 
-        if self._is_missing_fg_elements():
+        if self._is_missing_fg_elements(bondgraph):
             return matches
 
         # Search for isomorphic subgraphs in structure
         m = nxiso.GraphMatcher(
-            self.bondgraph,
+            bondgraph,
             self.g,
             node_match=self._node_matcher
         )
         if m.subgraph_is_isomorphic():
-
             seen = set()  # avoid degenerate matches
             for subgraph in m.subgraph_isomorphisms_iter():
 
@@ -207,15 +208,13 @@ class BaseFunctionalGroup(object):
                 seen.add(indexes)
 
                 # Check connectivity for max_bonds violations
-                if self._exceeds_max_bonds(subgraph):
+                if self._exceeds_max_bonds(bondgraph, subgraph):
                     continue
 
-                # Map to Atoms
-                subgraph_atoms = self._map_subgraph_to_structure(
-                    subgraph
+                # Map to Atoms and add to matches
+                matches.append(
+                    [structure.atom(idx) for idx in subgraph]
                 )
-
-                matches.append(subgraph_atoms)
 
         logging.info(
             f"Found {len(matches)} matches of '{self.name}' in structure"
@@ -224,289 +223,304 @@ class BaseFunctionalGroup(object):
 
 
 #
-# Common functional groups
+# Functional groups as singletons
 #
 
 # Charged
-class Carboxylate(BaseFunctionalGroup):
-    """Carboxylate."""
+Carboxylate = FunctionalGroup(
+    name='carboxylate',
+    elements=[elem.Carbon, elem.Oxygen, elem.Oxygen],
+    bonds=[
+        (0, 1), (0, 2)
+    ],
+    max_bonds=[3, 1, 1]
+)
 
-    def __init__(self):
+Carboxyl = FunctionalGroup(
+    name='carboxyl',
+    elements=[
+        elem.Carbon,
+        elem.Oxygen,
+        elem.Oxygen,
+        elem.Hydrogen
+    ],
+    # the graph matching algorithm will
+    # match either oxygens to the hydrogen
+    # effectively having 'fuzzy' edges
+    bonds=[
+        (0, 1), (0, 2), (1, 3)
+    ],
+    max_bonds=[3, 1, 2, 1]
 
-        super().__init__(
-            name='carboxylate',
-            elements=[6, 8, 8],
-            bonds=[
-                (0, 1), (0, 2)
-            ],
-            max_bonds=[3, 1, 1]
-        )
+)
 
+Guanidinium = FunctionalGroup(
+    name='guanidinium',
+    elements=[
+        elem.Nitrogen,
+        elem.Hydrogen,
+        elem.Carbon,
+        elem.Nitrogen,
+        elem.Nitrogen,
+        elem.Hydrogen,
+        elem.Hydrogen,
+        elem.Hydrogen,
+        elem.Hydrogen
+    ],
+    bonds=[
+        (0, 1), (0, 2), (2, 3), (2, 4),
+        (3, 5), (3, 6), (4, 7), (4, 8)
+    ],
+    max_bonds=[3, 1, 3, 3, 3, 1, 1, 1, 1]
+)
 
-class Carboxyl(BaseFunctionalGroup):
-    """Carboxyl."""
+Imidazole = FunctionalGroup(
+    name='imidazole',
+    elements=[
+        elem.Carbon,
+        elem.Carbon,
+        elem.Nitrogen,
+        elem.Carbon,
+        elem.Nitrogen
+    ],
+    bonds=[
+        (0, 1), (1, 2), (2, 3), (3, 4),
+        (4, 0)
+    ],
+    max_bonds=[3, 3, 3, 3, 3]
+)
 
-    def __init__(self):
-        super().__init__(
-            name='carboxyl',
-            elements=[6, 8, 8, 1],
-            # the graph matching algorithm will
-            # match either oxygens to the hydrogen
-            # effectively having 'fuzzy' edges
-            bonds=[
-                (0, 1), (0, 2), (1, 3)
-            ],
-            max_bonds=[3, 1, 2, 1]
-        )
+Imidazolium = FunctionalGroup(
+    name='imidazolium',
+    elements=[
+        elem.Carbon,
+        elem.Carbon,
+        elem.Nitrogen,
+        elem.Carbon,
+        elem.Nitrogen,
+        elem.Hydrogen,
+        elem.Hydrogen,
+        elem.Hydrogen,
+        elem.Hydrogen
+    ],
+    bonds=[
+        (0, 1), (1, 2), (1, 5), (2, 3),
+        (2, 6), (3, 4), (3, 7), (4, 0),
+        (4, 8)
+    ],
+    max_bonds=[3, 3, 3, 3, 3, 1, 1, 1, 1]
+)
 
+Phosphate = FunctionalGroup(
+    name='phosphate',
+    elements=[
+        elem.Phosphorous,
+        elem.Oxygen,
+        elem.Oxygen,
+        elem.Oxygen
+    ],
+    bonds=[
+        (0, 1), (0, 2), (0, 3)
+    ],
+    max_bonds=[4, 1, 1, 1]
+)
 
-class Guanidinium(BaseFunctionalGroup):
-    """Guanidinium."""
+SingleCoordinatedPhosphate = FunctionalGroup(
+    name='phosphate-h',
+    elements=[
+        elem.Phosphorous,
+        elem.Oxygen,
+        elem.Oxygen,
+        elem.Oxygen,
+        elem.Any
+    ],
+    bonds=[
+        (0, 1), (0, 2), (0, 3), (1, 4)
+    ],
+    max_bonds=[4, 2, 1, 1, 99]
+)
 
-    def __init__(self):
-        super().__init__(
-            name='guanidinium',
-            elements=[7, 1, 6, 7, 7, 1, 1, 1, 1],
-            bonds=[
-                (0, 1), (0, 2), (2, 3), (2, 4),
-                (3, 5), (3, 6), (4, 7), (4, 8)
-            ],
-            max_bonds=[3, 1, 3, 3, 3, 1, 1, 1, 1]
-        )
+QuaternaryAmine = FunctionalGroup(
+    name='quaternary_amine',
+    elements=[
+        elem.Nitrogen,
+        elem.Any,
+        elem.Any,
+        elem.Any,
+        elem.Any
+    ],
+    bonds=[
+        (0, 1), (0, 2), (0, 3), (0, 4)
+    ]
+)
 
+Sulfonium = FunctionalGroup(
+    name='sulfonium',
+    elements=[
+        elem.Sulfur,
+        (elem.Carbon, elem.Hydrogen),
+        (elem.Carbon, elem.Hydrogen),
+        (elem.Carbon, elem.Hydrogen)
+    ],
+    bonds=[
+        (0, 1), (0, 2), (0, 3)
+    ],
+    max_bonds=[3, 4, 4, 4]
+)
 
-class Imidazole(BaseFunctionalGroup):
-    """Imidazole.
+Sulfate = FunctionalGroup(
+    name='sulfate',
+    elements=[
+        elem.Sulfur,
+        elem.Oxygen,
+        elem.Oxygen,
+        elem.Oxygen
+    ],
+    bonds=[
+        (0, 1), (0, 2), (0, 3)
+    ],
+    max_bonds=[4, 1, 1, 1]
+)
 
-    Without protons to avoid ambiguity between ND/NE protonation.
-    User can check for position of proton later.
-    """
-
-    def __init__(self):
-        super().__init__(
-            name='imidazole',
-            elements=[6, 6, 7, 6, 7],
-            bonds=[
-                (0, 1), (1, 2), (2, 3), (3, 4),
-                (4, 0)
-            ],
-            max_bonds=[3, 3, 3, 3, 3]
-        )
-
-
-class Imidazolium(BaseFunctionalGroup):
-    """Imidazolium.
-    """
-
-    def __init__(self):
-        super().__init__(
-            name='imidazolium',
-            elements=[6, 6, 7, 6, 7, 1, 1, 1, 1],
-            bonds=[
-                (0, 1), (1, 2), (1, 5), (2, 3),
-                (2, 6), (3, 4), (3, 7), (4, 0),
-                (4, 8)
-            ],
-            max_bonds=[3, 3, 3, 3, 3, 1, 1, 1, 1]
-        )
-
-
-class Phosphate(BaseFunctionalGroup):
-    """Phosphate.
-    """
-
-    def __init__(self):
-        super().__init__(
-            name='phosphate',
-            elements=[15, 8, 8, 8],
-            bonds=[
-                (0, 1), (0, 2), (0, 3)
-            ],
-            max_bonds=[4, 1, 1, 1]
-        )
-
-
-class SingleCoordinatedPhosphate(BaseFunctionalGroup):
-    """Phosphate bound to an atom.
-    """
-
-    def __init__(self):
-        super().__init__(
-            name='phosphate-h',
-            elements=[15, 8, 8, 8, 0],
-            bonds=[
-                (0, 1), (0, 2), (0, 3), (1, 4)
-            ],
-            max_bonds=[4, 2, 1, 1, 99]
-        )
-
-
-class QuaternaryAmine(BaseFunctionalGroup):
-    """Quaternary Amine.
-    """
-
-    def __init__(self):
-        super().__init__(
-            name='quaternary_amine',
-            elements=[7, 0, 0, 0, 0],
-            bonds=[
-                (0, 1), (0, 2), (0, 3), (0, 4)
-            ]
-        )
-
-
-class Sulfonium(BaseFunctionalGroup):
-    """Sulfonium.
-    """
-
-    def __init__(self):
-        super().__init__(
-            name='sulfonium',
-            elements=[16, (6, 1), (6, 1), (6, 1)],
-            bonds=[
-                (0, 1), (0, 2), (0, 3)
-            ],
-            max_bonds=[3, 4, 4, 4]
-        )
-
-
-class Sulfate(BaseFunctionalGroup):
-    """Sulfate.
-    """
-
-    def __init__(self):
-        super().__init__(
-            name='sulfate',
-            elements=[16, 8, 8, 8],
-            bonds=[
-                (0, 1), (0, 2), (0, 3)
-            ],
-            max_bonds=[4, 1, 1, 1]
-        )
-
-
-class HydrogenSulfate(BaseFunctionalGroup):
-    """Hydrogen Sulfate.
-    """
-
-    def __init__(self):
-        super().__init__(
-            name='sulfate-h',
-            elements=[16, 8, 8, 8, 1],
-            bonds=[
-                (0, 1), (0, 2), (0, 3), (1, 4)
-            ],
-            max_bonds=[4, 2, 1, 1, 1]
-        )
-
+HydrogenSulfate = FunctionalGroup(
+    name='sulfate-h',
+    elements=[
+        elem.Sulfur,
+        elem.Oxygen,
+        elem.Oxygen,
+        elem.Oxygen,
+        elem.Hydrogen
+    ],
+    bonds=[
+        (0, 1), (0, 2), (0, 3), (1, 4)
+    ],
+    max_bonds=[4, 2, 1, 1, 1]
+)
 
 # Hydrophobic
-class DivalentSulphur(BaseFunctionalGroup):
-    """Divalent Sulphur.
-    """
-
-    def __init__(self):
-        super().__init__(
-            name='divalent-sulphur',
-            elements=[16, 0, 0],
-            bonds=[
-                (0, 1), (0, 2)
-            ],
-            max_bonds=[2, 4, 4]
-        )
-
-
-class AlkaneCarbon(BaseFunctionalGroup):
-    """Alkanes - Aliphatic Saturated Carbon Chain.
-    """
-
-    def __init__(self):
-        super().__init__(
-            name='alkane',
-            elements=[6, (1, 6), (1, 6), (1, 6), (1, 6)],
-            bonds=[
-                (0, 1), (0, 2), (0, 3), (0, 4)
-            ]
-        )
+DivalentSulphur = FunctionalGroup(
+    name='divalent-sulphur',
+    elements=[
+        elem.Sulfur,
+        elem.Any,
+        elem.Any
+    ],
+    bonds=[
+        (0, 1), (0, 2)
+    ],
+    max_bonds=[2, 4, 4]
+)
 
 
-class AlkeneCarbon(BaseFunctionalGroup):
-    """Alkene - Aliphatic Unsaturated Carbon Chain.
-    """
-
-    def __init__(self):
-        super().__init__(
-            name='alkene',
-            elements=[6, (1, 6), (1, 6), (1, 6)],
-            bonds=[
-                (0, 1), (0, 2), (0, 3)
-            ],
-            max_bonds=[3, 4, 4, 4]
-        )
-
-
-class AlkyneCarbon(BaseFunctionalGroup):
-    """Alkyne - Aliphatic Unsaturated Carbon Chain.
-    """
-
-    def __init__(self):
-        super().__init__(
-            name='alkene',
-            elements=[6, (1, 6), (1, 6)],
-            bonds=[
-                (0, 1), (0, 2), (0, 3)
-            ],
-            max_bonds=[2, 4, 4]
-        )
+AlkaneCarbon = FunctionalGroup(
+    name='alkane',
+    elements=[
+        elem.Carbon,
+        (elem.Hydrogen, elem.Carbon),
+        (elem.Hydrogen, elem.Carbon),
+        (elem.Hydrogen, elem.Carbon),
+        (elem.Hydrogen, elem.Carbon)
+    ],
+    bonds=[
+        (0, 1), (0, 2), (0, 3), (0, 4)
+    ]
+)
 
 
-class Phenyl(BaseFunctionalGroup):
-    """Phenyl Group.
-    """
-
-    def __init__(self):
-        super().__init__(
-            name='phenyl',
-            elements=[6, 6, 6, 6, 6, 6, 0, 0, 0, 0, 0, 0],
-            bonds=[
-                (0, 1), (1, 2), (2, 3), (3, 4),
-                (4, 5), (5, 0), (0, 6), (1, 7),
-                (2, 8), (3, 9), (4, 10), (5, 11)
-            ]
-        )
-
-
-class Indole(BaseFunctionalGroup):
-    """Indole Group.
-    """
-
-    def __init__(self):
-        super().__init__(
-            name='indole',
-            elements=[7, 6, 6, 6, 6, 6, 6, 6, 6, 1, 1, 0, 1, 1, 1, 1],
-            bonds=[
-                (0, 1), (1, 2), (2, 3), (3, 4),
-                (4, 5), (5, 6), (6, 7), (7, 8),
-                (8, 0), (3, 8), (0, 9), (1, 10),
-                (2, 11), (4, 12), (5, 13), (6, 14),
-                (7, 15)
-            ]
-        )
+AlkeneCarbon = FunctionalGroup(
+    name='alkene',
+    elements=[
+        elem.Carbon,
+        (elem.Hydrogen, elem.Carbon),
+        (elem.Hydrogen, elem.Carbon),
+        (elem.Hydrogen, elem.Carbon)
+    ],
+    bonds=[
+        (0, 1), (0, 2), (0, 3)
+    ],
+    max_bonds=[3, 4, 4, 4]
+)
 
 
-class HBondDonor(BaseFunctionalGroup):
-    """Hydrogen Bond Donor.
-    """
+AlkyneCarbon = FunctionalGroup(
+    name='alkene',
+    elements=[
+        elem.Carbon,
+        (elem.Hydrogen, elem.Carbon),
+        (elem.Hydrogen, elem.Carbon)
+    ],
+    bonds=[
+        (0, 1), (0, 2), (0, 3)
+    ],
+    max_bonds=[2, 4, 4]
+)
 
-    def __init__(self):
-        super().__init__(
-            name='hbond-donor',
-            elements=[(7, 8), 1],
-            bonds=[
-                (0, 1)
-            ],
-            max_bonds=[99, 1]
-        )
+
+Phenyl = FunctionalGroup(
+    name='phenyl',
+    elements=[
+        elem.Carbon,
+        elem.Carbon,
+        elem.Carbon,
+        elem.Carbon,
+        elem.Carbon,
+        elem.Carbon,
+        elem.Any,
+        elem.Any,
+        elem.Any,
+        elem.Any,
+        elem.Any,
+        elem.Any
+    ],
+    bonds=[
+        (0, 1), (1, 2), (2, 3), (3, 4),
+        (4, 5), (5, 0), (0, 6), (1, 7),
+        (2, 8), (3, 9), (4, 10), (5, 11)
+    ]
+)
+
+
+Indole = FunctionalGroup(
+    name='indole',
+    elements=[
+        elem.Nitrogen,
+        elem.Carbon,
+        elem.Carbon,
+        elem.Carbon,
+        elem.Carbon,
+        elem.Carbon,
+        elem.Carbon,
+        elem.Carbon,
+        elem.Carbon,
+        elem.Hydrogen,
+        elem.Hydrogen,
+        elem.Any,
+        elem.Hydrogen,
+        elem.Hydrogen,
+        elem.Hydrogen,
+        elem.Hydrogen
+    ],
+    bonds=[
+        (0, 1), (1, 2), (2, 3), (3, 4),
+        (4, 5), (5, 6), (6, 7), (7, 8),
+        (8, 0), (3, 8), (0, 9), (1, 10),
+        (2, 11), (4, 12), (5, 13), (6, 14),
+        (7, 15)
+    ]
+)
+
+
+HBondDonor = FunctionalGroup(
+    name='hbond-donor',
+    elements=[
+        (elem.Nitrogen, elem.Oxygen),
+        elem.Hydrogen
+    ],
+    bonds=[
+        (0, 1)
+    ],
+    max_bonds=[99, 1]
+)
 
 
 #
