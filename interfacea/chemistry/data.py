@@ -19,7 +19,8 @@
 Module containing data tables with assorted information.
 """
 
-# Covalent atom radii (in Angstrom) used to infer connectivity
+# Covalent atom radii used to infer connectivity
+# Maps atomic number to radii in Angstrom
 # Values taken from CCDC and Roger Sayle's website:
 # http://www.daylight.com/meetings/mug01/Sayle/m4xbondage.html
 COVALENT_RADII = {

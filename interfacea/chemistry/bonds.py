@@ -32,23 +32,20 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 class BaseBondAnalyzer(abc.ABC):
     """Base class for bond analyzers
 
-    Subclasses must implement a run() method that takes a Structure object
-    as an argument and returns a networkx Graph defining bonds between all atoms
-    in the structure.
+    Subclasses must implement a run() method that returns a networkx Graph
+    defining bonds between (all) atoms in the structure. Nodes (atoms) must have
+    at least an 'elem' attribute with the corresponding Element object from each
+    atom. Edges are not required to have any attribute.
     """
 
     @abc.abstractmethod
-    def run(structure):
+    def run(self):
         """Analyzes a structure to infer atom connectivity.
-
-        Arguments
-        ---------
-            structure : Structure
-                atomic structure with coordinate and metadata.
 
         Returns
         -------
-            a networkx Graph object representing the bond graph.
+            nx.Graph object representing the bond graph, where nodes represent
+            atoms and edges bonds between them.
         """
         pass
 
@@ -56,85 +53,97 @@ class BaseBondAnalyzer(abc.ABC):
 class SimpleBondAnalyzer(BaseBondAnalyzer):
     """Simplistic analyzer to infer atom connectivity from xyz coordinates"""
 
-    def __init__(self, tolerance=0.45, ignorelist=None):
+    def __init__(self, structure, tolerance=0.45, ignorelist=None):
         """
         Arguments
         ---------
+            structure : Structure
+                atomic structure with coordinates and metadata.
+
             tolerance : float, optional
                 fudge factor (in Angstrom) to account for variations in bond
                 lengths. A lower value means a more strict criterion to consider
                 two atoms bonded, so less bonds inferred. Default is 0.45.
             ignorelist : list, optional
-                atomic numbers to ignore when accounting for bonding. By default
-                contains all metallic elements.
-
-        Raises
-        ------
-            ValueError
-                if the tolerance value is zero or a negative number.
+                elements to ignore when accounting for bonding, as a list of
+                Element objects. By default contains all metallic elements.
         """
+
+        IGNORED_ELEMENTS_Z = {
+            3, 4, 12, 13, 18, 23, 24, 25, 27, 29, 30, 31, 33, 36, 37, 38, 39,
+            42, 47, 48, 49, 51, 52, 54, 55, 56, 57, 58, 62, 63, 64, 65, 67,
+            70, 71, 74, 75, 76, 77, 78, 79, 80, 81, 82, 92,
+        }
 
         if tolerance <= 0:
             raise ValueError(f'Tolerance factor must be > 0')
 
         if ignorelist is None:
-            ignorelist = [
-                3, 4, 12, 13, 18, 23, 24, 25, 27, 29, 30, 31, 33, 36, 37, 38, 39,
-                42, 47, 48, 49, 51, 52, 54, 55, 56, 57, 58, 62, 63, 64, 65, 67,
-                70, 71, 74, 75, 76, 77, 78, 79, 80, 81, 82, 92,
-            ]
+            ignoreset = IGNORED_ELEMENTS_Z
+        else:
+            try:
+                ignoreset = {e.z for e in ignorelist}
+            except TypeError as err:
+                raise TypeError(
+                    f"Could not convert ignore list to a set: {err}"
+                )
+            except AttributeError as err:
+                raise AttributeError(
+                    f"Items in ignore list must be Element instances: {err}"
+                )
 
-        self.ignoreset = set(ignorelist)
+        self.structure = structure
+        self.ignoreset = ignoreset
         self.tolerance = tolerance
 
-    def run(self, structure):
-        """
-        Arguments
-        ---------
-            structure : Structure
-                atomic structure with coordinate and metadata.
+        self.init_graph()
 
+    def init_graph(self):
+        """Initializes the bond graph with atoms from the Structure"""
+
+        self.bondgraph = bondgraph = nx.Graph()
+
+        for atom in self.structure:
+            if atom.element.z in self.ignoreset:
+                continue
+
+            bondgraph.add_node(
+                atom.serial,
+                elem=atom.element
+            )
+
+        logging.debug(
+            f"Initialized bond graph with {len(self.bondgraph)} nodes."
+        )
+
+    def run(self):
+        """
         Returns
         -------
-            a networkx Graph object representing the bond graph.
+            nx.Graph object representing the bond graph, where atoms are the
+            nodes and bonds between them the edges. Nodes have an 'elem'
+            attribute corresponding to their respective atom.Element object.
         """
 
         covradii = COVALENT_RADII
-
-        # Initialize bond graph with atoms as nodes
-        # and atomic numbers as attributes
-        bondgraph = nx.Graph()
-        for atom in structure:
-            bondgraph.add_node(atom.serial, Z=atom.element.atomic_number)
-
         max_r = (max(covradii.values()) ** 2) + self.tolerance
 
-        seen = set()  # store atoms we've visited not to repeat.
-        for atom in structure:
-            if atom.element.atomic_number in self.ignoreset:
-                logging.debug(f"Skipping bonds for {atom}: ignored element")
-                continue
+        visited = set()  # avoid i-j, j-i dupes
+        for idx in self.bondgraph:
 
-            atom_r = covradii.get(
-                atom.element.atomic_number,
-                2.0
-            )
+            atom = self.structure.atom(idx)
 
-            nlist = structure.neighbors(atom, radius=max_r)
-            for neighbor, d in nlist:
-                if (
-                    neighbor in seen or  # noqa: W504
-                    neighbor.element.atomic_number in self.ignoreset
-                ):
+            atom_r = covradii.get(atom.element.z, 2.0)
+
+            visited.add(atom.serial)  # avoid i-i
+
+            neighbors = self.structure.neighbors(atom, radius=max_r)
+            for n, dist in neighbors:
+                if n in visited or n.element in self.ignoreset:
                     continue
 
-                neighbor_r = covradii.get(
-                    neighbor.element.atomic_number,
-                    2.0
-                )
-                if d <= (atom_r + neighbor_r + self.tolerance):
-                    bondgraph.add_edge(atom.serial, neighbor.serial)
+                neighbor_r = covradii.get(n.element.z, 2.0)
+                if dist <= (atom_r + neighbor_r + self.tolerance):
+                    self.bondgraph.add_edge(atom.serial, n.serial)
 
-            seen.add(atom)
-
-        return bondgraph
+        return self.bondgraph
