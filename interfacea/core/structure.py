@@ -422,14 +422,31 @@ class Structure(object):
 
         yield from self.atoms
 
+    def __len__(self):
+        """Point users in the right direction."""
+        return (
+            "Length of Structure is ambiguous: use num_atoms or num_models."
+        )
+
     # 'Private' Methods
     def _add_atoms(self, atoms):
-        """Sets atoms as childs of this structure."""
+        """Sets atoms as childs of this structure.
 
-        for atom in atoms:
-            atom.parent = self
+        Additionally, creates idxdict mapping to avoid IndexErrors when we
+        have DisorderedAtoms and try mapping by serial number, ie when
+        max(atom.serial) > len(atoms).
+        """
 
         self.atoms = atoms
+        self._idxdict = idxdict = {}
+        for idx, atom in enumerate(atoms):
+            if isinstance(atom, DisorderedAtom):
+                for altloc in atom:
+                    idxdict[altloc.serial] = idx
+                    altloc.parent = self
+            else:
+                idxdict[atom.serial] = idx
+                atom.parent = self
 
     def _make_kdtree(self):
         """Creates/Returns a KDTree for fast neighbor search.
@@ -460,8 +477,8 @@ class Structure(object):
 
         Returns
         -------
-            an iterator with 2-item tuples containing the serials of neighbor
-            atoms of the query, along with the distance between each pair.
+            an iterator with 2-item tuples, each containing a neighbor Atom and
+            its the distance to the query.
 
         Raises
         ------
@@ -489,13 +506,15 @@ class Structure(object):
 
         dupes = set((atom.serial,))
         for point in kdt.search(coords, radius):
-            idx, d_ij = point.index, point.radius
 
-            if idx in dupes:
+            atom = self.atom(point.index)
+            if atom.serial in dupes:
                 continue
 
-            dupes.add(idx)
-            yield (idx, d_ij)
+            # Add serial, not raw index, to avoid multiple altloc matches.
+            dupes.add(atom.serial)
+
+            yield (atom, point.radius)
 
     def unpack_atoms(self):
         """Returns a generator over all atoms, including all altlocs."""
@@ -506,21 +525,27 @@ class Structure(object):
             else:
                 yield atom
 
-    def atom(self, index):
+    def atom(self, serial):
         """Returns an Atom from the structure.
+
+        Safely translates atom serial to atom array index, handling structures
+        with DisorderedAtoms.
 
         Arguments
         ---------
-            index : int
-                0-based index of the atom to retrieve.
+            serial : int
+                serial number of the atom to retrieve.
         """
 
         try:
-            return self.atoms[index]
-        except IndexError:
-            raise IndexError(
-                f"Unknown atom: #{index}. Known indexes: 0 to {self.num_atoms}"
+            idx = self._idxdict[serial]
+        except KeyError:
+            max_serial = max(self._idxdict)
+            raise KeyError(
+                f"Unknown atom: #{serial}. Known indexes: 0 to {max_serial}"
             )
+
+        return self.atoms[idx]
 
     @property
     def num_atoms(self):
@@ -556,6 +581,17 @@ class Structure(object):
         return self._coords.shape[0]
 
     @property
+    def models(self):
+        """Iterates over all models of the structure"""
+
+        start = self.model
+        for midx in self.num_models:
+            self.model(midx)
+            yield self
+
+        self.model(start)  # reset
+
+    @property
     def bonds(self):
         """Returns a bond graph describing atom connectivity.
 
@@ -565,8 +601,8 @@ class Structure(object):
         """
 
         if self._bonds is None:
-            ba = SimpleBondAnalyzer()
-            self._bonds = ba.run(self)
+            ba = SimpleBondAnalyzer(self)
+            self._bonds = ba.run()
 
         return self._bonds
 
