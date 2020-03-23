@@ -332,18 +332,15 @@ class Structure(object):
         assert isinstance(coords, np.ndarray) and coords.ndim == 3
 
         self.name = name
-        self.atoms = atoms
+        self._add_atoms(atoms)
 
         self._coords = coords
         self._model = 0
 
         self._bonds = None
         self._kdtree = None
-        self._make_kdtree()
 
-        # Bind atoms to structure and map indices
-        self._bind_atoms()
-        self._map_indices()
+        self._make_kdtree()
 
     # Class method to build structure from parser data.
     @classmethod
@@ -423,27 +420,16 @@ class Structure(object):
     def __iter__(self):
         """Returns a generator to iterate over the children atoms."""
 
-        for atom in self.atoms:
-            yield atom
+        yield from self.atoms
 
     # 'Private' Methods
-    def _bind_atoms(self):
-        """Attaches current Atom objects to this Structure object."""
+    def _add_atoms(self, atoms):
+        """Sets atoms as childs of this structure."""
 
-        for atom in self.unpack_atoms():
+        for atom in atoms:
             atom.parent = self
 
-    def _map_indices(self):
-        """Builds a mapping of raw indices to Atom/DisorderedAtom serials."""
-
-        idxdict = {}
-        for raw_idx, atom in enumerate(self):
-            if isinstance(atom, DisorderedAtom):
-                for loc in atom:
-                    idxdict[loc.serial] = raw_idx
-            else:
-                idxdict[atom.serial] = raw_idx
-        self._idxdict = idxdict
+        self.atoms = atoms
 
     def _make_kdtree(self):
         """Creates/Returns a KDTree for fast neighbor search.
@@ -474,8 +460,8 @@ class Structure(object):
 
         Returns
         -------
-            an iterator with 2-item tuples containing all neighboring atoms of
-            the query, along with the distance between query and neighbors.
+            an iterator with 2-item tuples containing the serials of neighbor
+            atoms of the query, along with the distance between each pair.
 
         Raises
         ------
@@ -503,13 +489,13 @@ class Structure(object):
 
         dupes = set((atom.serial,))
         for point in kdt.search(coords, radius):
+            idx, d_ij = point.index, point.radius
 
-            if point.index not in dupes:
-                dupes.add(point.index)
-                yield (
-                    self.atom(point.index),
-                    point.radius
-                )
+            if idx in dupes:
+                continue
+
+            dupes.add(idx)
+            yield (idx, d_ij)
 
     def unpack_atoms(self):
         """Returns a generator over all atoms, including all altlocs."""
@@ -523,9 +509,6 @@ class Structure(object):
     def atom(self, index):
         """Returns an Atom from the structure.
 
-        Better than accessing self.atoms directly, as it accounts for
-        DisorderedAtoms.
-
         Arguments
         ---------
             index : int
@@ -533,13 +516,11 @@ class Structure(object):
         """
 
         try:
-            idx = self._idxdict[index]
-        except KeyError:
-            raise KeyError(
+            return self.atoms[index]
+        except IndexError:
+            raise IndexError(
                 f"Unknown atom: #{index}. Known indexes: 0 to {self.num_atoms}"
             )
-
-        return self.atoms[idx]
 
     @property
     def num_atoms(self):
