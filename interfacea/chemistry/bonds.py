@@ -16,7 +16,7 @@
 # limitations under the License.
 
 """
-Module containing bonding information and analyzers.
+Module containing classes to detect atom connectivity/bonds.
 """
 
 import abc
@@ -29,8 +29,8 @@ from interfacea.chemistry.data import COVALENT_RADII
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
-class BaseBondAnalyzer(abc.ABC):
-    """Base class for bond analyzers
+class BaseBondDetector(abc.ABC):
+    """Base class for bond detectors.
 
     Subclasses must implement a run() method that takes a Structure object
     as an argument and returns a networkx Graph defining bonds between all atoms
@@ -53,8 +53,8 @@ class BaseBondAnalyzer(abc.ABC):
         pass
 
 
-class SimpleBondAnalyzer(BaseBondAnalyzer):
-    """Simplistic analyzer to infer atom connectivity from xyz coordinates"""
+class SimpleBondDetector(BaseBondDetector):
+    """Infers atom connectivity from xyz coordinates. Very simplistic."""
 
     def __init__(self, tolerance=0.45, ignorelist=None):
         """
