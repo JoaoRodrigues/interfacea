@@ -332,18 +332,15 @@ class Structure(object):
         assert isinstance(coords, np.ndarray) and coords.ndim == 3
 
         self.name = name
-        self.atoms = atoms
+        self._add_atoms(atoms)
 
         self._coords = coords
         self._model = 0
 
         self._bonds = None
         self._kdtree = None
-        self._make_kdtree()
 
-        # Bind atoms to structure and map indices
-        self._bind_atoms()
-        self._map_indices()
+        self._make_kdtree()
 
     # Class method to build structure from parser data.
     @classmethod
@@ -423,27 +420,33 @@ class Structure(object):
     def __iter__(self):
         """Returns a generator to iterate over the children atoms."""
 
-        for atom in self.atoms:
-            yield atom
+        yield from self.atoms
+
+    def __len__(self):
+        """Point users in the right direction."""
+        return (
+            "Length of Structure is ambiguous: use num_atoms or num_models."
+        )
 
     # 'Private' Methods
-    def _bind_atoms(self):
-        """Attaches current Atom objects to this Structure object."""
+    def _add_atoms(self, atoms):
+        """Sets atoms as childs of this structure.
 
-        for atom in self.unpack_atoms():
-            atom.parent = self
+        Additionally, creates idxdict mapping to avoid IndexErrors when we
+        have DisorderedAtoms and try mapping by serial number, ie when
+        max(atom.serial) > len(atoms).
+        """
 
-    def _map_indices(self):
-        """Builds a mapping of raw indices to Atom/DisorderedAtom serials."""
-
-        idxdict = {}
-        for raw_idx, atom in enumerate(self):
+        self.atoms = atoms
+        self._idxdict = idxdict = {}
+        for idx, atom in enumerate(atoms):
             if isinstance(atom, DisorderedAtom):
-                for loc in atom:
-                    idxdict[loc.serial] = raw_idx
+                for altloc in atom:
+                    idxdict[altloc.serial] = idx
+                    altloc.parent = self
             else:
-                idxdict[atom.serial] = raw_idx
-        self._idxdict = idxdict
+                idxdict[atom.serial] = idx
+                atom.parent = self
 
     def _make_kdtree(self):
         """Creates/Returns a KDTree for fast neighbor search.
@@ -474,8 +477,8 @@ class Structure(object):
 
         Returns
         -------
-            an iterator with 2-item tuples containing all neighboring atoms of
-            the query, along with the distance between query and neighbors.
+            an iterator with 2-item tuples, each containing a neighbor Atom and
+            its the distance to the query.
 
         Raises
         ------
@@ -504,12 +507,14 @@ class Structure(object):
         dupes = set((atom.serial,))
         for point in kdt.search(coords, radius):
 
-            if point.index not in dupes:
-                dupes.add(point.index)
-                yield (
-                    self.atom(point.index),
-                    point.radius
-                )
+            atom = self.atom(point.index)
+            if atom.serial in dupes:
+                continue
+
+            # Add serial, not raw index, to avoid multiple altloc matches.
+            dupes.add(atom.serial)
+
+            yield (atom, point.radius)
 
     def unpack_atoms(self):
         """Returns a generator over all atoms, including all altlocs."""
@@ -520,23 +525,24 @@ class Structure(object):
             else:
                 yield atom
 
-    def atom(self, index):
+    def atom(self, serial):
         """Returns an Atom from the structure.
 
-        Better than accessing self.atoms directly, as it accounts for
-        DisorderedAtoms.
+        Safely translates atom serial to atom array index, handling structures
+        with DisorderedAtoms.
 
         Arguments
         ---------
-            index : int
-                0-based index of the atom to retrieve.
+            serial : int
+                serial number of the atom to retrieve.
         """
 
         try:
-            idx = self._idxdict[index]
+            idx = self._idxdict[serial]
         except KeyError:
+            max_serial = max(self._idxdict)
             raise KeyError(
-                f"Unknown atom: #{index}. Known indexes: 0 to {self.num_atoms}"
+                f"Unknown atom: #{serial}. Known indexes: 0 to {max_serial}"
             )
 
         return self.atoms[idx]
@@ -575,6 +581,17 @@ class Structure(object):
         return self._coords.shape[0]
 
     @property
+    def models(self):
+        """Iterates over all models of the structure"""
+
+        start = self.model
+        for midx in self.num_models:
+            self.model(midx)
+            yield self
+
+        self.model(start)  # reset
+
+    @property
     def bonds(self):
         """Returns a bond graph describing atom connectivity.
 
@@ -584,8 +601,8 @@ class Structure(object):
         """
 
         if self._bonds is None:
-            ba = SimpleBondAnalyzer()
-            self._bonds = ba.run(self)
+            ba = SimpleBondAnalyzer(self)
+            self._bonds = ba.run()
 
         return self._bonds
 

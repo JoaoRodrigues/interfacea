@@ -39,6 +39,7 @@ Element = collections.namedtuple(
 
 # Singletons
 Unknown = Element("X", "unknown", None)
+Any = Element("*", "any", None)
 
 Hydrogen = Element("H", "hydrogen", 1)
 Carbon = Element("C", "carbon", 6)
