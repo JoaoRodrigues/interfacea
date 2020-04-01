@@ -26,266 +26,17 @@ Structures are meant to be manipulated but _not created_ by users.
 """
 
 import logging
-import weakref
 
 import networkx as nx
 import numpy as np
 
-from interfacea.exceptions import (
-    DuplicateAltLocError,
-)
-
+from interfacea.core.atom import DisorderedAtom
 from interfacea.chemistry.bonds import SimpleBondAnalyzer
 from interfacea.spatial import kdtrees
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
-###############################################################################
-class Atom(object):
-    """Container class to store atomic metadata.
-
-    Arguments
-    ---------
-        name : str
-            string to identify the atom.
-        serial : int
-            numerical index of the atom.
-
-        hetatm : bool, optional
-            flag to identify HETATMs.
-        altloc : str, optional
-            identifier for alternate location.
-        resname : str, optional
-            name of the parent residue.
-        resid : int, optional
-            residue sequence number.
-        icode : str, optional
-            residue insertion code.
-        chain : str, optional
-            name of the parent chain.
-        b : float, optional
-            temperature factor.
-        occ : float, optional
-            fractional occupancy.
-        segid : str, optional
-            segment identifier.
-        element : Element, optional
-            atomic element.
-
-    Attributes
-    ----------
-        coords : np.array
-            array of shape (,3) representing cartesian coordinates of the atom
-            in Angstrom. Only defined when bound to a parent Structure,
-            otherwise raises an error on access.
-        is_disordered : bool
-            True if the atom has multiple locations, i.e., is part of a
-            DisorderedAtom object.
-    """
-
-    def __init__(self, name, serial, **kwargs):
-        """Manually instantiates an Atom class instance."""
-
-        self._parent = None
-        self._coords = None
-
-        self.name = name
-        self.serial = serial
-        self.is_disordered = False
-
-        self.__dict__.update(kwargs)
-
-    # Dunder methods
-    def __str__(self):
-        """Pretty string representation of the Atom object."""
-        return f"<Atom name={self.name} serial={self.serial}>"
-
-    def __repr__(self):
-        """Pretty string representation of the Atom object."""
-        return f"<Atom name={self.name} serial={self.serial}>"
-
-    # Public Methods/Attributes
-    @classmethod
-    def from_atomrecord(cls, record):
-        """Creates an Atom class instance from an AtomRecord dataclass.
-
-        Argument
-        --------
-            atomdata : io.AtomRecord
-                data class containing information to create the Atom object.
-        """
-
-        attrs = record.__dict__.copy()
-        del attrs['name']
-        del attrs['serial']
-
-        # Ignore x, y, z fields if present
-        for f in ('x', 'y', 'z'):
-            try:
-                del attrs[f]
-            except Exception:
-                pass
-
-        return cls(record.name, record.serial, **attrs)
-
-    # Public Methods
-    # Properties
-    @property
-    def parent(self):
-        """Returns the structure the Atom belongs to or None if unbound."""
-        if self._parent is None:
-            return None  # unbound
-        return self._parent()
-
-    @parent.setter
-    def parent(self, value):
-        if isinstance(value, Structure):
-            self._parent = weakref.ref(value)  # avoid uncollected garbage
-        else:
-            raise TypeError(
-                f"Parent object must be a Structure type."
-            )
-
-    @parent.deleter
-    def parent(self):
-        self._parent = None
-
-    @property
-    def coords(self):
-        """Cartesian coordinates of the atom.
-
-        Raises:
-            AttributeError: atom is not bound to a Structure object.
-        """
-        try:
-            return self.parent.coords[self.serial]
-        except AttributeError:
-            raise AttributeError(
-                f"Atom is not bound to a parent Structure."
-            ) from None
-
-
-###############################################################################
-class DisorderedAtom(object):
-    """Wrapper class for several Atoms sharing the same metadata.
-
-    Allows seamless interaction with a selected instance (altloc) of
-    this atom while storing information on the disordered states.
-    """
-
-    def __init__(self):
-
-        self.__dict__['children'] = {}  # holds Atom objects
-        self.__dict__['selected_child'] = None
-
-    def __str__(self):
-        """Pretty printing."""
-        return (
-            f"<DisorderedAtom name={self.name} "
-            f"serial={self.serial} nlocs={self.nlocs}>"
-        )
-
-    def __repr__(self):
-        """Pretty printing."""
-        return (
-            f"<DisorderedAtom name={self.name} "
-            f"serial={self.serial} nlocs={self.nlocs}>"
-        )
-
-    def __iter__(self):
-        """Returns an iterator over child atoms."""
-        yield from self.children.values()
-
-    def __getattr__(self, attr):
-        """Forward all unknown calls to selected child."""
-        if attr in self.__dict__:
-            return self.__dict__[attr]
-
-        try:
-            return getattr(self.selected_child, attr)
-        except AttributeError as err:
-            if self.selected_child is None:
-                emsg = "DisorderedAtom has no children."
-                raise AttributeError(emsg)
-            raise err from None  # re-raise
-
-    def __setattr__(self, attr, value):
-        """Forward all unknown calls to selected child."""
-        if attr in self.__dict__:
-            self.__dict__[attr] = value
-            return
-
-        setattr(self.selected_child, attr, value)
-
-    def add(self, atom):
-        """Adds an Atom object.
-
-        Arguments
-        ---------
-            atom : Atom)
-                child Atom to add to container.
-
-        Raises
-        ------
-            TypeError
-                when the object being added is not an Atom instance.
-            DuplicateAltLocError
-                when there is already a child with this altloc identifier in the
-                DisorderedAtom object.
-        """
-
-        if atom.altloc in self.children:
-            emsg = f"Altloc '{atom.altloc}' already exists in {self}"
-            raise DuplicateAltLocError(emsg) from None
-
-        atom.is_disordered = True  # flag
-        self.children[atom.altloc] = atom
-
-        if not self.selected_child:
-            self.selected_child = atom
-
-        # Replace if atom.occ is larger
-        if self.selected_child.occ < atom.occ:
-            self.selected_child = atom
-
-    def from_list(self, atomlist):
-        """Adds Atom objects from a list.
-
-        Argument
-        --------
-            atomlist : list
-                obviously, a list of Atoms.
-        """
-        for atom in atomlist:
-            self.add(atom)
-
-    def select(self, altloc):
-        """Selects a child as representative.
-
-        Argument
-        --------
-            altloc : str
-                altloc identifier of the child Atom.
-
-        Raises
-        ------
-            KeyError
-                when altloc is not in the DisorderedAtom wrapper.
-        """
-        try:
-            self.selected_child = self.children[altloc]
-        except KeyError:
-            emsg = f"Alternate location '{altloc}' not found in {self}"
-            raise KeyError(emsg) from None
-
-    @property
-    def nlocs(self):
-        """Returns the number of children in the DisorderedAtom"""
-        return len(self.children)
-
-
-###############################################################################
 class Structure(object):
     """Represents 3D molecules as collections of atoms.
 
@@ -343,73 +94,73 @@ class Structure(object):
         self._make_kdtree()
 
     # Class method to build structure from parser data.
-    @classmethod
-    def from_atomrecords(cls, name, atomrecords, **kwargs):
-        """Creates and returns a Structure object from AtomRecord objects.
+    # @classmethod
+    # def from_atomrecords(cls, name, atomrecords, **kwargs):
+    #     """Creates and returns a Structure object from AtomRecord objects.
 
-        Arguments
-        ---------
-            name : str
-                name of the resulting structure.
-            atomrecords : list
-                AtomRecords to build Atoms from.
+    #     Arguments
+    #     ---------
+    #         name : str
+    #             name of the resulting structure.
+    #         atomrecords : list
+    #             AtomRecords to build Atoms from.
 
-            discard_altloc : bool, optional
-                ignore atoms with more than one alternate locations. Keeps only
-                the first altloc. If False (default), builds DisorderedAtom
-                wrappers to store multiple locations.
+    #         discard_altloc : bool, optional
+    #             ignore atoms with more than one alternate locations. Keeps only
+    #             the first altloc. If False (default), builds DisorderedAtom
+    #             wrappers to store multiple locations.
 
-        Returns
-        -------
-            Structure instance with metadata and coordinate data.
-        """
+    #     Returns
+    #     -------
+    #         Structure instance with metadata and coordinate data.
+    #     """
 
-        _defaults = {
-            'discard_altloc': False,
-        }
-        _defaults.update(kwargs)
+    #     _defaults = {
+    #         'discard_altloc': False,
+    #     }
+    #     _defaults.update(kwargs)
 
-        atoms, coords = [], []
-        record_dict = {}  # uniq -> serial
-        for r in atomrecords:
-            uniq_id = (r.model, r.chain, r.resid, r.icode, r.name)
-            idx = record_dict.get(uniq_id)
+    #     atoms, coords = [], []
+    #     record_dict = {}  # uniq -> serial
+    #     for r in atomrecords:
+    #         uniq_id = (r.model, r.chain, r.resid, r.icode, r.name)
+    #         idx = record_dict.get(uniq_id)
 
-            if idx is None:  # new atom
-                atom = Atom.from_atomrecord(r)
-                record_dict[uniq_id] = len(atoms)
-                atoms.append(atom)
+    #         if idx is None:  # new atom
+    #             atom = Atom.from_atomrecord(r)
+    #             record_dict[uniq_id] = len(atoms)
+    #             atoms.append(atom)
 
-            elif not _defaults['discard_altloc']:  # new altloc for existing atom
-                existing = atoms[idx]
-                if isinstance(existing, Atom):
-                    logging.debug(f"New disordered atom at #{r.serial}")
-                    disatom = DisorderedAtom()
-                    disatom.add(existing)
-                    atoms[idx] = disatom
-                new_loc = Atom.from_atomrecord(r)
-                atoms[idx].add(new_loc)
+    #         elif not _defaults['discard_altloc']:  # new altloc for existing atom
+    #             existing = atoms[idx]
+    #             if isinstance(existing, Atom):
+    #                 logging.debug(f"New disordered atom at #{r.serial}")
+    #                 disatom = DisorderedAtom()
+    #                 disatom.add(existing)
+    #                 atoms[idx] = disatom
+    #             new_loc = Atom.from_atomrecord(r)
+    #             atoms[idx].add(new_loc)
 
-            else:  # ignore
-                logging.debug(f"Ignoring duplicate atom: #{r.serial}")
-                continue
+    #         else:  # ignore
+    #             logging.debug(f"Ignoring duplicate atom: #{r.serial}")
+    #             continue
 
-            if r.model == len(coords):  # make new models
-                coords.append([])
+    #         if r.model == len(coords):  # make new models
+    #             coords.append([])
 
-            coords[-1].append((r.x, r.y, r.z))
+    #         coords[-1].append((r.x, r.y, r.z))
 
-        # Pack coordinates into numpy array
-        coords = np.asarray(
-            coords,
-            dtype=np.float64
-        )
+    #     # Pack coordinates into numpy array
+    #     coords = np.asarray(
+    #         coords,
+    #         dtype=np.float64
+    #     )
 
-        assert coords.ndim == 3, \
-            f'Wrong shape for coordinate array: {coords.shape}'
+    #     assert coords.ndim == 3, \
+    #         f'Wrong shape for coordinate array: {coords.shape}'
 
-        logging.debug(f"Built new structure with {len(atoms)} atoms")
-        return cls(name, atoms, coords)
+    #     logging.debug(f"Built new structure with {len(atoms)} atoms")
+    #     return cls(name, atoms, coords)
 
     # Internal dunder methods
     def __str__(self):
@@ -482,16 +233,9 @@ class Structure(object):
 
         Raises
         ------
-            TypeError
-                when 'atom' is not of type Atom or DisorderedAtom.
             ValueError
                 when 'radius' is not a positive, non-zero, number.
         """
-
-        if not isinstance(atom, (Atom, DisorderedAtom)):
-            raise TypeError(
-                f"Atom must be of type 'Atom' or 'DisorderedAtom': {type(atom)}"
-            )
 
         if radius <= 0:
             raise ValueError(
