@@ -135,6 +135,17 @@ def test_set_child_attribute():
     assert da.name == da.selected_child.name == 'N'
 
 
+def test_get_child_attribute_error():
+    """Throws error when attribute of child is not found"""
+
+    a1 = Atom(name='CA', altloc='A')
+    da = DisorderedAtom()
+    da.add(a1)
+
+    with pytest.raises(AttributeError):
+        _ = da.occ
+
+
 def test_select_child():
     """Select child manually"""
 
