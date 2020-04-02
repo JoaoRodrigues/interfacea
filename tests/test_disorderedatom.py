@@ -87,14 +87,21 @@ def test_from_list():
     assert da.nlocs == 2
 
 
-def test_no_altloc_error():
-    """Throw error when adding atom without altloc attribute"""
+def test_autoset_altloc(caplog):
+    """Auto-sets altloc (and issues warning) when adding atoms"""
 
-    a1 = Atom(name='CA')
+    a1 = Atom(name='CA', occ=0.3)  # set occ not to trigger additional warning
+    a2 = Atom(name='CA', occ=0.7)
 
     da = DisorderedAtom()
-    with pytest.raises(AttributeError):
-        da.add(a1)
+    da.add(a1)
+    assert da.altloc == "0"
+    da.add(a2)
+    assert da.altloc == "1"
+
+    assert len(caplog.records) == 2
+    for record in caplog.records:
+        assert record.levelname == "WARNING"
 
 
 def test_duplicated_altloc_error():
