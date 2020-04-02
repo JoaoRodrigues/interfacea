@@ -39,8 +39,6 @@ class Atom(object):
     ---------
         name : str
             string to identify the atom.
-        serial : int
-            numerical index of the atom.
 
         hetatm : bool, optional
             flag to identify HETATMs.
@@ -65,22 +63,24 @@ class Atom(object):
 
     Attributes
     ----------
+        serial : int
+            numerical index of the atom in a Structure object. Only defined when
+            bound to a parent Structure.
         coords : np.array
-            array of shape (,3) representing cartesian coordinates of the atom
-            in Angstrom. Only defined when bound to a parent Structure,
-            otherwise raises an error on access.
+            array of shape (,3) wih the 3D cartesian coordinates in Angstrom.
+            Only defined when bound to a parent Structure.
         is_disordered : bool
-            True if the atom has multiple locations, i.e., is part of a
+            Flags if the atom is part of a DisorderedAtom, ie if it is part of a
             DisorderedAtom object.
     """
 
-    def __init__(self, name, serial, **kwargs):
+    def __init__(self, name, **kwargs):
         """Manually instantiates an Atom class instance."""
 
         self._parent = None
+        self.serial = None
 
         self.name = name
-        self.serial = serial
         self.is_disordered = False
 
         self.__dict__.update(kwargs)
@@ -90,42 +90,14 @@ class Atom(object):
         """Pretty string representation of the Atom object."""
         return f"<Atom name={self.name} serial={self.serial}>"
 
-    def __repr__(self):
-        """Pretty string representation of the Atom object."""
-        return f"<Atom name={self.name} serial={self.serial}>"
-
     # Public Methods/Attributes
-    @classmethod
-    def from_atomrecord(cls, record):
-        """Creates an Atom class instance from an AtomRecord dataclass.
-
-        Argument
-        --------
-            atomdata : io.AtomRecord
-                data class containing information to create the Atom object.
-        """
-
-        attrs = record.__dict__.copy()
-        del attrs['name']
-        del attrs['serial']
-
-        # Ignore x, y, z fields if present
-        for f in ('x', 'y', 'z'):
-            try:
-                del attrs[f]
-            except Exception:
-                pass
-
-        return cls(record.name, record.serial, **attrs)
-
-    # Public Methods
-    # Properties
     @property
     def parent(self):
         """Returns the structure the Atom belongs to or None if unbound."""
-        if self._parent is None:
-            return None  # unbound
-        return self._parent()
+        try:
+            return self._parent()
+        except TypeError:  # not callable, not weakref?
+            return self._parent
 
     @parent.setter
     def parent(self, value):
@@ -149,10 +121,10 @@ class Atom(object):
 
 
 class DisorderedAtom(object):
-    """Wrapper class for several Atoms sharing the same metadata.
+    """Class representing a disordered atom, with multiple alternate locations.
 
-    Allows seamless interaction with a selected instance (altloc) of
-    this atom while storing information on the disordered states.
+    Wraps several Atom objects, allowing transparent interaction with a selected
+    child.
     """
 
     def __init__(self):
@@ -162,17 +134,13 @@ class DisorderedAtom(object):
 
     def __str__(self):
         """Pretty printing."""
-        return (
-            f"<DisorderedAtom name={self.name} "
-            f"serial={self.serial} nlocs={self.nlocs}>"
-        )
+        if hasattr(self, 'name'):
+            return (
+                f"<DisorderedAtom name={self.name} "
+                f"serial={self.serial} nlocs={self.nlocs}>"
+            )
 
-    def __repr__(self):
-        """Pretty printing."""
-        return (
-            f"<DisorderedAtom name={self.name} "
-            f"serial={self.serial} nlocs={self.nlocs}>"
-        )
+        return f"<Empty DisorderedAtom>"
 
     def __iter__(self):
         """Returns an iterator over child atoms."""
@@ -180,8 +148,6 @@ class DisorderedAtom(object):
 
     def __getattr__(self, attr):
         """Forward all unknown calls to selected child."""
-        if attr in self.__dict__:
-            return self.__dict__[attr]
 
         try:
             return getattr(self.selected_child, attr)
@@ -204,31 +170,34 @@ class DisorderedAtom(object):
 
         Arguments
         ---------
-            atom : Atom)
+            atom : Atom
                 child Atom to add to container.
-
-        Raises
-        ------
-            TypeError
-                when the object being added is not an Atom instance.
-            DuplicateAltLocError
-                when there is already a child with this altloc identifier in the
-                DisorderedAtom object.
         """
 
-        if atom.altloc in self.children:
-            emsg = f"Altloc '{atom.altloc}' already exists in {self}"
+        try:
+            altloc = atom.altloc
+        except AttributeError:
+            raise AttributeError(f"Atom does not have an altloc attribute.")
+
+        if altloc in self.children:
+            emsg = f"Altloc '{altloc}' already exists in {self}"
             raise DuplicateAltLocError(emsg) from None
 
         atom.is_disordered = True  # flag
-        self.children[atom.altloc] = atom
+        self.children[altloc] = atom
 
         if not self.selected_child:
             self.selected_child = atom
+            return
 
         # Replace if atom.occ is larger
-        if self.selected_child.occ < atom.occ:
+        try:
+            if self.selected_child.occ < atom.occ:
+                self.selected_child = atom
+        except AttributeError:  # no occ in child or atom
             self.selected_child = atom
+            # see https://docs.python.org/3/howto/logging.html
+            logging.warning(f'Could not sort altloc by occupancy for {self}')
 
     def from_list(self, atomlist):
         """Adds Atom objects from a list.
@@ -248,11 +217,6 @@ class DisorderedAtom(object):
         --------
             altloc : str
                 altloc identifier of the child Atom.
-
-        Raises
-        ------
-            KeyError
-                when altloc is not in the DisorderedAtom wrapper.
         """
         try:
             self.selected_child = self.children[altloc]
