@@ -177,7 +177,11 @@ class DisorderedAtom(object):
         try:
             altloc = atom.altloc
         except AttributeError:
-            raise AttributeError(f"Atom does not have an altloc attribute.")
+            altloc = str(self.nlocs)
+            atom.altloc = altloc
+            logging.warning(
+                f'Auto-setting missing altloc for {atom}: {altloc}'
+            )
 
         if altloc in self.children:
             emsg = f"Altloc '{altloc}' already exists in {self}"
