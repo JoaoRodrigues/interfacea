@@ -36,7 +36,7 @@ class InterfaceBaseException(Exception):
         self.message = message
 
 
-class DuplicateAltLocError(InterfaceBaseException):
+class DisorderedAtomError(InterfaceBaseException):
     pass
 
 
