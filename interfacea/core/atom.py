@@ -26,7 +26,7 @@ import logging
 import weakref
 
 from interfacea.exceptions import (
-    DuplicateAltLocError,
+    DisorderedAtomError,
 )
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
@@ -134,7 +134,7 @@ class DisorderedAtom(object):
 
     def __str__(self):
         """Pretty printing."""
-        if hasattr(self, 'name'):
+        if 'name' in self.__dict__:
             return (
                 f"<DisorderedAtom name={self.name} "
                 f"serial={self.serial} nlocs={self.nlocs}>"
@@ -154,16 +154,15 @@ class DisorderedAtom(object):
         except AttributeError as err:
             if self.selected_child is None:
                 emsg = "DisorderedAtom has no children."
-                raise AttributeError(emsg)
+                raise DisorderedAtomError(emsg)
             raise err from None  # re-raise
 
     def __setattr__(self, attr, value):
         """Forward all unknown calls to selected child."""
         if attr in self.__dict__:
             self.__dict__[attr] = value
-            return
-
-        setattr(self.selected_child, attr, value)
+        else:
+            setattr(self.selected_child, attr, value)
 
     def add(self, atom):
         """Adds an Atom object.
@@ -185,7 +184,7 @@ class DisorderedAtom(object):
 
         if altloc in self.children:
             emsg = f"Altloc '{altloc}' already exists in {self}"
-            raise DuplicateAltLocError(emsg) from None
+            raise DisorderedAtomError(emsg) from None
 
         atom.is_disordered = True  # flag
         self.children[altloc] = atom
@@ -226,7 +225,7 @@ class DisorderedAtom(object):
             self.selected_child = self.children[altloc]
         except KeyError:
             emsg = f"Alternate location '{altloc}' not found in {self}"
-            raise KeyError(emsg) from None
+            raise DisorderedAtomError(emsg) from None
 
     @property
     def nlocs(self):
