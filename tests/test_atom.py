@@ -24,6 +24,16 @@ import pytest
 from interfacea.core.atom import Atom
 
 
+@pytest.fixture(scope='module')
+def dummy():
+    """Sets up a dummy class to act as a parent."""
+
+    class Dummy:
+        pass
+
+    return Dummy()
+
+
 def test_instantiate_error():
     """Throw error when creating empty Atom"""
 
@@ -57,29 +67,19 @@ def test_instantiate_success_wmetadata():
     assert a.chain == 'A'
 
 
-def test_set_parent():
+def test_set_parent(dummy):
     """Sets Atom parent"""
 
-    class Dummy:
-        pass
-
-    d = Dummy()
-
     a = Atom(name='N')
-    a.parent = d
-    assert a.parent is d
+    a.parent = dummy
+    assert a.parent is dummy
 
 
-def test_del_parent():
+def test_del_parent(dummy):
     """Deletes Atom parent"""
 
-    class Dummy:
-        pass
-
-    d = Dummy()
-
     a = Atom(name='N')
-    a.parent = d
+    a.parent = dummy
     del a.parent
     assert a.parent is None
 
