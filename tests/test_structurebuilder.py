@@ -69,8 +69,8 @@ def test_add_atom(atomdata):
     """Add Atoms to new StructureBuilder"""
 
     sb = StructureBuilder(name='mystructure')
-    for name, coords, metadata in atomdata:
-        sb.add_atom(name, coords, metadata)
+    for name, _, metadata in atomdata:
+        sb.add_atom(name, metadata)
 
     n_disordered = sum(isinstance(a, DisorderedAtom) for a in sb.atoms)
     assert n_disordered == 1
@@ -81,8 +81,8 @@ def test_add_atom_skipaltloc(atomdata):
     """Add Atoms to new StructureBuilder (skip_altloc=True)"""
 
     sb = StructureBuilder(name='mystructure', skip_altloc=True)
-    for name, coords, metadata in atomdata:
-        sb.add_atom(name, coords, metadata)
+    for name, _, metadata in atomdata:
+        sb.add_atom(name, metadata)
 
     n_disordered = sum(isinstance(a, DisorderedAtom) for a in sb.atoms)
     assert n_disordered == 0
