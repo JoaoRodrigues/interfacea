@@ -22,7 +22,7 @@ Unit tests for DisorderedAtom class.
 import pytest
 
 from interfacea.core.atom import Atom, DisorderedAtom
-from interfacea.exceptions import DuplicateAltLocError
+from interfacea.exceptions import DisorderedAtomError
 
 
 def test_instantiate_success():
@@ -111,7 +111,7 @@ def test_duplicated_altloc_error():
 
     da = DisorderedAtom()
     da.add(a1)
-    with pytest.raises(DuplicateAltLocError):
+    with pytest.raises(DisorderedAtomError):
         da.add(a1)
 
 
@@ -172,5 +172,5 @@ def test_select_child_error():
     """Throw error when selecting unknown altloc"""
 
     da = DisorderedAtom()
-    with pytest.raises(KeyError):
+    with pytest.raises(DisorderedAtomError):
         da.select("A")
