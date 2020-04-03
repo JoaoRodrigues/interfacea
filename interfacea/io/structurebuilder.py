@@ -22,7 +22,7 @@ Module containing factory class to build Structures.
 import logging
 
 from interfacea.core.atom import Atom, DisorderedAtom
-
+from interfacea.exceptions import StructureBuilderError
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
@@ -63,15 +63,13 @@ class StructureBuilder(object):
 
         self._atoms = {}  # unique id -> serial (to handle DisorderdAtoms)
 
-    def add_atom(self, name, coords, metadata):
-        """Creates a new Atom object from a dictionary of properties
+    def add_atom(self, name, metadata):
+        """Adds an atom to the structure.
 
         Arguments
         ---------
             name : str
                 name of the atom, stripped of spaces.
-            coords : list of lists of float
-                coordinates of the atom in all models.
             metadata : dict
                 dictionary with properties for the atom, e.g. chain, resid, etc.
                 Each property will be translated to an attribute of the Atom
@@ -82,10 +80,8 @@ class StructureBuilder(object):
         try:
             atom = Atom(name, **metadata)
         except Exception as err:
-            logging.error(
-                f'Failed to create atom #{self.serial}: {name} ({metadata})'
-            )
-            raise err from None
+            emsg = f'Failed to create atom #{self.serial}: {name} ({metadata})'
+            raise StructureBuilderError(emsg) from err
 
         atom.serial = self.serial
 
@@ -110,10 +106,8 @@ class StructureBuilder(object):
                     da = DisorderedAtom()
                     da.add(previous)
                 except Exception as err:
-                    logging.error(
-                        f'Failed to create disordered atom for {previous}'
-                    )
-                    raise err from None
+                    emsg = f'Failed to create disordered atom for {previous}'
+                    raise StructureBuilderError(emsg) from err
 
                 self.atoms[idx] = da
                 logging.debug(f'Created DisorderedAtom for atom: {previous}')
@@ -122,10 +116,9 @@ class StructureBuilder(object):
             try:
                 da.add(atom)
             except Exception as err:
-                logging.error(
-                    f'Failed to add {atom} to {da}'
-                )
-                raise err from None
+                emsg = f'Failed to add {atom} to {da}'
+                raise StructureBuilderError(emsg) from err
+
             logging.debug(f'Added {atom} as altloc to {da}')
 
         else:  # ignore
