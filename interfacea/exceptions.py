@@ -46,3 +46,7 @@ class PDBReaderError(InterfaceBaseException):
 
 class FunctionalGroupError(InterfaceBaseException):
     pass
+
+
+class StructureBuilderError(InterfaceBaseException):
+    pass
