@@ -77,6 +77,8 @@ class Atom(object):
     def __init__(self, name, **kwargs):
         """Manually instantiates an Atom class instance."""
 
+        self._unique_id = None
+
         self._parent = None
         self.serial = None
 
@@ -91,6 +93,24 @@ class Atom(object):
         return f"<Atom name={self.name} serial={self.serial}>"
 
     # Public Methods/Attributes
+    @property
+    def unique_id(self):
+        """Returns the unique id tuple of the atom.
+
+        The unique id is composed of the atom name, residue number and icode,
+        and chain id. Alternate locations of the same atom share the same
+        unique id.
+
+        """
+        if self._unique_id is None:
+            uid = tuple(
+                getattr(self, attr, None)
+                for attr in ('name', 'chain', 'resid', 'icode')
+            )
+            self._unique_id = uid
+
+        return self._unique_id
+
     @property
     def parent(self):
         """Returns the structure the Atom belongs to or None if unbound."""
