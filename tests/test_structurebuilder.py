@@ -21,7 +21,7 @@ Unit tests for StructureBuilder.
 
 import pytest
 
-from interfacea.core.atom import DisorderedAtom
+from interfacea.core.atom import DisorderedAtom, Atom
 from interfacea.io.structurebuilder import StructureBuilder
 
 
@@ -58,32 +58,61 @@ def test_create():
 def test_create_wparams():
     """Create a new StructureBuilder with params"""
 
-    sb = StructureBuilder(name='Test', use_altloc=False)
+    sb = StructureBuilder(name='Test', skip_altloc=False)
     assert sb.name == 'Test'
     assert not sb.atoms
     assert not sb.coord
-    assert sb.params == {'use_altloc': False}
+    assert sb.params == {'skip_altloc': False}
+
+
+def test_add_single_atom(atomdata):
+    """Add an Atom to StructureBuilder"""
+
+    sb = StructureBuilder(name='mystructure')
+    atom = Atom(name='C')
+    sb._add_single_atom(atom)
+    assert len(sb.atoms) == 1
+
+
+def test_add_disordered_atom():
+    """Add two altlocs of the same Atom to StructureBuilder"""
+
+    sb = StructureBuilder(name='mystructure')
+    sb._add_single_atom(Atom(name='C'))
+    sb._add_disordered_atom(0, Atom(name='C'))
+    assert len(sb.atoms) == 1
 
 
 def test_add_atom(atomdata):
-    """Add Atoms to new StructureBuilder"""
+    """Adds a series of atoms to StructureBuilder (default)"""
 
     sb = StructureBuilder(name='mystructure')
     for name, _, metadata in atomdata:
         sb.add_atom(name, metadata)
 
-    n_disordered = sum(isinstance(a, DisorderedAtom) for a in sb.atoms)
-    assert n_disordered == 1
-    assert len(sb.atoms) == 3  # != from serial for DisorderedAtoms
+    assert len(sb.atoms) == 3
+    assert(sum(1 for a in sb.atoms if isinstance(a, DisorderedAtom)) == 1)
 
 
 def test_add_atom_skipaltloc(atomdata):
-    """Add Atoms to new StructureBuilder (skip_altloc=True)"""
+    """Adds a series of atoms to StructureBuilder (skip_altloc)"""
 
     sb = StructureBuilder(name='mystructure', skip_altloc=True)
     for name, _, metadata in atomdata:
         sb.add_atom(name, metadata)
 
-    n_disordered = sum(isinstance(a, DisorderedAtom) for a in sb.atoms)
-    assert n_disordered == 0
     assert len(sb.atoms) == 3
+    assert(sum(1 for a in sb.atoms if isinstance(a, DisorderedAtom)) == 0)
+
+
+def test_add_atom_skipaltloc(atomdata):
+    """Adds a series of atoms to StructureBuilder (skip_altloc)"""
+
+    sb = StructureBuilder(name='mystructure')
+    for name, _, metadata in atomdata:
+        sb.add_atom(name, metadata)
+
+    sb.clear()
+    assert not sb.atoms
+    assert not sb.coord
+    assert not sb.params
