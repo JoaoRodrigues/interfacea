@@ -75,10 +75,23 @@ def test_add_single_atom(atomdata):
 
 
 def test_add_disordered_atom():
-    """Add two altlocs of the same Atom to StructureBuilder"""
+    """Makes DisorderedAtom from Atom in StructureBuilder"""
 
     sb = StructureBuilder(name='mystructure')
-    sb._add_single_atom(Atom(name='C'))
+    a = Atom(name='C')
+    sb.atoms = [a]
+    sb._add_disordered_atom(0, Atom(name='C'))
+    assert len(sb.atoms) == 1
+
+
+def test_add_to_disordered_atom():
+    """Add altlocs to DisorderedAtom in StructureBuilder"""
+
+    sb = StructureBuilder(name='mystructure')
+    da = DisorderedAtom()
+    da.add(Atom(name='C'))
+    sb.atoms = [da]
+
     sb._add_disordered_atom(0, Atom(name='C'))
     assert len(sb.atoms) == 1
 
