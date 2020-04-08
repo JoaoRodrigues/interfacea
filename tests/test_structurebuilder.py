@@ -105,7 +105,7 @@ def test_add_atom_skipaltloc(atomdata):
     assert(sum(1 for a in sb.atoms if isinstance(a, DisorderedAtom)) == 0)
 
 
-def test_add_atom_skipaltloc(atomdata):
+def test_clean(atomdata):
     """Adds a series of atoms to StructureBuilder (skip_altloc)"""
 
     sb = StructureBuilder(name='mystructure')
