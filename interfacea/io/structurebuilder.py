@@ -63,6 +63,62 @@ class StructureBuilder(object):
 
         self._atoms = {}  # unique id -> serial (to handle DisorderdAtoms)
 
+    def clear(self):
+        """Restores the StructureBuilder to its initial state."""
+
+        # Is there a better way?
+        self.serial = 0
+        self.atoms = []
+        self.coord = []
+        self._atoms = {}
+
+    def _add_single_atom(self, atom):
+        """Adds a single Atom object to the atom list.
+
+        Arguments
+        ---------
+            atom : Atom
+                the atom in question.
+        """
+
+        self._atoms[atom.unique_id] = len(self.atoms)
+        self.atoms.append(atom)
+
+        self.serial += 1
+
+        logging.debug(f'Added atom to structure: {atom}')
+
+    def _add_disordered_atom(self, idx, atom):
+        """Replaces the specified Atom with a DisorderedAtom in the atom list.
+
+        Arguments
+        ---------
+            idx: int
+                the numerical index of the atom in the atom list.
+
+        Returns
+        -------
+            a DisorderedAtom object with Atom as a child.
+        """
+
+        atom_at_idx = self.atoms[idx]
+        if isinstance(atom_at_idx, Atom):
+            try:
+                da = DisorderedAtom()
+                da.add(atom_at_idx)
+                atom_at_idx = self.atoms[idx] = da
+
+                logging.debug(f'Created DisorderedAtom for atom: {atom_at_idx}')
+
+            except Exception as err:
+                raise StructureBuilderError(
+                    f'Cannot create a DisorderedAtom from {atom}'
+                    f' of type {type(atom)}: {err}'
+                )
+
+        atom_at_idx.add(atom)
+        logging.debug(f'Added {atom} as a child of {atom_at_idx}')
+
     def add_atom(self, name, metadata):
         """Adds an atom to the structure.
 
@@ -78,54 +134,39 @@ class StructureBuilder(object):
         """
 
         try:
-            atom = Atom(name, **metadata)
+            atom = Atom(name, serial=self.serial, **metadata)
         except Exception as err:
             emsg = f'Failed to create atom #{self.serial}: {name} ({metadata})'
             raise StructureBuilderError(emsg) from err
 
-        atom.serial = self.serial
-
-        # unique id
-        atom_uid = tuple(
-            getattr(atom, attr, None)
-            for attr in ('name', 'chain', 'resid', 'icode')
-        )
-
-        idx = self._atoms.get(atom_uid)
+        idx = self._atoms.get(atom.unique_id)
 
         if idx is None:  # new atom
-            idx = len(self.atoms)
-            self._atoms[atom_uid] = idx
-            self.atoms.append(atom)
-            logging.debug(f'Added new atom: {atom}')
+            self._add_single_atom(atom)
 
         elif not self.params.get('skip_altloc'):  # new altloc for existing atom
-            previous = self.atoms[idx]
-            if isinstance(previous, Atom):  # make new DisorderedAtom
-                try:
-                    da = DisorderedAtom()
-                    da.add(previous)
-                except Exception as err:
-                    emsg = f'Failed to create disordered atom for {previous}'
-                    raise StructureBuilderError(emsg) from err
-
-                self.atoms[idx] = da
-                logging.debug(f'Created DisorderedAtom for atom: {previous}')
-
-            da = self.atoms[idx]
-            try:
-                da.add(atom)
-            except Exception as err:
-                emsg = f'Failed to add {atom} to {da}'
-                raise StructureBuilderError(emsg) from err
-
-            logging.debug(f'Added {atom} as altloc to {da}')
+            self._add_disordered_atom(idx, atom)
 
         else:  # ignore
             logging.debug(f'Ignored altloc for {atom}')
-            return
 
-        self.serial += 1
+    def add_coords(self, coords):
+        """Adds a coordinate array to the structure.
+
+        The number of coordinates must match the number of atoms already in the
+        structure. For multi-model structures, provide a list of lists that must
+        be of the same size.
+
+        Arguments
+        ---------
+            coords : list (of lists) of float
+        """
+
+        # is list of lists or list of floats?
+        if all(map(lambda x: isinstance(x, list)), coords):  # ensemble
+            pass
+        if all(map(lambda x: isinstance(x, float)), coords):  # single
+            pass
 
     def build(self):
         """Builds and returns a complete Structure object"""
