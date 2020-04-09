@@ -27,7 +27,7 @@ import pytest
 from interfacea.io.pdb import (
     PDBParser,
     PDBParserError,
-    # PDBParserWarning
+    PDBParserWarning
 )
 
 
@@ -51,8 +51,9 @@ def test_wrong_arguments():
 @pytest.mark.parametrize(
     'datafile',
     (
-        datadir / 'default.pdb',
-        datadir / 'multimodel.pdb'
+        datadir / 'tripeptide.pdb',
+        datadir / '1brs.pdb',
+        datadir / '1ggr.pdb',
     )
 )
 def test_load_local_files(datafile):
@@ -66,38 +67,27 @@ def test_load_local_files(datafile):
 def test_load_remote_file():
     """Create a new PDBParser from a file on disk"""
 
-    url = "https://files.rcsb.org/download/1ctf.pdb"
-    p = PDBParser(pdbid='1ctf')
+    url = "https://files.rcsb.org/download/1brs.pdb"
+    p = PDBParser(pdbid='1brs')
     assert p.source == urlopen(url).read().splitlines()
 
 
 @pytest.mark.parametrize(
-    'datafile',
+    ('datafile', 'natoms', 'nmodels'),
     (
-        datadir / 'default.pdb',
-        datadir / 'multimodel.pdb'
+        (datadir / 'tripeptide.pdb', 107, 1),
+        (datadir / '1ggr.pdb', 3595, 3),
+        (datadir / '1brs.pdb', 5153, 1)
     )
 )
-def test_parse(datafile):
+def test_parse(datafile, natoms, nmodels):
     """Successfully parses test PDB files."""
 
     p = PDBParser(datafile)
     p.parse()
 
-    # Assert some basic things manually.
-    with datafile.open('r') as handle:
-        natoms, nmodels = 0, 0
-        for line in handle:
-            if line.startswith('ATOM'):
-                natoms += 1
-            elif line.startswith('MODEL'):
-                nmodels += 1
-
-        if not nmodels and natoms:
-            nmodels += 1
-
-    assert len(p.atoms) == natoms // nmodels
-    assert len(p.coords) > 0
+    assert len(p.atoms) == len(p.coords) == natoms
+    assert sum(map(len, p.coords)) == natoms * nmodels
     assert len(p.coords[0]) == nmodels
 
 
@@ -117,3 +107,15 @@ def test_parse_errors(datafile, emsg):
     p = PDBParser(datafile)
     with pytest.raises(PDBParserError, match=emsg):
         p.parse()
+
+
+def test_auto_assign_elements():
+    """Assigns elements correctly."""
+
+    p = PDBParser(datadir / 'missingelement.pdb')
+
+    with pytest.warns(PDBParserWarning, match='Could not assign element'):
+        p.parse()
+
+    elems = [a.element.symbol for a in p.atoms]
+    assert elems == ['N', 'H', 'H', 'H', 'C', 'X', 'P', 'X']
