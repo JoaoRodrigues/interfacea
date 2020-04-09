@@ -99,3 +99,21 @@ def test_parse(datafile):
     assert len(p.atoms) == natoms // nmodels
     assert len(p.coords) > 0
     assert len(p.coords[0]) == nmodels
+
+
+@pytest.mark.parametrize(
+    ('datafile', 'emsg'),
+    (
+        (datadir / 'badatom.pdb', 'line 3'),
+        (datadir / 'badmodel.pdb', 'Unexpected MODEL record'),
+        (datadir / 'badendmdl.pdb', 'Unexpected ENDMDL record'),
+        (datadir / 'duplicatedatom.pdb', 'is duplicated on line'),
+
+    )
+)
+def test_parse_errors(datafile, emsg):
+    """Successfully parses test PDB files."""
+
+    p = PDBParser(datafile)
+    with pytest.raises(PDBParserError, match=emsg):
+        p.parse()

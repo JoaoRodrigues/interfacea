@@ -70,7 +70,7 @@ class PDBParser(BaseParser):
         self.coords = []
 
         self._atomdict = {}  # maps atom full id to serial to allocate coords
-        self._atomset = {}  # to avoid duplicates in each model
+        self._atomset = set()  # to avoid duplicates in each model
         self._in_model = False  # flag set when reading multi-model files.
 
         if (file == pdbid is None) or (file is not None and pdbid is not None):
@@ -144,6 +144,8 @@ class PDBParser(BaseParser):
         else:
             try:
                 p()
+            except PDBParserError:
+                raise  # re-throw intact
             except Exception as err:  # catch-all
                 raise PDBParserError(
                     f'Could not parse line {self.n}'
@@ -232,6 +234,7 @@ class PDBParser(BaseParser):
             self.coords.append([])
             self.atoms.append(atom)
 
+        self._atomset.add(atom.full_id)
         self.coords[serial].append(coords)
 
     def _check_duplicate(self, atom):
