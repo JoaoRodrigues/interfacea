@@ -46,7 +46,7 @@ def test_instantiate_success():
 
     a = Atom(name='CA')
     assert a.name == 'CA'
-    assert a.serial is None
+    assert a.serial == 0
     assert a.parent is None
 
     with pytest.raises(AttributeError):
@@ -60,7 +60,7 @@ def test_instantiate_success_wmetadata():
 
     a = Atom(name='CA', **metadata)
     assert a.name == 'CA'
-    assert a.serial is None
+    assert a.serial == 0
     assert a.parent is None
     assert a.hetatm is False
     assert a.resname == 'ARG'
@@ -88,4 +88,4 @@ def test_str_dunder():
     """Pretty printing works"""
 
     a = Atom(name='CA')
-    assert a.__str__() == '<Atom name=CA serial=None>'
+    assert a.__str__() == '<Atom name=CA serial=0>'

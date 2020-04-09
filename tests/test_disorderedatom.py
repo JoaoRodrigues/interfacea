@@ -21,8 +21,7 @@ Unit tests for DisorderedAtom class.
 
 import pytest
 
-from interfacea.core.atom import Atom, DisorderedAtom
-from interfacea.exceptions import DisorderedAtomError
+from interfacea.core.atom import Atom, DisorderedAtom, DisorderedAtomError
 
 
 def test_instantiate_success():
