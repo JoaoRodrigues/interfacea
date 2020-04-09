@@ -16,25 +16,40 @@
 # limitations under the License.
 
 """
-Adapter class to resolve parsers.
+Base class for file parsers.
 """
 
-from .pdb import PDBReader
+import abc
 
-# Maps extensions to reader classes.
-readers = {
-    '.pdb': PDBReader
-}
+from interfacea.exceptions import BaseInterfaceaException
 
 
-class Reader(object):
-    """Delegates parsing of a file to an appropriate reader class."""
+class ParserError(BaseInterfaceaException):
+    pass
 
-    def __new__(cls, path, **kwargs):
-        try:
-            r = readers[path.suffix]
-        except KeyError:
-            emsg = f"File format not supported ({path.suffix})"
-            raise IOError(emsg) from None
-        else:
-            return r(path, kwargs)
+
+class BaseParser(metaclass=abc.ABCMeta):
+    """Specifies an abstract interface for parsing structure files.
+    """
+
+    def __init__(self, filepath, **kwargs):
+
+        self.fpath = self._validate_path(filepath)
+
+    @abc.abstractmethod
+    def parse(self):
+        """Parses the content of the file and returns a list of objects"""
+        pass
+
+
+# class Reader(object):
+#     """Delegates parsing of a file to an appropriate reader class."""
+
+#     def __new__(cls, path, **kwargs):
+#         try:
+#             r = readers[path.suffix]
+#         except KeyError:
+#             emsg = f"File format not supported ({path.suffix})"
+#             raise IOError(emsg) from None
+#         else:
+#             return r(path, kwargs)
