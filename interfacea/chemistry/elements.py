@@ -24,7 +24,7 @@ import collections
 
 __all__ = [
     "Hydrogen", "Carbon", "Nitrogen", "Oxygen", "Phosphorous", "Sulfur",
-    "Unknown"
+    "Unknown", "ElementMapper"
 ]
 
 
@@ -51,7 +51,7 @@ Sulfur = Element("S", "sulfur", 16)
 # Mapping: defaults to empty element
 # No need to keep a large dictionary with
 # all elements...
-mapping = collections.defaultdict(lambda: Unknown)
+ElementMapper = collections.defaultdict(lambda: Unknown)
 
 _knowns = {
     "H": Hydrogen,
@@ -62,4 +62,4 @@ _knowns = {
     "S": Sulfur,
 }
 
-mapping.update(_knowns)
+ElementMapper.update(_knowns)
