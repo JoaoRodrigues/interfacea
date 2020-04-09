@@ -59,6 +59,22 @@ class PDBParser(BaseParser):
         pdbid : str, optional
             four-character RCSB PDB id for the structure, e.g. 1brs
 
+    Attributes
+    ----------
+        atoms : list of Atom
+            list of Atom objects representing unique atoms present in the
+            file. For multi-model files, only the atoms of the first model are
+            kept.
+
+        coords : list of list of float
+            cartesian coordinates of every atom across all models of the PDB
+            file. For multi-model files, coords has shape NxMx3, where N is the
+            number of atoms and M is the number of models. For single structure
+            files, M=1.
+
+        source : object
+            file-like object from where the data was read.
+
     Raises
     ------
         PDBParserError
@@ -214,7 +230,7 @@ class PDBParser(BaseParser):
 
         self._commit_atom(atom, coords)
 
-    def _parse_HETAM(self):
+    def _parse_HETATM(self):
         """Parses a HETATM record."""
 
         self._parse_ATOM()  # how lazy can we be?
