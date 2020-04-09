@@ -1,6 +1,0 @@
-REMARK   1 BAD COORDINATES ON ATOM 3
-ATOM      1  N   ASN A   1      22.066  40.557   0.420  1.00  0.00           N
-ATOM      2  H   ASN A   1      aa.xxx  41.305  -0.098  1.00  0.00           H
-ATOM      3  H2  ASN A   1      23.236  40.798   0.369  1.00  0.00           H
-ATOM      4  H3  ASN A   1      21.866  40.736   1.590  1.00  0.00           H
-END
