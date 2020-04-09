@@ -16,37 +16,14 @@
 # limitations under the License.
 
 """
-Exceptions raised by modules and classes across interfacea.
+Base exceptions for modules and classes across interfacea.
 """
-
-# Warnings
-
-
-class PDBReaderWarning(Warning):
-    pass
-
 
 # Exceptions
 
 
-class InterfaceBaseException(Exception):
+class BaseInterfaceaException(Exception):
     """Base class for exceptions in this module"""
 
     def __init__(self, message):
         self.message = message
-
-
-class DisorderedAtomError(InterfaceBaseException):
-    pass
-
-
-class PDBReaderError(InterfaceBaseException):
-    pass
-
-
-class FunctionalGroupError(InterfaceBaseException):
-    pass
-
-
-class StructureBuilderError(InterfaceBaseException):
-    pass
