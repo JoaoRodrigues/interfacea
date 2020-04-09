@@ -24,7 +24,7 @@ import collections
 
 __all__ = [
     "Hydrogen", "Carbon", "Nitrogen", "Oxygen", "Phosphorous", "Sulfur",
-    "Unknown", "ElementMapper"
+    "Unknown"
 ]
 
 
