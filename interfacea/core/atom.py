@@ -25,11 +25,13 @@ since coordinate information is kept at the Structure level.
 import logging
 import weakref
 
-from interfacea.exceptions import (
-    DisorderedAtomError,
-)
+from interfacea.exceptions import BaseInterfaceaException
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
+
+
+class DisorderedAtomError(BaseInterfaceaException):
+    pass
 
 
 class Atom(object):
@@ -39,6 +41,8 @@ class Atom(object):
     ---------
         name : str
             string to identify the atom.
+        serial : int
+            numerical index of the atom in the Structure. Defaults to 0.
 
         hetatm : bool, optional
             flag to identify HETATMs.
@@ -63,9 +67,6 @@ class Atom(object):
 
     Attributes
     ----------
-        serial : int
-            numerical index of the atom in a Structure object. Only defined when
-            bound to a parent Structure.
         coords : np.array
             array of shape (,3) wih the 3D cartesian coordinates in Angstrom.
             Only defined when bound to a parent Structure.
@@ -74,16 +75,16 @@ class Atom(object):
             DisorderedAtom object.
     """
 
-    def __init__(self, name, **kwargs):
+    def __init__(self, name, serial=0, **kwargs):
         """Manually instantiates an Atom class instance."""
 
-        self._unique_id = None
-
+        self._id = None
+        self._fid = None
         self._parent = None
-        self.serial = None
+        self.is_disordered = False
 
         self.name = name
-        self.is_disordered = False
+        self.serial = serial
 
         self.__dict__.update(kwargs)
 
@@ -94,22 +95,39 @@ class Atom(object):
 
     # Public Methods/Attributes
     @property
-    def unique_id(self):
-        """Returns the unique id tuple of the atom.
+    def id(self):
+        """Returns the id tuple of the atom.
 
-        The unique id is composed of the atom name, residue number and icode,
+        The id is composed of the atom name, residue number and icode,
         and chain id. Alternate locations of the same atom share the same
-        unique id.
+        id.
 
         """
-        if self._unique_id is None:
-            uid = tuple(
+        if self._id is None:
+            aid = tuple(
                 getattr(self, attr, None)
                 for attr in ('name', 'chain', 'resid', 'icode')
             )
-            self._unique_id = uid
+            self._id = aid
 
-        return self._unique_id
+        return self._id
+
+    @property
+    def full_id(self):
+        """Returns the full id tuple of the atom.
+
+        The full id is composed of the atom name and altloc, residue number and
+        icode, and chain id. Unlike atom.id, this is unique to even altlocs.
+
+        """
+        if self._fid is None:
+            afid = tuple(
+                getattr(self, attr, None)
+                for attr in ('name', 'chain', 'resid', 'icode', 'altloc')
+            )
+            self._fid = afid
+
+        return self._fid
 
     @property
     def parent(self):
