@@ -28,18 +28,54 @@ class ParserError(BaseInterfaceaException):
     pass
 
 
+class StructureBuilderError(BaseInterfaceaException):
+    pass
+
+
 class BaseParser(metaclass=abc.ABCMeta):
     """Specifies an abstract interface for parsing structure files.
+
+    Attributes
+    ----------
+        atoms : list of Atom
+            sequence of Atom objects representing the information contained in
+            the file.
+
+        coords : list of list of float
+            nested structure of shape MxNx3 representing all cartesian
+            coordinates read from the file, where M is the number of models and
+            N is the number of atoms.
     """
 
-    def __init__(self, filepath, **kwargs):
-
-        self.fpath = self._validate_path(filepath)
+    def __init__(self):
+        self._atoms = []
+        self._coords = []
 
     @abc.abstractmethod
     def parse(self):
-        """Parses the content of the file and returns a list of objects"""
+        """Parses the content of the file and returns the atoms/coords"""
+        return (self.atoms, self.coords)
+
+    @property
+    def atoms(self):
+        return self._atoms
+
+    @property
+    def coords(self):
+        return self._coords
+
+
+class BaseStructureBuilder(metaclass=abc.ABCMeta):
+    """Specifies an abstract interface for building Structure objects.
+    """
+
+    def __init__(self, atoms, coords):
         pass
+
+    @abc.abstractmethod
+    def build(self):
+        """Returns an instance of Structure."""
+        return self.structure
 
 
 # class Reader(object):

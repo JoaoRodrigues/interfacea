@@ -19,11 +19,13 @@
 Unit tests for PDBParser.
 """
 
+import gzip
+import io
 import pathlib
-from urllib.request import urlopen
 
 import pytest
 
+from interfacea.core.atom import Atom
 from interfacea.io.pdb import (
     PDBParser,
     PDBParserError,
@@ -60,16 +62,43 @@ def test_load_local_files(datafile):
     """Create a new PDBParser from a file on disk"""
 
     p = PDBParser(datafile)
-    assert p.source.read() == datafile.open('r').read()
+    assert isinstance(p.source, io.TextIOWrapper)
 
 
 @pytest.mark.usefixtures('has_internet_connectivity')
 def test_load_remote_file():
     """Create a new PDBParser from a file on disk"""
 
-    url = "https://files.rcsb.org/download/1brs.pdb"
     p = PDBParser(pdbid='1brs')
-    assert p.source == urlopen(url).read().splitlines()
+    assert isinstance(p.source, gzip.GzipFile)
+
+
+@pytest.mark.parametrize(
+    'datafile',
+    (
+        datadir / 'tripeptide.pdb',
+        datadir / '1ggr.pdb',
+        datadir / '1brs.pdb'
+    )
+)
+def test_assert_types(datafile):
+    """Asserts the types of the attributes of the abstract class."""
+
+    p = PDBParser(datafile)
+    p.parse()
+
+    atoms = p.atoms
+    assert isinstance(atoms, list)
+    assert isinstance(atoms[0], Atom)
+    assert len(set(map(type, atoms))) == 1
+
+    coords = p.coords
+    assert isinstance(coords, list)  # 1 per atom
+    assert isinstance(coords[0], list)  # 1 per model
+    assert isinstance(coords[0][0], list)  # x,y,z
+    assert len(coords[0][0]) == 3
+    assert isinstance(coords[0][0][0], float)  # x
+    assert len(set(map(type, coords[0]))) == 1
 
 
 @pytest.mark.parametrize(
@@ -119,3 +148,21 @@ def test_auto_assign_elements():
 
     elems = [a.element.symbol for a in p.atoms]
     assert elems == ['N', 'H', 'H', 'H', 'C', 'X', 'P', 'X']
+
+
+@pytest.mark.parametrize(
+    ('datafile', 'n_hetatm'),
+    (
+        (datadir / 'tripeptide.pdb', 0),
+        (datadir / '1ggr.pdb', 4),
+        (datadir / '1brs.pdb', 513)
+    )
+)
+def test_hetatm(datafile, n_hetatm):
+    """Identifies and assigns HETATM correctly."""
+
+    p = PDBParser(datafile)
+    p.parse()
+
+    hetatm = list(filter(lambda a: a.hetatm, p.atoms))
+    assert len(hetatm) == n_hetatm
