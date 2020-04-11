@@ -19,15 +19,23 @@
 Module containing classes to build molecular structures from PDB files.
 """
 
-import gzip
 import logging
-import pathlib
-from urllib.request import urlopen
 import warnings
 
-from interfacea.chemistry.elements import ElementMapper, Unknown
+from interfacea.chemistry.elements import (
+    ElementMapper,
+    Unknown
+)
 from interfacea.core.atom import Atom
-from interfacea.io.base import BaseParser, ParserError
+from interfacea.io.base import (
+    BaseParser,
+    ParserError
+)
+from interfacea.utils import (
+    fetch_rcsb_pdb,
+    validate_path
+)
+
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
@@ -80,10 +88,10 @@ class PDBParser(BaseParser):
         PDBParserError
     """
 
-    def __init__(self, file=None, pdbid=None, stream=None):
+    def __init__(self, file=None, pdbid=None):
 
-        self.atoms = []
-        self.coords = []
+        self._atoms = []
+        self._coords = []
 
         self._atomdict = {}  # maps atom full id to serial to allocate coords
         self._atomset = set()  # to avoid duplicates in each model
@@ -92,41 +100,9 @@ class PDBParser(BaseParser):
         if (file == pdbid is None) or (file is not None and pdbid is not None):
             raise PDBParserError('Provide either the file or pdbid argument')
         elif file is not None:
-            self.source = self._validate_path(file)
+            self.source = validate_path(file).open('rt')
         elif pdbid is not None:
-            self.source = self._fetch_rcsb_pdb(pdbid)
-
-    def _validate_path(self, path):
-        """Asserts that the path is valid and exists.
-
-        Arguments
-        ---------
-            path : str
-                path to a file, as a string.
-        """
-
-        logging.debug(f'Reading file from disk: {path}')
-
-        p = pathlib.Path(path)
-        try:
-            return p.resolve(strict=True).open('r')
-        except FileNotFoundError:
-            emsg = f"File not readable: {path}"
-            raise ParserError(emsg)
-
-    def _fetch_rcsb_pdb(self, pdbid):
-        """Fetches a PDB file from the RCSB PDB database.
-
-        Always downloads the full assymetric unit.
-        """
-
-        rooturl = "https://files.rcsb.org/download/"
-        fullurl = rooturl + pdbid + '.pdb.gz'  # get compressed by default
-
-        logging.debug(f'Reading remote file from: {fullurl}')
-
-        response = urlopen(fullurl)
-        return gzip.decompress(response.read()).splitlines()
+            self.source = fetch_rcsb_pdb(pdbid, fmt='pdb')
 
     def parse(self):
         """Parses the atomic information in the PDB file into Atom objects."""
@@ -135,8 +111,6 @@ class PDBParser(BaseParser):
         # Put coordinates in _x, _y, _z attributes (lists)
         for n, line in enumerate(self.source, start=1):
             self._process_line(n, line)
-
-        return (self.atoms, self.coords)
 
     def _process_line(self, n, line):
         """Parses an individual line of the PDB file.
@@ -217,7 +191,7 @@ class PDBParser(BaseParser):
         # build Atom object
         atom = Atom(
             name=fullname.strip(),
-            serial=len(self.atoms),
+            serial=len(self._atoms),
             **metadata
         )
 
@@ -234,7 +208,7 @@ class PDBParser(BaseParser):
         """Parses a HETATM record."""
 
         self._parse_ATOM()  # how lazy can we be?
-        self.atoms[-1].hetatm = True
+        self._atoms[-1].hetatm = True
 
     # Auxiliary Methods
     def _commit_atom(self, atom, coords):
@@ -247,11 +221,11 @@ class PDBParser(BaseParser):
             logging.debug(f'Registering new atom in PDBParser: {atom.full_id}')
             serial = self._atomdict[atom.full_id] = atom.serial
 
-            self.coords.append([])
-            self.atoms.append(atom)
+            self._coords.append([])
+            self._atoms.append(atom)
 
         self._atomset.add(atom.full_id)
-        self.coords[serial].append(coords)
+        self._coords[serial].append(coords)
 
     def _check_duplicate(self, atom):
         """Ensures the atom has not been read yet."""
