@@ -47,14 +47,10 @@ class BaseParser(metaclass=abc.ABCMeta):
             N is the number of atoms.
     """
 
-    def __init__(self):
-        self._atoms = []
-        self._coords = []
-
     @abc.abstractmethod
     def parse(self):
         """Parses the content of the file and returns the atoms/coords"""
-        return (self.atoms, self.coords)
+        pass
 
     @property
     def atoms(self):
@@ -65,17 +61,17 @@ class BaseParser(metaclass=abc.ABCMeta):
         return self._coords
 
 
-class BaseStructureBuilder(metaclass=abc.ABCMeta):
-    """Specifies an abstract interface for building Structure objects.
-    """
+# class BaseStructureBuilder(metaclass=abc.ABCMeta):
+#     """Specifies an abstract interface for building Structure objects.
+#     """
 
-    def __init__(self, atoms, coords):
-        pass
+#     def __init__(self, atoms, coords):
+#         pass
 
-    @abc.abstractmethod
-    def build(self):
-        """Returns an instance of Structure."""
-        return self.structure
+#     @abc.abstractmethod
+#     def build(self):
+#         """Returns an instance of Structure."""
+#         return self.structure
 
 
 # class Reader(object):
