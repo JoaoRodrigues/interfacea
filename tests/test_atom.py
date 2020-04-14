@@ -84,6 +84,41 @@ def test_del_parent(dummy):
     assert a.parent is None
 
 
+def test_atom_id(dummy):
+    """Atom id property is set properly"""
+
+    a = Atom(name='N')
+    assert a.id == ('N', None, None, None)
+
+    a = Atom(name='N', chain='A')
+    assert a.id == ('N', 'A', None, None)
+
+    a = Atom(name='N', chain='A', resid=32)
+    assert a.id == ('N', 'A', 32, None)
+
+    a = Atom(name='N', chain='A', resid=32, icode='A')
+    assert a.id == ('N', 'A', 32, 'A')
+
+
+def test_atom_full_id(dummy):
+    """Atom full_id property is set properly"""
+
+    a = Atom(name='N')
+    assert a.full_id == ('N', None, None, None, None)
+
+    a = Atom(name='N', chain='A')
+    assert a.full_id == ('N', 'A', None, None, None)
+
+    a = Atom(name='N', chain='A', resid=32)
+    assert a.full_id == ('N', 'A', 32, None, None)
+
+    a = Atom(name='N', chain='A', resid=32, icode='A')
+    assert a.full_id == ('N', 'A', 32, 'A', None)
+
+    a = Atom(name='N', chain='A', resid=32, icode='A', altloc='D')
+    assert a.full_id == ('N', 'A', 32, 'A', 'D')
+
+
 def test_str_dunder():
     """Pretty printing works"""
 

@@ -152,6 +152,15 @@ def test_get_child_attribute_error():
         _ = da.occ
 
 
+def test_get_child_attribute_error_2():
+    """Throws error when accessing attribute without children"""
+
+    da = DisorderedAtom()
+
+    with pytest.raises(DisorderedAtomError):
+        _ = da.occ
+
+
 def test_select_child():
     """Select child manually"""
 
