@@ -19,7 +19,7 @@
 Unit tests for the utils module functions.
 """
 
-import gzip
+from io import TextIOWrapper
 import pathlib
 import urllib.request as request
 
@@ -47,19 +47,23 @@ def test_validate_nonexisting_path():
         _ = utils.validate_path(p_as_str)
 
 
+@pytest.mark.parametrize(
+    ('code', 'fmt'),
+    (
+        ['1brs', 'pdb'],
+    ),
+)
 @pytest.mark.usefixtures('has_internet_connectivity')
-def test_fetch_rcsb_pdb():
+def test_fetch_rcsb_pdb(code, fmt):
     """Successfully loads a compressed PDB file from RCSB"""
 
-    code = '1brs'
-
-    s = utils.fetch_rcsb_pdb(code)
-    assert isinstance(s, gzip.GzipFile)
+    s = utils.fetch_rcsb_pdb(code, fmt=fmt)
+    assert isinstance(s, TextIOWrapper)
 
     data = f'https://files.rcsb.org/download/{code}.pdb'  # uncompressed
     pdbtxt = request.urlopen(data)
 
-    assert s.read() == pdbtxt.read()
+    assert s.read() == pdbtxt.read().decode('utf-8')
 
 
 @pytest.mark.usefixtures('has_internet_connectivity')
@@ -70,3 +74,14 @@ def test_fetch_rcsb_pdb_missing():
 
     with pytest.raises(ValueError, match='RCSB PDB entry'):
         _ = utils.fetch_rcsb_pdb(code)
+
+
+@pytest.mark.usefixtures('has_internet_connectivity')
+def test_fetch_rcsb_pdb_badfmt():
+    """Raises error on unsupported fmt keyword"""
+
+    code = '1brs'
+    fmt = 'xyz'
+
+    with pytest.raises(ValueError, match='File format not supported'):
+        _ = utils.fetch_rcsb_pdb(code, fmt=fmt)

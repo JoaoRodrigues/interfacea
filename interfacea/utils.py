@@ -70,15 +70,25 @@ def fetch_rcsb_pdb(pdbid, fmt='pdb'):
         structure data as a file-like object
     """
 
+    _supported_fmt = set(('pdb', 'cif'))
+    if fmt not in _supported_fmt:
+        raise ValueError(
+            f'File format not supported: {fmt}'
+            f'\nChoose from: {",".join(_supported_fmt)}'
+        )
+
     rooturl = "https://files.rcsb.org/download/"
     fullurl = rooturl + pdbid + '.' + fmt + '.gz'  # get compressed by default
 
     logging.debug(f'Reading remote file from: {fullurl}')
 
     try:
+
         with url_request.urlopen(fullurl) as response:
             gz_data = io.BytesIO(response.read())
-            return gzip.GzipFile(fileobj=gz_data)
+            gzfile = gzip.open(gz_data, mode='rt', encoding='utf-8')
+            return gzfile
+
     except url_error.URLError as err:
         if err.code == 404:
             raise ValueError(f'RCSB PDB entry {pdbid} does not exist.')
