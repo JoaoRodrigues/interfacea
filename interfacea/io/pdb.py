@@ -19,6 +19,7 @@
 Module containing classes to build molecular structures from PDB files.
 """
 
+from collections.abc import Iterable
 import logging
 import warnings
 
@@ -31,11 +32,6 @@ from interfacea.io.base import (
     BaseParser,
     ParserError
 )
-from interfacea.utils import (
-    fetch_rcsb_pdb,
-    validate_path
-)
-
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
@@ -61,11 +57,9 @@ class PDBParser(BaseParser):
 
     Arguments
     ---------
-        file : str, optional
-            path to a PDB file stored locally.
-
-        pdbid : str, optional
-            four-character RCSB PDB id for the structure, e.g. 1brs
+        handle : Iterable
+            source of input data as any object that is iterable. Each item in
+            the iterable should correspond to a line in the PDB file.
 
     Attributes
     ----------
@@ -80,15 +74,12 @@ class PDBParser(BaseParser):
             number of atoms and M is the number of models. For single structure
             files, M=1.
 
-        source : object
-            file-like object from where the data was read.
-
     Raises
     ------
         PDBParserError
     """
 
-    def __init__(self, file=None, pdbid=None):
+    def __init__(self, handle):
 
         self._atoms = []
         self._coords = []
@@ -97,19 +88,19 @@ class PDBParser(BaseParser):
         self._atomset = set()  # to avoid duplicates in each model
         self._in_model = False  # flag set when reading multi-model files.
 
-        if (file == pdbid is None) or (file is not None and pdbid is not None):
-            raise PDBParserError('Provide either the file or pdbid argument')
-        elif file is not None:
-            self.source = validate_path(file).open('rt')
-        elif pdbid is not None:
-            self.source = fetch_rcsb_pdb(pdbid, fmt='pdb')
+        if not isinstance(handle, Iterable):
+            raise TypeError(
+                f'Unsupported type for argument file: {type(handle)}'
+            )
+
+        self._source = handle
 
     def parse(self):
         """Parses the atomic information in the PDB file into Atom objects."""
 
         # For each atom line, create an Atom object.
         # Put coordinates in _x, _y, _z attributes (lists)
-        for n, line in enumerate(self.source, start=1):
+        for n, line in enumerate(self._source, start=1):
             self._process_line(n, line)
 
     def _process_line(self, n, line):
@@ -171,8 +162,8 @@ class PDBParser(BaseParser):
         line = self.line
 
         fullname = line[12:16]
-        elem = line[76:78].strip()
-        if not elem:
+        elem = ElementMapper[line[76:78].strip()]
+        if elem is Unknown:
             elem = self._guess_element(fullname)
 
         metadata = dict(
@@ -191,7 +182,7 @@ class PDBParser(BaseParser):
         # build Atom object
         atom = Atom(
             name=fullname.strip(),
-            serial=len(self._atoms),
+            serial=len(self._atoms),  # never trust atom serials..
             **metadata
         )
 
