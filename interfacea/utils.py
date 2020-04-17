@@ -31,6 +31,48 @@ from urllib import (
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
+def set_log_level(level='verbose'):
+    """Controls verbosity of the logs.
+
+    Useful for interactive/debugging applications.
+
+    Args:
+        level (str): verbosity/type of logging. Choose from:
+            - 'silent': disables logging.
+            - 'minimal': only warnings and other critical messages
+            - 'verbose': informative/descriptive messages (default).
+            - 'debug': very verbose internal/diagnostic messages.
+
+    Raises:
+        ValueError: logging level is not supported.
+    """
+
+    # Logging levels
+    _level_dict = {
+        'minimal': 30,
+        'verbose': 20,
+        'debug': 10
+    }
+
+    log_level = _level_dict.get(level)
+    if log_level is None:
+        emsg = f"Unsupported log level: {level}"
+        raise ValueError(emsg)
+
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter(fmt='[%(asctime)s] %(message)s',
+                                  datefmt='%H:%M:%S')
+    handler.setFormatter(formatter)
+
+    # Override root logger - assume we only call this function interactively.
+    root_logger = logging.getLogger()
+    root_logger.handlers = []  # clear handler list
+    root_logger.addHandler(handler)
+
+    root_logger.setLevel(log_level)
+    logging.critical(f"Logging enabled (level={level})")  # always show
+
+
 def validate_path(path):
     """Asserts that the path is valid and exists.
 
