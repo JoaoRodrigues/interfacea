@@ -20,7 +20,7 @@ interfacea
 .. start-description
 
 **Disclaimer**
-Our code is undergoing a drastic remodelling - for production, use `this version <https://github.com/JoaoRodrigues/interfacea/releases/tag/0.1-beta>`_
+Our code is undergoing a drastic remodelling - we do not guarantee it works! Look at the master branch for a working (outdated) version.
 
 interfacea is a Python library to analyze geometric and energetic features of
 protein interfaces. It implements a graph-based functional group
@@ -61,23 +61,11 @@ Getting Started
 
 .. code-block:: python
 
-    # Load a molecule and perform energy minimization.
+    # Load a molecule.
 
     import interfacea as ia
 
     mol = ia.read('tests/data/mini.pdb')
-    mol.prepare(minimize=True)
-
-    print(mol.potential_energy)
-
-.. code-block:: python
-
-    # Find ionic interactions in the structure
-
-    analyzer = ia.InteractionAnalyzer(mol)
-    analyzer.get_ionic()
-
-    print(analyzer.itable._table)  # will obviously change in the future.
 
 .. end-intro
 
@@ -86,12 +74,10 @@ Read the full documentation at `interfacea.readthedocs.io <https://interfacea.re
 Software Dependencies
 ---------------------
 
-interfacea requires Python 3.7 or a more recent version, as well as the following packages:
+interfacea requires Python 3.7 and depends on the following packages:
 
+- numpy (https://numpy.org/)
 - networkx (https://networkx.github.io)
-- pandas (https://http://pandas.pydata.org)
-- PDBFixer (https://github.com/pandegroup/pdbfixer)
-- OpenMM (http://openmm.org)
 
-These dependencies can be installed by following the instructions on their
-respective websites or by typing ``conda env create -f requirements.yml``.
+You can install these dependencies manually or let us take care of it by
+doing ``conda env create -f requirements.yml``.
