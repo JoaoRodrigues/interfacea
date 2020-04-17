@@ -30,6 +30,11 @@ stages:
               echo "##vso[task.prependpath]$CONDA/bin"
             displayName: Add conda to PATH
 
+          # OSX-specific
+          - bash: sudo chown -R $USER $CONDA
+            displayName: Take ownership of conda installation
+            condition: eq( variables['Agent.OS'], 'Darwin' )
+
           # Build environment
           - script: |
               conda update -n base conda pip setuptools -y
@@ -37,11 +42,6 @@ stages:
               conda env update --name $(condaEnvName) --file devtools/dev-environment.yml
             displayName: Create and Setup Conda Environment
             continueOnError: false
-
-          # OSX-specific
-          - bash: sudo chown -R $USER $CONDA
-            displayName: Take ownership of conda installation
-            condition: eq( variables['Agent.OS'], 'Darwin' )
 
           # Package Steps
           # Install
