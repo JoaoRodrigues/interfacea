@@ -41,7 +41,7 @@ class Atom(object):
     ---------
         name : str
             string to identify the atom.
-        serial : int
+        serial : int, optional
             numerical index of the atom in the Structure. Defaults to 0.
 
         hetatm : bool, optional
@@ -70,9 +70,6 @@ class Atom(object):
         coords : np.array
             array of shape (,3) wih the 3D cartesian coordinates in Angstrom.
             Only defined when bound to a parent Structure.
-        is_disordered : bool
-            Flags if the atom is part of a DisorderedAtom, ie if it is part of a
-            DisorderedAtom object.
     """
 
     def __init__(self, name, serial=0, **kwargs):
@@ -81,7 +78,6 @@ class Atom(object):
         self._id = None
         self._fid = None
         self._parent = None
-        self.is_disordered = False
 
         self.name = name
         self.serial = serial
@@ -168,7 +164,7 @@ class DisorderedAtom(object):
     def __init__(self):
 
         self.__dict__['children'] = {}  # holds Atom objects
-        self.__dict__['selected_child'] = None
+        self.__dict__['representative'] = None
 
     def __str__(self):
         """Pretty printing."""
@@ -188,9 +184,9 @@ class DisorderedAtom(object):
         """Forward all unknown calls to selected child."""
 
         try:
-            return getattr(self.selected_child, attr)
+            return getattr(self.representative, attr)
         except AttributeError as err:
-            if self.selected_child is None:
+            if self.representative is None:
                 emsg = "DisorderedAtom has no children."
                 raise DisorderedAtomError(emsg)
             raise err from None  # re-raise
@@ -200,7 +196,7 @@ class DisorderedAtom(object):
         if attr in self.__dict__:
             self.__dict__[attr] = value
         else:
-            setattr(self.selected_child, attr, value)
+            setattr(self.representative, attr, value)
 
     def add(self, atom):
         """Adds an Atom object.
@@ -224,21 +220,41 @@ class DisorderedAtom(object):
             emsg = f"Altloc '{altloc}' already exists in {self}"
             raise DisorderedAtomError(emsg) from None
 
-        atom.is_disordered = True  # flag
         self.children[altloc] = atom
 
-        if not self.selected_child:
-            self.selected_child = atom
+        if not self.representative:
+            self.representative = atom
             return
 
         # Replace if atom.occ is larger
         try:
-            if self.selected_child.occ < atom.occ:
-                self.selected_child = atom
+            if self.representative.occ < atom.occ:
+                self.representative = atom
         except AttributeError:  # no occ in child or atom
-            self.selected_child = atom
+            self.representative = atom
             # see https://docs.python.org/3/howto/logging.html
             logging.warning(f'Could not sort altloc by occupancy for {self}')
+
+    def delete(self, altloc):
+        """Removes a child Atom from the DisorderedAtom.
+
+        Arguments
+        ---------
+            altloc : str
+                altloc identifier for the Atom to remove.
+        """
+
+        try:
+            if self.representative.altloc == altloc:
+                self.representative = None  # remove reference
+            del self.children[altloc]
+        except KeyError:
+            raise DisorderedAtomError(
+                f'Altloc "{altloc}" not found in DisorderedAtom'
+            )
+        else:
+            if self.children and self.representative is None:
+                self.select()
 
     def from_list(self, atomlist):
         """Adds Atom objects from a list.
@@ -251,19 +267,34 @@ class DisorderedAtom(object):
         for atom in atomlist:
             self.add(atom)
 
-    def select(self, altloc):
+    def select(self, altloc=None):
         """Selects a child as representative.
 
         Argument
         --------
-            altloc : str
-                altloc identifier of the child Atom.
+            altloc : str, optional
+                altloc identifier of the child Atom. If None, picks the child
+                with the highest occupancy. In case of multiple children
+                with the same occupancy, picks the first based on alphabetical
+                altloc order.
         """
-        try:
-            self.selected_child = self.children[altloc]
-        except KeyError:
-            emsg = f"Alternate location '{altloc}' not found in {self}"
-            raise DisorderedAtomError(emsg) from None
+
+        if not self.children:
+            raise DisorderedAtomError('DisorderedAtom has no children')
+
+        if altloc is None:
+            self.representative = sorted(
+                list(self),
+                key=lambda a: (a.occupancy, a.altloc)
+            )[0]
+        else:
+            try:
+                self.representative = self.children[altloc]
+            except KeyError:
+                emsg = f"Alternate location '{altloc}' not found in {self}"
+                raise DisorderedAtomError(emsg) from None
+
+        logging.debug(f'Set {self.representative.altloc} as representative')
 
     @property
     def nlocs(self):
