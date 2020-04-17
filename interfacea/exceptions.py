@@ -22,7 +22,7 @@ Base exceptions for modules and classes across interfacea.
 # Exceptions
 
 
-class BaseInterfaceaException(Exception):
+class InterfaceaError(Exception):
     """Base class for exceptions in this module"""
 
     def __init__(self, message):

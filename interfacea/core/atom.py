@@ -25,12 +25,12 @@ since coordinate information is kept at the Structure level.
 import logging
 import weakref
 
-from interfacea.exceptions import BaseInterfaceaException
+from interfacea.exceptions import InterfaceaError
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
-class DisorderedAtomError(BaseInterfaceaException):
+class DisorderedAtomError(InterfaceaError):
     pass
 
 
