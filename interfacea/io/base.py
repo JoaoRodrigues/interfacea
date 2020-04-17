@@ -21,14 +21,14 @@ Base class for file parsers.
 
 import abc
 
-from interfacea.exceptions import BaseInterfaceaException
+from interfacea.exceptions import InterfaceaError
 
 
-class ParserError(BaseInterfaceaException):
+class ParserError(InterfaceaError):
     pass
 
 
-class StructureBuilderError(BaseInterfaceaException):
+class StructureBuilderError(InterfaceaError):
     pass
 
 
@@ -61,27 +61,23 @@ class BaseParser(metaclass=abc.ABCMeta):
         return self._coords
 
 
-# class BaseStructureBuilder(metaclass=abc.ABCMeta):
-#     """Specifies an abstract interface for building Structure objects.
-#     """
+class BaseStructureBuilder(metaclass=abc.ABCMeta):
+    """Specifies an abstract interface for building Structure objects.
 
-#     def __init__(self, atoms, coords):
-#         pass
+    Structure builders are essentially validators of the parsed data. They must
+    implement a _build method that returns a Structure object.
 
-#     @abc.abstractmethod
-#     def build(self):
-#         """Returns an instance of Structure."""
-#         return self.structure
+    Methods
+    -------
+        build()
+            Builds and returns a complete Structure.
+    """
 
+    @abc.abstractmethod
+    def _build(self):
+        """Builds an instance of Structure."""
+        pass
 
-# class Reader(object):
-#     """Delegates parsing of a file to an appropriate reader class."""
-
-#     def __new__(cls, path, **kwargs):
-#         try:
-#             r = readers[path.suffix]
-#         except KeyError:
-#             emsg = f"File format not supported ({path.suffix})"
-#             raise IOError(emsg) from None
-#         else:
-#             return r(path, kwargs)
+    def build(self):
+        """Returns a complete instance of a Structure"""
+        raise NotImplementedError('Do this yourself!')

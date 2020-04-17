@@ -19,44 +19,114 @@
 Module containing classes to parse structural data files.
 """
 
-import pathlib
+from interfacea.exceptions import InterfaceaError
+import interfacea.utils as ia_utils
 
-from interfacea.core import structure
-from .base import Reader
+# Bring parsers to this namespace for convenience
+from .pdb import PDBParser
 
-__all__ = ['read']
+# Bring builders to this namespace for convenience
+from .aabuilder import AllAtomStructureBuilder
 
 
-# High-level IO
-def read(filepath, **kwargs):
-    """High-level method to create Structures from data files.
+_parsers = {
+    'pdb': PDBParser,
+    'ent': PDBParser,
+}
 
-    Reader classes are picked based on the file extension, e.g. a .pdb file
-    will be parsed by the io.PDBReader class. The mapping between extensions
-    and readers is defined in io. Refer to that file and to each of the reader
-    classes for more information on their arguments and options.
+
+# Module-level functions
+def read(filepath, name=None, parser=None, builder=None):
+    """High-level method to create Structure objects from files.
+
+    The parser and builder arguments define how the file is parsed and how the
+    Structure is built. Refer to the appropriate modules for more details. By
+    default, the parser is picked based on the input file extension and the
+    AllAtomStructureBuilder is used to build the structure.
 
     Arguments
     ---------
         filepath : str
             path to the file to be read.
 
+        name : str, optional
+            identifier for the Structure. If None, the input file name will be
+            used as a name.
+
+        parser : BaseParser, optional
+            format-specific parser to use when reading the input file.
+
+        builder : BaseStructureBuilder, optional
+            factory builder class to assemble the structure.
+
     Returns
     -------
         a Structure object containing atom coordinates and metadata.
     """
 
-    # Validate Path
-    try:
-        path = pathlib.Path(filepath).resolve(strict=True)
-    except FileNotFoundError as err:
-        emsg = f"File not found or not readable: {filepath}"
-        raise FileNotFoundError(emsg) from err
-    except Exception as err:
-        emsg = f"Unexpected error when parsing file path: {filepath}"
-        raise IOError(emsg) from err
+    fpath = ia_utils.validate_path(filepath)
+    if parser is None:
+        try:
+            fext = fpath.suffix.lstrip('.')
+            parser = _parsers[fext](fpath.open('rt'))
+        except KeyError:
+            emsg = (
+                f'Could not auto-assign a parser to file "{filepath}"'
+                f'\nSupported file types: {",".join(_parsers)}'
+            )
+            raise InterfaceaError(emsg)
 
-    # Parse Data
-    r = Reader(path, **kwargs)
-    name = kwargs.get('name', path.name)
-    return structure.Structure.from_atomrecords(name, r.data, **kwargs)
+    if builder is None:
+        builder = AllAtomStructureBuilder
+
+    if name is None:
+        name = str(fpath.stem)
+
+    b = builder(parser)
+    structure = b.build()
+    structure.name = name
+
+    return structure
+
+
+def fetch(pdbcode, data_fmt='pdb', name=None, parser=None, builder=None):
+    """High-level method to create Structure objects from remote data.
+
+    Arguments
+    ---------
+        pdbcode : str
+            4-character RCSB entry code.
+
+        data_fmt : str, optional
+            Format in which to download the data from RCSB.
+
+        name : str, optional
+            identifier for the Structure. If None, the pdb code will be used as
+            a name.
+
+        parser : BaseParser, optional
+            format-specific parser to use when reading the data.
+
+        builder : BaseStructureBuilder, optional
+            factory builder class to assemble the structure.
+
+    Returns
+    -------
+        a Structure object containing atom coordinates and metadata.
+    """
+
+    gzfile = ia_utils.fetch_rcsb_pdb(pdbcode, data_fmt)
+    if parser is None:
+        parser = _parsers[data_fmt](gzfile)
+
+    if builder is None:
+        builder = AllAtomStructureBuilder
+
+    if name is None:
+        name = pdbcode
+
+    b = builder(parser)
+    structure = b.build()
+    structure.name = name
+
+    return structure
