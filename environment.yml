@@ -1,8 +1,5 @@
 name: interfacea
-channels:
-  - omnia
 dependencies:
+  - python
   - numpy
   - networkx
-  - openmm
-  - pdbfixer

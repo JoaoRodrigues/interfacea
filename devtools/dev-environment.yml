@@ -1,12 +1,13 @@
 name: interfacea-dev
-channels:
-  - omnia
+# channels:
+#   - omnia
 dependencies:
+  - python
   # library deps to check builds/tests
   - numpy
   - networkx
-  - openmm
-  - pdbfixer
+  # - openmm
+  # - pdbfixer
 
   # dev deps
   - flake8
@@ -16,4 +17,3 @@ dependencies:
   - pip:
     - pre-commit
     - pytest-cov
-
