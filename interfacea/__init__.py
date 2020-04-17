@@ -23,7 +23,7 @@ import logging
 
 from .constants import *  # noqa: F401, F403
 from .io import read, fetch  # noqa: F401
-from .utils import set_log_level, set_random_seed  # noqa: F401
+from .utils import set_log_level  # noqa: F401
 from .version import __version__  # noqa: F401
 
 # Setup logger
