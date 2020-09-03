@@ -1,0 +1,45 @@
+#
+# Adapted from Biopython 1.78
+#
+# pre-commit run --all-files
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.2.0
+    hooks:
+    -   id: check-executables-have-shebangs
+        files: \.(py|sh)$
+    -   id: check-json
+    -   id: debug-statements
+    -   id: end-of-file-fixer
+        files: \.py$
+    -   id: mixed-line-ending
+-   repo: https://github.com/psf/black
+    rev: 19.10b0
+    hooks:
+    -   id: black
+        args: [--check]
+-   repo: https://gitlab.com/pycqa/flake8
+    rev: 3.7.9
+    hooks:
+    -   id: flake8
+        additional_dependencies: [
+            'flake8-blind-except',
+            'flake8-bugbear',
+            'flake8-comprehensions',
+            'flake8-docstrings',
+            'flake8-implicit-str-concat',
+            'flake8-quotes',
+            'flake8-rst-docstrings',
+            'pydocstyle>=5.0.0',
+        ]
+-   repo: https://github.com/asottile/blacken-docs
+    rev: v1.6.0
+    hooks:
+    -   id: blacken-docs
+        additional_dependencies: [black==19.10b0]
+        exclude: ^.github/
+-   repo: https://github.com/myint/rstcheck
+    rev: ''
+    hooks:
+    -   id: rstcheck
+        args: [--report=warning]
