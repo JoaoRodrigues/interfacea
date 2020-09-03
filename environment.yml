@@ -1,0 +1,7 @@
+name: interfacea
+dependencies:
+  # Python
+  - python>=3.8
+  # Strict dependencies
+  - numpy
+  - networkx

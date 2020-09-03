@@ -1,0 +1,6 @@
+# Dependencies for developers.
+name: interfacea
+dependencies:
+  - pip
+  - pip:
+    - pre-commit
