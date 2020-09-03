@@ -1,6 +1,7 @@
 # Dependencies for developers.
 name: interfacea
 dependencies:
+  - pytest
   - pip
   - pip:
     - pre-commit
