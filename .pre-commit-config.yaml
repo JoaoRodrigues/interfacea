@@ -30,8 +30,11 @@ repos:
             'flake8-implicit-str-concat',
             'flake8-quotes',
             'flake8-rst-docstrings',
-            'pydocstyle>=5.0.0',
         ]
+-   repo: https://github.com/pycqa/pydocstyle
+    rev: 5.1.1
+    hooks:
+    -   id: pydocstyle
 -   repo: https://github.com/asottile/blacken-docs
     rev: v1.6.0
     hooks:
