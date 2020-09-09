@@ -30,6 +30,12 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
 
+class TopologyError(InterfaceaError):
+    """Exception specific to submodule."""
+
+    pass
+
+
 class Topology:
     """Class to represent molecular topologies.
 
@@ -197,12 +203,12 @@ class Topology:
         """
 
         if not isinstance(bg, nx.Graph):
-            raise InterfaceaError(
+            raise TopologyError(
                 f"Bond graph object must be a nx.Graph instance: {type(bg)}"
             )
 
         if len(bg) != self.natoms:
-            raise InterfaceaError(
+            raise TopologyError(
                 f"Graph and Topology sizes do not match: {len(bg)} != {self.natoms}"
             )
 
