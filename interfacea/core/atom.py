@@ -42,7 +42,6 @@ class Atom:
     ---------
         name : str
             string to identify the atom.
-
         hetatm : bool, optional
             flag to identify HETATMs.
         altloc : str, optional
@@ -92,6 +91,10 @@ class Atom:
         """Pretty string representation of the Atom object."""
 
         return f"<Atom {self.name} index={self.index}>"
+
+    def __eq__(self, other):
+        """Equality between Atom objects."""
+        return self.full_id == other.full_id
 
     # Public Methods/Attributes
     @property
@@ -173,6 +176,10 @@ class DisorderedAtom(object):
             self.__dict__[attr] = value
         else:
             setattr(self.selected, attr, value)
+
+    def __getitem__(self, key):
+        """Retrieve a child by its altloc identifier."""
+        return self.children[key]
 
     def add(self, atom):
         """Add a child Atom object."""
