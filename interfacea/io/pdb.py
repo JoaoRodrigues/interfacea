@@ -201,7 +201,7 @@ class PDBParser:
                 chain=line[21],
                 resid=int(line[22:26]),
                 icode=line[26].strip(),
-                occ=float(line[54:60]),
+                occupancy=float(line[54:60]),
                 b=float(line[60:66]),
                 segid=line[72:76].strip(),
                 element=elem,

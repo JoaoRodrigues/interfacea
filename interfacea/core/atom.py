@@ -56,7 +56,7 @@ class Atom:
             name of the parent chain.
         b : float, optional
             temperature factor.
-        occ : float, optional
+        occupancy : float, optional
             fractional occupancy.
         segid : str, optional
             segment identifier.
@@ -201,11 +201,11 @@ class DisorderedAtom(object):
             self.selected = atom
             return
 
-        # Replace if atom.occ is larger
+        # Replace if atom.occupancy is larger
         try:
-            if self.selected.occ < atom.occ:
+            if self.selected.occupancy < atom.occupancy:
                 self.selected = atom
-        except AttributeError:  # no occ in child or atom
+        except AttributeError:  # no occupancy in child or atom
             self.selected = atom
             # see https://docs.python.org/3/howto/logging.html
             logger.warning(f"Could not sort altloc by occupancy for {self}")
