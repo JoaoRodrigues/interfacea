@@ -256,7 +256,7 @@ class DisorderedAtom(object):
             raise DisorderedAtomError("DisorderedAtom has no children")
 
         if altloc is None:
-            self.selected = sorted(self, key=lambda a: (a.occupancy, a.altloc))[0]
+            self.selected = sorted(self, key=lambda a: (a.occupancy, a.altloc))[-1]
         else:
             try:
                 self.selected = self.children[altloc]
