@@ -110,14 +110,14 @@ class Topology:
         """Retrieve an atom by its index in the Topology."""
         _idx = self._i2i.get(idx)
         if _idx is None:
-            return IndexError(f"Index '{idx}' not found in Topology")
+            raise IndexError(f"Index '{idx}' not found in Topology")
         return self.atoms[_idx]
 
     def __setitem__(self, idx, atom):
         """Set an atom at a specific index in the Topology."""
         _idx = self._i2i.get(idx)
         if _idx is None:
-            return IndexError(f"Index '{idx}' not found in Topology")
+            raise IndexError(f"Index '{idx}' not found in Topology")
 
         assert isinstance(atom, (Atom, DisorderedAtom))
         self.atoms[_idx] = atom
