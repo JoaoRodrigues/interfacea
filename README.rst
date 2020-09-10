@@ -57,6 +57,9 @@ You can find the full documentation at
 
     import interfacea as ia
 
+    s = ia.read("1brs.pdb")
+    print(s)
+
 .. end-intro
 
 Software Dependencies
