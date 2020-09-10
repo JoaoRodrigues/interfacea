@@ -48,7 +48,11 @@ _INCLUDE_TOPOLOGY = {  # set of formats that include topology information
 def _get_extension(filepath):
     """Return the extension from a string containing a file path."""
 
-    p = pathlib.Path(filepath).resolve(strict=True)
+    if not isinstance(filepath, pathlib.Path):
+        filepath = pathlib.Path(filepath)
+
+    p = filepath.resolve(strict=True)
+
     fext = p.suffix
     if fext == ".gz":
         fext = "".join(p.suffixes[-2:])  # catch pdb.gz
