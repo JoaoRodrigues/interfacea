@@ -62,6 +62,8 @@ class Topology:
     def __init__(self):
         """Create a new Topology."""
 
+        self._print_debug = logger.isEnabledFor(logging.DEBUG)
+
         logger.debug(f"Instantiated new Topology object: {id(self)}")
 
         self.natoms = 0
@@ -126,6 +128,21 @@ class Topology:
         """Iterate over children."""
         yield from self.atoms
 
+    # Equality
+    def __eq__(self, other):
+        """Return True if two Topologies are equivalent."""
+
+        if self.natoms != other.natoms or self.nlocs != other.nlocs:
+            logger.info("Topologies differ on number of atoms or nlocs")
+            return False
+
+        for a1, a2 in zip(self.unpack_atoms(), other.unpack_atoms()):
+            if a1 != a2:
+                logger.info(f"Topologies differ on atom: {a1} is not {a2}")
+                return False
+
+        return True
+
     # Public Methods
     def add_atom(self, atom, disorder=True):
         """Add an Atom object to the Topology.
@@ -153,7 +170,8 @@ class Topology:
             self.natoms += 1
             self.nlocs += 1
 
-            logger.debug(f"Added atom '{atom}' at index {atom.index}")
+            if self._print_debug:
+                logger.debug(f"Added atom '{atom}' at index {atom.index}")
         elif disorder:
 
             existing_atom = self[id_in_topology]
@@ -162,7 +180,8 @@ class Topology:
                 da.add(existing_atom)
 
                 existing_atom = self[id_in_topology] = da
-                logger.debug(f"New disordered atom at index {id_in_topology}")
+                if self._print_debug:
+                    logger.debug(f"New disordered atom at index {id_in_topology}")
 
             existing_atom.add(atom)
 
