@@ -19,14 +19,44 @@
 
 import logging
 
-from .config import set_log_level  # noqa: F401
-from .constants import RANDOM_SEED  # noqa: F401
-from .version import __version__  # noqa: F401
-
-from .io import read  # noqa: F401
+from .constants import RANDOM_SEED  # noqa
+from .version import __version__  # noqa
+from .io import read  # noqa
 
 # Setup logger
 # This is the parent logger since the library is supposed to be loaded from here.
 # Hence, configs set here apply to all module-level loggers
-logging.getLogger(__name__).addHandler(logging.NullHandler())
-logging.getLogger(__name__).setLevel(logging.WARNING)
+logging.basicConfig(
+    format="[%(asctime)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    level=logging.WARNING,
+)
+
+
+# Logging control helpers
+def verbose():
+    """Set loggers to verbose."""
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    logging.critical("Logging set to verbose")
+
+
+def default():
+    """Set loggers to default."""
+    logger = logging.getLogger()
+    logger.setLevel(logging.WARNING)
+    logging.critical("Logging set to default")
+
+
+def debug():
+    """Set loggers to debug."""
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    logging.critical("Logging set to debug")
+
+
+def silent():
+    """Set silent _most_ logging messages."""
+    logger = logging.getLogger()
+    logger.setLevel(logging.CRITICAL)
+    logging.critical("Logging set to silent")
