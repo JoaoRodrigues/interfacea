@@ -23,6 +23,8 @@ from io import TextIOBase
 import pathlib
 import warnings
 
+import numpy as np
+
 import interfacea.chemistry.elements as elements
 from interfacea.core.atom import Atom
 from interfacea.core.topology import Topology
@@ -112,8 +114,10 @@ class PDBParser:
 
     Attributes
     ----------
-        structure : Structure
-            Structure object representing the parsed PDB file.
+        topology : Topology
+            topology containing atoms parsed from the PDB file.
+        coordinates : list of lists
+            list of x,y,z coordinates for each model in the parsed file.
 
     Raises
     ------
@@ -137,28 +141,37 @@ class PDBParser:
         if not isinstance(handle, TextIOBase):
             raise PDBParserError(f"Wrong type for handle argument: {type(handle)}")
 
-        self.parse(handle)
+        # Are we debug logging?
+        self._print_debug = logger.isEnabledFor(logging.DEBUG)
 
-    def parse(self, handle):
+        self._parse(handle)
+
+    def _parse(self, handle):
         """Parse the file, line by line."""
+
+        _recparsers = {
+            "ATOM  ": self._parse_ATOM,
+            "HETATM": self._parse_HETATM,
+            "MODEL ": self._parse_MODEL,
+            "ENDMDL": self._parse_ENDMDL,
+            "END   ": self._terminate,
+        }
 
         for ln, line in enumerate(handle, start=1):
             self.line = line
             self.ln = ln
 
-            rectype = line[:6].strip()
+            rectype = line[:6]
 
             try:
-                p = getattr(self, f"_parse_{rectype}")
-            except AttributeError:
-                logging.debug(f"Ignoring record '{rectype}' on line {ln}")
-            else:
-                try:
-                    p()
-                except StopIteration:
-                    break  # stop parsing file on demand
-                except Exception as err:  # catch-all
-                    raise PDBParserError(f"Could not parse line {ln}") from err
+                _recparsers[rectype]()
+            except KeyError:
+                logger.debug(f"Ignoring record '{rectype}' on line {ln}")
+                continue
+            except StopIteration:
+                break  # stop parsing file on demand
+            except Exception as err:  # catch-all
+                raise PDBParserError(f"Could not parse line {ln}") from err
 
         # Set coordinate array properly
         # in case we never found a MODEL statement
@@ -166,11 +179,18 @@ class PDBParser:
             coordset = self.xyz[:]
             self.xyz = [coordset]
 
+        self.xyz = np.array(self.xyz)
+
     # record parsers
+    def _terminate(self):
+        """Send stop signal to main parsing loop."""
+        raise StopIteration
+
     def _parse_MODEL(self):
         """Reset the atomset, set the model flag, and add coordset."""
 
-        logging.debug(f"Parsing MODEL statement at line {self.ln}")
+        if self._print_debug:
+            logger.debug(f"Parsing MODEL statement at line {self.ln}")
 
         if self._in_model:
             raise ValueError(f"Unexpected MODEL record at line {self.ln}")
@@ -188,7 +208,8 @@ class PDBParser:
     def _parse_ENDMDL(self):
         """Reset the model flag."""
 
-        logging.debug(f"Parsing ENDMDL statement at line {self.ln}")
+        if self._print_debug:
+            logger.debug(f"Parsing ENDMDL statement at line {self.ln}")
 
         if not self._in_model:
             raise PDBParserError(f"Unexpected ENDMDL record at line {self.ln}")
@@ -196,7 +217,7 @@ class PDBParser:
         self._in_model = False
         self._nrmodels += 1
         if self.nmodels is not None and self._nrmodels >= self.nmodels:
-            raise StopIteration  # stop parsing
+            self._terminate()
 
         # check all models have the same number of atoms
         atoms_in_models = {len(xyz) for xyz in self.xyz}
@@ -207,7 +228,8 @@ class PDBParser:
     def _parse_coordinates(self, hetatm=False):
         """Parse an ATOM/HETATM record."""
 
-        logging.debug(f"Parsing coordinate data at line {self.ln}")
+        if self._print_debug:
+            logger.debug(f"Parsing coordinate data at line {self.ln}")
 
         line = self.line
 
@@ -281,5 +303,6 @@ class PDBParser:
             )
             element = element.Unknown
 
-        logging.debug(f"Auto-assigned element {element.symbol} for atom {fullname}")
+        if self._print_debug:
+            logger.debug(f"Auto-assigned element {element.symbol} for atom {fullname}")
         return element
