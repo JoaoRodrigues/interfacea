@@ -15,6 +15,8 @@ interfacea
 
 .. start-description
 
+*UNDER DEVELOPMENT. DO NOT USE. CHECK MASTER BRANCH FOR WORKING VERSION*
+
 interfacea is a Python library to analyze protein interfaces. You can use it to find
 hydrogen bonds and other chemical interactions in your 3D models, as well as perform
 (simple) *in silico* mutagenesis.
