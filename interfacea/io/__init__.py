@@ -17,6 +17,7 @@
 
 """Module containing classes to parse structural data files."""
 
+import logging
 import pathlib
 import warnings
 
@@ -25,6 +26,9 @@ from interfacea.exceptions import InterfaceaError
 from .pdb import read_pdb
 
 __all__ = ["read"]
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
 
 _READERS = {
     ".pdb": read_pdb,
@@ -44,10 +48,11 @@ _INCLUDE_TOPOLOGY = {  # set of formats that include topology information
 def _get_extension(filepath):
     """Return the extension from a string containing a file path."""
 
-    p = pathlib.Path(filepath)
+    p = pathlib.Path(filepath).resolve(strict=True)
     fext = p.suffix
     if fext == ".gz":
-        fext = "".join(p.suffixes[:-2])  # catch pdb.gz
+        fext = "".join(p.suffixes[-2:])  # catch pdb.gz
+    logger.info(f"Loading file '{str(p)}' with extension '{fext}'")
     return fext
 
 
@@ -86,7 +91,6 @@ def read(filepath, **kwargs):
                 kwargs["topology"] = r.topology
 
     try:
-        fext = _get_extension(filepath)
         parser = _READERS[fext]
     except KeyError:
         emsg = (
