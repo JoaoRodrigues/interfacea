@@ -98,7 +98,14 @@ class Atom:
         return self.__str__()
 
     def __eq__(self, other):
-        """Equality between Atom objects."""
+        """Equality between Atom objects.
+
+        DisorderedAtoms will be compared based on their selected child.
+        """
+
+        if not isinstance(other, (Atom, DisorderedAtom)):
+            return False
+
         return self.full_id == other.full_id
 
     # Public Methods/Attributes
@@ -191,16 +198,25 @@ class DisorderedAtom(object):
         return self.children[key]
 
     def __eq__(self, other):
-        """Return True if two DisorderedAtoms have equivalent children."""
+        """Return True if two DisorderedAtoms are equivalent.
 
-        if len(self) != len(other):
-            return False
+        When comparing an Atom to a DisorderedAtom, compares the Atom with the
+        selected child.
+        """
 
-        for a1, a2 in zip(self.children, other.children):
-            if a1 != a2:
+        if isinstance(other, Atom):  # compare to top child
+            return self.selected == other
+        elif isinstance(other, DisorderedAtom):
+            if len(self) != len(other):
                 return False
 
-        return True
+            for a1, a2 in zip(self.children, other.children):
+                if a1 != a2:
+                    return False
+
+            return True
+        else:
+            return False
 
     def add(self, atom):
         """Add a child Atom object."""
