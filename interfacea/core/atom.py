@@ -92,6 +92,11 @@ class Atom:
 
         return f"<Atom {self.name} index={self.index}>"
 
+    def __repr__(self):
+        """Pretty printing as well."""
+
+        return self.__str__()
+
     def __eq__(self, other):
         """Equality between Atom objects."""
         return self.full_id == other.full_id
@@ -150,6 +155,10 @@ class DisorderedAtom(object):
         if n:
             return f"<DisorderedAtom name={self.name} index={self.index} [{n}]>"
         return "<DisorderedAtom [Empty]>"
+
+    def __repr__(self):
+        """Pretty printing as well."""
+        return self.__str__()
 
     def __iter__(self):
         """Return an iterator over child atoms."""
