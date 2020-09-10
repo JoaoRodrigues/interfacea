@@ -23,6 +23,8 @@ from .config import set_log_level  # noqa: F401
 from .constants import RANDOM_SEED  # noqa: F401
 from .version import __version__  # noqa: F401
 
+from .io import read  # noqa: F401
+
 # Setup logger
 # This is the parent logger since the library is supposed to be loaded from here.
 # Hence, configs set here apply to all module-level loggers
