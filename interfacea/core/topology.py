@@ -132,6 +132,9 @@ class Topology:
     def __eq__(self, other):
         """Return True if two Topologies are equivalent."""
 
+        if not isinstance(other, Topology):
+            return False
+
         if self.natoms != other.natoms or self.nlocs != other.nlocs:
             logger.info("Topologies differ on number of atoms or nlocs")
             return False
