@@ -31,7 +31,8 @@ from interfacea.exceptions import InterfaceaError
 # from interfacea.spatial import kdtrees
 
 # Setup module logger
-logger = logging.getLogger(__name__).addHandler(logging.NullHandler())
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
 
 
 class StructureError(InterfaceaError):
@@ -136,28 +137,6 @@ class Structure(object):
         return xyzdata
 
     # Public Methods
-    def atom(self, serial):
-        """Return an Atom from the structure.
-
-        Safely translates atom serial to atom array index, handling structures
-        with DisorderedAtoms.
-
-        Arguments
-        ---------
-            serial : int
-                serial number of the atom to retrieve.
-        """
-
-        try:
-            idx = self._idxdict[serial]
-        except KeyError:
-            max_serial = max(self._idxdict)
-            raise StructureError(
-                f"Unknown atom: #{serial}. Known indexes: 0 to {max_serial}"
-            )
-
-        return self._atoms[idx]
-
     @property
     def model(self):
         """Return the index of the active model."""
