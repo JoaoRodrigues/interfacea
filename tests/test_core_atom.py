@@ -89,6 +89,18 @@ def test_atom_full_id():
     assert a.full_id == ("N", "A", 32, "A", "D")
 
 
+def test_atom_equality():
+    """Compare two atoms."""
+
+    a = Atom(name="N", chain="A", resid=32)
+    b = Atom(name="N", chain="A", resid=32)
+    c = Atom(name="C", chain="A", resid=32)
+
+    assert a == b
+    assert a is not b
+    assert a != c
+
+
 def test_str_dunder():
     """Pretty printing works."""
 

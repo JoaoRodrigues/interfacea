@@ -190,6 +190,18 @@ class DisorderedAtom(object):
         """Retrieve a child by its altloc identifier."""
         return self.children[key]
 
+    def __eq__(self, other):
+        """Return True if two DisorderedAtoms have equivalent children."""
+
+        if len(self) != len(other):
+            return False
+
+        for a1, a2 in zip(self.children, other.children):
+            if a1 != a2:
+                return False
+
+        return True
+
     def add(self, atom):
         """Add a child Atom object."""
 
