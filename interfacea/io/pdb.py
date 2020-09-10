@@ -33,6 +33,51 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
 
+def read_pdb(filepath, **kwargs):
+    """Produce a Structure from a PDB file.
+
+    Arguments
+    ---------
+        filepath : TextIOBase or str
+            handle or path to the file to be parsed.
+
+        nmodels : int, optional
+            number of models to read from the file. Default, all.
+
+    Returns
+    -------
+        a Structure object containing a topology and coordinates.
+    """
+
+    if isinstance(filepath, TextIOBase):
+        handle = filepath
+        filepath = pathlib.Path(handle)
+
+    elif isinstance(filepath, str):
+        filepath = pathlib.Path(filepath)
+
+        _ = filepath.resolve(strict=True)  # to validate that path exists
+
+        if filepath.suffix == ".gz":
+            handle = gzip.open(filepath, "rt")
+        else:
+            handle = filepath.open("r")
+
+    elif isinstance(filepath, pathlib.Path):
+        _ = filepath.resolve(strict=True)  # to validate that path exists
+        if filepath.suffix == ".gz":
+            handle = gzip.open(filepath, "rt")
+        else:
+            handle = filepath.open("r")
+    else:
+        raise ValueError(f"Unknown argument type for _open_file: {type(filepath)}")
+
+    with handle:
+        reader = PDBParser(handle, **kwargs)
+
+    return Structure(name=filepath.name, topology=reader.topology, xyzdata=reader.xyz)
+
+
 class PDBParserError(InterfaceaError):
     """Exception specific to this submodule."""
 
@@ -61,6 +106,9 @@ class PDBParser:
         handle: TextIOBase
             Open file or file-like object containing the PDB file data in text
             format.
+        nmodels : int, optional
+            number of models to read from the file. Default is None, meaning
+            read all frames.
 
     Attributes
     ----------
@@ -72,53 +120,24 @@ class PDBParser:
         PDBParserError
     """
 
-    def __init__(self, handle):
+    def __init__(self, handle, nmodels=None):
         """Create a new instance of the class."""
-        self._top = Topology()
-        self._xyz = []
+
+        self.topology = Topology()
+        self.xyz = []
+        self._curxyz = self.xyz  # pointer
+
         self.structure = None
+        self.nmodels = nmodels
 
         self._atomset = set()  # to avoid duplicates in each model
         self._in_model = False  # flag set when reading multi-model files.
-        self._nmodels = 0
+        self._nrmodels = 0  # number of READ models.
 
         if not isinstance(handle, TextIOBase):
             raise PDBParserError(f"Wrong type for handle argument: {type(handle)}")
 
         self.parse(handle)
-
-    @staticmethod
-    def from_file(filepath):
-        """Parse the atomic information in the PDB file into Atom objects.
-
-        Arguments
-        ---------
-            filepath : pathlib.Path or str
-                location of the input PDB file.
-
-        Returns
-        -------
-            Structure object.
-        """
-
-        if isinstance(filepath, str):
-            filepath = pathlib.Path(filepath)
-        elif isinstance(filepath, pathlib.Path):
-            pass
-        else:
-            raise TypeError(f"Unsupported input type: {type(filepath)}")
-
-        filepath = filepath.resolve(strict=True)
-
-        if "gz" in filepath.suffix:
-            opener = gzip.open(filepath, "rt")
-        else:
-            opener = filepath.open("r")
-
-        with opener as handle:
-            reader = PDBParser(handle)
-
-        return Structure(name=filepath.name, topology=reader._top, xyzdata=reader._xyz)
 
     def parse(self, handle):
         """Parse the file, line by line."""
@@ -136,14 +155,16 @@ class PDBParser:
             else:
                 try:
                     p()
+                except StopIteration:
+                    break  # stop parsing file on demand
                 except Exception as err:  # catch-all
                     raise PDBParserError(f"Could not parse line {ln}") from err
 
         # Set coordinate array properly
         # in case we never found a MODEL statement
-        if self._xyz and len(self._xyz[0]) == 3:  # only one model
-            coordset = self._xyz[:]
-            self._xyz = [coordset]
+        if self.xyz and len(self.xyz[0]) == 3:  # only one model
+            coordset = self.xyz[:]
+            self.xyz = [coordset]
 
     # record parsers
     def _parse_MODEL(self):
@@ -157,11 +178,12 @@ class PDBParser:
         self._atomset.clear()
         self._in_model = True
 
-        if self._xyz and len(self._xyz[0]) == 3:  # first model
-            coordset = self._xyz[:]
-            self._xyz = [coordset]
+        if self.xyz and len(self.xyz[0]) == 3:  # first model
+            coordset = self.xyz[:]
+            self.xyz = [coordset]
 
-        self._xyz.append([])
+        self.xyz.append([])
+        self._curxyz = self.xyz[-1]
 
     def _parse_ENDMDL(self):
         """Reset the model flag."""
@@ -172,13 +194,15 @@ class PDBParser:
             raise PDBParserError(f"Unexpected ENDMDL record at line {self.ln}")
 
         self._in_model = False
-        self._nmodels += 1
+        self._nrmodels += 1
+        if self.nmodels is not None and self._nrmodels >= self.nmodels:
+            raise StopIteration  # stop parsing
 
         # check all models have the same number of atoms
-        atoms_in_models = {len(xyz) for xyz in self._xyz}
+        atoms_in_models = {len(xyz) for xyz in self.xyz}
         assert (
             len(atoms_in_models) == 1
-        ), f"Model '{self._nmodels} has a different number of coordinates."
+        ), f"Model '{self._nrmodels} has a different number of coordinates."
 
     def _parse_coordinates(self, hetatm=False):
         """Parse an ATOM/HETATM record."""
@@ -187,7 +211,7 @@ class PDBParser:
 
         line = self.line
 
-        if not self._nmodels:  # only parse topology info from first model
+        if not self._nrmodels:  # only parse topology info from first model
             fullname = line[12:16]
             try:
                 elem = elements.ElementMapper[line[76:78].strip()]
@@ -209,11 +233,11 @@ class PDBParser:
 
             # build Atom object and add to Topology
             atom = Atom(name=fullname.strip(), **metadata)
-            self._top.add_atom(atom)
+            self.topology.add_atom(atom)
 
         # Parse coordinates
         coords = [float(line[30:38]), float(line[38:46]), float(line[46:54])]
-        self._xyz[-1].append(coords)
+        self._curxyz.append(coords)
 
     def _parse_ATOM(self):
         """Parse an ATOM record."""
