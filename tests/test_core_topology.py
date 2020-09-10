@@ -179,15 +179,16 @@ def test_getset_atoms():
 def test_iter():
     """Iterate over Topology atoms."""
 
-    a1 = Atom(name="CA")
-    a2 = Atom(name="CA")
+    a1 = Atom(name="CA", altloc="A", occupancy=0.3)
+    a2 = Atom(name="CA", altloc="B", occupancy=0.7)
     a3 = Atom(name="CB")
 
     t = Topology()
     t.add_atom(a1)
     t.add_atom(a2)
+    t.add_atom(a3)
 
-    atoms = [a2, a3]  # ignore a1
+    atoms = [a2, a3]  # ignore a1, lower occupancy.
     for idx, atom in enumerate(t):
         assert atom == atoms[idx]
 
