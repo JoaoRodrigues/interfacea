@@ -175,6 +175,25 @@ def test_getset_atoms():
         t[2] = a2
 
 
+# Comparison
+def test_comparison():
+    """Compare Topology objects."""
+
+    a1 = Atom(name="CA")
+    a2 = Atom(name="CB")
+
+    t = Topology()
+    t.add_atom(a1)
+
+    t2 = Topology()
+    t2.add_atom(a1)
+    t2.add_atom(a2)
+
+    assert t == t
+    assert t != t2
+    assert t != "string"
+
+
 # Iteration
 def test_iter():
     """Iterate over Topology atoms."""

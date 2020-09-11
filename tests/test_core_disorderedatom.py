@@ -17,28 +17,10 @@
 
 """Unit tests for DisorderedAtom class."""
 
-from unittest.mock import Mock
-
+import copy
 import pytest
 
-from interfacea.core.atom import DisorderedAtom, DisorderedAtomError
-
-
-def make_mock_atom(**kwargs):
-    """Make a mock Atom object with kwargs params.
-
-    Example
-    -------
-        >>> a = make_mock_atom(name="CA")
-        >>> assert a.name == "CA"
-        >>> with pytest.raises(AttributeError):
-        >>>     _ = a.occupancy
-    """
-    m = Mock(spec=[])  # raises AttributeError on what we do not define below
-    m.configure_mock(**kwargs)
-    if not hasattr(m, "index"):
-        m.index = None
-    return m
+from interfacea.core.atom import Atom, DisorderedAtom, DisorderedAtomError
 
 
 def test_instantiate_success():
@@ -70,8 +52,8 @@ def test_str_dunder_nonempty():
 def test_add_atom():
     """Add Atoms to a DisorderedAtom."""
 
-    a1 = make_mock_atom(name="CA", altloc="A", occupancy=0.7)
-    a2 = make_mock_atom(name="CA", altloc="B", occupancy=0.3)
+    a1 = Atom(name="CA", altloc="A", occupancy=0.7)
+    a2 = Atom(name="CA", altloc="B", occupancy=0.3)
 
     da = DisorderedAtom()
     da.add(a1)
@@ -87,8 +69,8 @@ def test_add_atom():
 def test_add_atom_woutocc(caplog):
     """Add Atoms to a DisorderedAtom (no occupancy)."""
 
-    a1 = make_mock_atom(name="CA", altloc="A")
-    a2 = make_mock_atom(name="CA", altloc="B")
+    a1 = Atom(name="CA", altloc="A")
+    a2 = Atom(name="CA", altloc="B")
 
     da = DisorderedAtom()
     da.add(a1)
@@ -105,8 +87,8 @@ def test_add_atom_woutocc(caplog):
 def test_from_list():
     """Add a list of Atoms to a DisorderedAtom."""
 
-    a1 = make_mock_atom(name="CA", altloc="A", occupancy=0.3)  # swapped
-    a2 = make_mock_atom(name="CA", altloc="B", occupancy=0.7)
+    a1 = Atom(name="CA", altloc="A", occupancy=0.3)  # swapped
+    a2 = Atom(name="CA", altloc="B", occupancy=0.7)
 
     da = DisorderedAtom()
     da.from_list([a1, a2])
@@ -117,8 +99,8 @@ def test_from_list():
 def test_getitem():
     """Retrieve atom from DisorderedAtom by key."""
 
-    a1 = make_mock_atom(name="CA", altloc="A", occupancy=0.3)  # swapped
-    a2 = make_mock_atom(name="CA", altloc="B", occupancy=0.7)
+    a1 = Atom(name="CA", altloc="A", occupancy=0.3)  # swapped
+    a2 = Atom(name="CA", altloc="B", occupancy=0.7)
 
     da = DisorderedAtom()
     da.add(a1)
@@ -128,11 +110,29 @@ def test_getitem():
     assert da["B"] is a2
 
 
+def test_comparison():
+    """Compare DisorderedAtom to several objects."""
+
+    a1 = Atom(name="CA", altloc="A", occupancy=0.3)
+    a2 = Atom(name="CA", altloc="B", occupancy=0.7)
+
+    da = DisorderedAtom()
+    da.add(a1)
+    da.add(a2)
+
+    da_copy = copy.deepcopy(da)
+    da_copy.select("A")
+
+    assert da != da_copy  # DisorderedAtom to DisorderedAtom
+    assert da_copy == a1  # DisorderedAtom to Atom
+    assert not (da == "string")  # DisorderedAtom to something else
+
+
 def test_delete_altloc():
     """Remove an Atom from a DisorderedAtom."""
 
-    a1 = make_mock_atom(name="CA", altloc="A", occupancy=0.7)
-    a2 = make_mock_atom(name="CA", altloc="B", occupancy=0.3)
+    a1 = Atom(name="CA", altloc="A", occupancy=0.7)
+    a2 = Atom(name="CA", altloc="B", occupancy=0.3)
 
     da = DisorderedAtom()
     da.from_list([a1, a2])
@@ -144,7 +144,7 @@ def test_delete_altloc():
 def test_delete_missing_altloc():
     """Raise error on DisorderedAtom.delete with unknown altloc."""
 
-    a1 = make_mock_atom(name="CA", altloc="A", occupancy=0.7)
+    a1 = Atom(name="CA", altloc="A", occupancy=0.7)
 
     da = DisorderedAtom()
     da.add(a1)
@@ -156,8 +156,8 @@ def test_autoset_altloc(caplog):
     """Auto-sets altloc (and issues warning) when adding atoms."""
 
     # set occupancy not to trigger additional warning
-    a1 = make_mock_atom(name="CA", occupancy=0.3)
-    a2 = make_mock_atom(name="CA", occupancy=0.7)
+    a1 = Atom(name="CA", occupancy=0.3)
+    a2 = Atom(name="CA", occupancy=0.7)
 
     da = DisorderedAtom()
     da.add(a1)
@@ -173,7 +173,7 @@ def test_autoset_altloc(caplog):
 def test_duplicated_altloc_error():
     """Throw error when adding duplicated altloc."""
 
-    a1 = make_mock_atom(name="CA", altloc="A")
+    a1 = Atom(name="CA", altloc="A")
 
     da = DisorderedAtom()
     da.add(a1)
@@ -184,8 +184,8 @@ def test_duplicated_altloc_error():
 def test_iterator():
     """Iterate over list of child atoms."""
 
-    a1 = make_mock_atom(name="CA", altloc="A", occupancy=0.7)
-    a2 = make_mock_atom(name="CA", altloc="B", occupancy=0.3)
+    a1 = Atom(name="CA", altloc="A", occupancy=0.7)
+    a2 = Atom(name="CA", altloc="B", occupancy=0.3)
 
     da = DisorderedAtom()
     da.add(a1)
@@ -199,8 +199,8 @@ def test_iterator():
 def test_set_child_attribute():
     """Set attribute of selected child."""
 
-    a1 = make_mock_atom(name="CA", altloc="A", occupancy=0.7)
-    a2 = make_mock_atom(name="CA", altloc="B", occupancy=0.3)
+    a1 = Atom(name="CA", altloc="A", occupancy=0.7)
+    a2 = Atom(name="CA", altloc="B", occupancy=0.3)
 
     da = DisorderedAtom()
     da.add(a1)
@@ -213,7 +213,7 @@ def test_set_child_attribute():
 def test_get_child_attribute_error():
     """Throws error when attribute of child is not found."""
 
-    a1 = make_mock_atom(name="CA", altloc="A")
+    a1 = Atom(name="CA", altloc="A")
     da = DisorderedAtom()
     da.add(a1)
 
@@ -233,8 +233,8 @@ def test_get_child_attribute_error_2():
 def test_select_child():
     """Select child automatically based on occupancy."""
 
-    a1 = make_mock_atom(name="CA", altloc="A", occupancy=0.7)
-    a2 = make_mock_atom(name="CA", altloc="B", occupancy=0.3)
+    a1 = Atom(name="CA", altloc="A", occupancy=0.7)
+    a2 = Atom(name="CA", altloc="B", occupancy=0.3)
 
     da = DisorderedAtom()
     da.add(a1)
@@ -250,8 +250,8 @@ def test_select_child():
 def test_select_child_manual():
     """Select child manually."""
 
-    a1 = make_mock_atom(name="CA", altloc="A", occupancy=0.7)
-    a2 = make_mock_atom(name="CA", altloc="B", occupancy=0.3)
+    a1 = Atom(name="CA", altloc="A", occupancy=0.7)
+    a2 = Atom(name="CA", altloc="B", occupancy=0.3)
 
     da = DisorderedAtom()
     da.add(a1)
@@ -265,7 +265,7 @@ def test_select_child_manual():
 def test_select_child_error():
     """Throw error when selecting unknown altloc."""
 
-    a1 = make_mock_atom(name="CA", altloc="B", occupancy=0.7)
+    a1 = Atom(name="CA", altloc="B", occupancy=0.7)
 
     da = DisorderedAtom()
     da.add(a1)

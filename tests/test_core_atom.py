@@ -99,6 +99,7 @@ def test_atom_equality():
     assert a == b
     assert a is not b
     assert a != c
+    assert not a == "string"
 
 
 def test_str_dunder():
