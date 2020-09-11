@@ -105,7 +105,8 @@ class Structure(object):
 
         # Check all atoms have unique indexes in the topology.
         idxset = {a.index for a in topology.unpack_atoms()}
-        assert len(idxset) == topology.nlocs
+        if len(idxset) != topology.nlocs:
+            raise StructureError("Atoms in Topology must have unique indexes.")
 
         return topology
 
@@ -126,13 +127,15 @@ class Structure(object):
             except Exception as err:
                 raise StructureError("Cannot coerce coordinates to np.array") from err
 
-        assert (
-            xyzdata.ndim == 3
-        ), f"Coordinate array has wrong dimensions: {xyzdata.ndim} != 3"
+        if xyzdata.ndim != 3:
+            raise StructureError(
+                f"Coordinate array has wrong dimensions: {xyzdata.ndim} != 3"
+            )
 
-        assert (
-            xyzdata.shape[2] == 3
-        ), f"Wrong coordinate array shape {xyzdata.shape} != (x, x, 3)"
+        if xyzdata.shape[2] != 3:
+            raise StructureError(
+                f"Wrong coordinate array shape {xyzdata.shape} != (x, x, 3)"
+            )
 
         return xyzdata
 
