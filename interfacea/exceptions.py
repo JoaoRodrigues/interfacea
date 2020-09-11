@@ -22,3 +22,9 @@ class InterfaceaError(Exception):
     """Base class for exceptions in interfacea."""
 
     pass
+
+
+class InterfaceaWarning(UserWarning):
+    """Base class for warnings in interfacea."""
+
+    pass
