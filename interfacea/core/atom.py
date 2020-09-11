@@ -21,6 +21,7 @@ Module containing classes to represent atomic metadata in topologies.
 Atom classes stored metadata only (names, etc), no coordinates.
 """
 
+import copy
 import logging
 
 from interfacea.exceptions import InterfaceaError
@@ -206,8 +207,12 @@ class DisorderedAtom(object):
 
         if isinstance(other, Atom):  # compare to top child
             return self.selected == other
+
         elif isinstance(other, DisorderedAtom):
             if len(self) != len(other):
+                return False
+
+            if self.selected != other.selected:
                 return False
 
             for a1, a2 in zip(self.children, other.children):
@@ -217,6 +222,24 @@ class DisorderedAtom(object):
             return True
         else:
             return False
+
+    def __copy__(self):
+        """Return a shallow copy of the DisorderedAtom."""
+
+        new = DisorderedAtom()
+        for atom in self.children.values():
+            new.add(atom)
+
+        return new
+
+    def __deepcopy__(self, memo):
+        """Return a deep copy of the DisorderedAtom."""
+
+        new = DisorderedAtom()
+        for atom in self.children.values():
+            new.add(copy.deepcopy(atom, memo))
+
+        return new
 
     def add(self, atom):
         """Add a child Atom object."""
