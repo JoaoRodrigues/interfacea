@@ -22,7 +22,7 @@ import pathlib
 import warnings
 
 from interfacea.core.topology import Topology
-from interfacea.exceptions import InterfaceaError
+from interfacea.exceptions import InterfaceaError, InterfaceaWarning
 from .pdb import read_pdb
 
 __all__ = ["read"]
@@ -83,7 +83,8 @@ def read(filepath, **kwargs):
     if kwargs.get("topology") is not None:
         if fext in _INCLUDE_TOPOLOGY:
             warnings.warn(
-                "Ignoring provided topology as file includes topology information"
+                "Ignoring provided topology as file includes topology information",
+                InterfaceaWarning,
             )
             kwargs.pop("topology")
         else:
