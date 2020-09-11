@@ -29,7 +29,7 @@ import interfacea.chemistry.elements as elements
 from interfacea.core.atom import Atom
 from interfacea.core.topology import Topology
 from interfacea.core.structure import Structure
-from interfacea.exceptions import InterfaceaError
+from interfacea.exceptions import InterfaceaError, InterfaceaWarning
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -53,7 +53,7 @@ def read_pdb(filepath, **kwargs):
 
     if isinstance(filepath, TextIOBase):
         handle = filepath
-        filepath = pathlib.Path(handle)
+        filepath = pathlib.Path(handle.name)
 
     elif isinstance(filepath, str):
         filepath = pathlib.Path(filepath)
@@ -86,7 +86,7 @@ class PDBParserError(InterfaceaError):
     pass
 
 
-class PDBParserWarning(UserWarning):
+class PDBParserWarning(InterfaceaWarning):
     """Warning class specific to this submodule."""
 
     pass
