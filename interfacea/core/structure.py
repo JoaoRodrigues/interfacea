@@ -22,13 +22,12 @@ class, which stores both coordinate data and metadata. The metadata, e.g. atom
 and residue names, is stored in individual Atom objects.
 """
 
+import copy
 import logging
 
 import numpy as np
 
 from interfacea.exceptions import InterfaceaError
-
-# from interfacea.spatial import kdtrees
 
 # Setup module logger
 logger = logging.getLogger(__name__)
@@ -94,10 +93,21 @@ class Structure(object):
         yield from self.topology.atoms
 
     def __len__(self):
-        """Point users in the right direction."""
-        raise NotImplementedError(
-            "Length of Structure is ambiguous: use .topology.natoms or .nmodels."
-        )
+        """Return number of atoms."""
+        return self.topology.natoms
+
+    def __eq__(self, other):
+        """Compare two structures by their topology and coordinates."""
+        return self.topology == other.topology and \
+            np.allclose(self._coords, other._coords)
+
+    def __copy__(self):
+        """Make shallow copy of structure."""
+        return Structure(self.topology, self._coords)
+
+    def __deepcopy__(self, memo):
+        """Make deep copy of structure."""
+        return Structure(copy.deepcopy(self.topology), copy.deepcopy(self._coords))
 
     # Private Methods
     def _check_topology(self, topology):
@@ -178,7 +188,6 @@ class Structure(object):
         """Return the entire coordinate array (all models)."""
         return self._coords
 
-    #
     # Interfaces with external objects
     #
     # def _make_kdtree(self):
