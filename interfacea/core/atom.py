@@ -84,9 +84,6 @@ class Atom:
 
         self.index = None
 
-        self._id = None
-        self._full_id = None
-
     # Dunder methods
     def __str__(self):
         """Pretty string representation of the Atom object."""
@@ -97,6 +94,10 @@ class Atom:
         """Pretty printing as well."""
 
         return self.__str__()
+
+    def __hash__(self):
+        """Generate hash from full id."""
+        return hash(self.full_id)
 
     def __eq__(self, other):
         """Equality between Atom objects.
@@ -114,23 +115,32 @@ class Atom:
     def id(self):
         """Return the id tuple of the atom."""
 
-        if self._id is None:
-            aid = tuple(
-                getattr(self, attr, None)
-                for attr in ("name", "chain", "resid", "icode")
-            )
-            self._id = aid
-
-        return self._id
+        return tuple(
+            getattr(self, attr, None) for attr in ("name", "chain", "resid", "icode")
+        )
 
     @property
     def full_id(self):
         """Return the full id tuple of the atom."""
-        if self._full_id is None:
-            altloc = getattr(self, "altloc", None)
-            self._full_id = self.id + (altloc,)
 
-        return self._full_id
+        altloc = getattr(self, "altloc", None)
+        return self.id + (altloc,)
+
+    @property
+    def residue(self):
+        """Print information on the atom residue, if available."""
+        resname = getattr(self, "resname", "") or ""
+        resid = getattr(self, "resid", "") or ""
+        icode = getattr(self, "icode", "") or ""
+        chain = getattr(self, "chain", "") or ""
+
+        if icode:
+            icode = f"[{icode}]"
+
+        if chain:
+            chain = f" of chain {chain}"
+
+        return f"Residue {resname}{resid}{icode}{chain}"
 
 
 class DisorderedAtom(object):
@@ -215,13 +225,12 @@ class DisorderedAtom(object):
             if self.selected != other.selected:
                 return False
 
-            for a1, a2 in zip(self.children, other.children):
-                if a1 != a2:
-                    return False
+            if set(self.children.values()) != set(other.children.values()):
+                return False
 
             return True
-        else:
-            return False
+
+        return False
 
     def __copy__(self):
         """Return a shallow copy of the DisorderedAtom."""
