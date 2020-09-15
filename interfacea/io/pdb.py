@@ -21,7 +21,6 @@ import gzip
 import logging
 from io import TextIOBase
 import pathlib
-import warnings
 
 import numpy as np
 
@@ -29,7 +28,9 @@ import interfacea.chemistry.elements as elements
 from interfacea.core.atom import Atom
 from interfacea.core.topology import Topology
 from interfacea.core.structure import Structure
-from interfacea.exceptions import InterfaceaError, InterfaceaWarning
+from interfacea.exceptions import InterfaceaError
+
+from .helpers import guess_atom_element
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -82,12 +83,6 @@ def read_pdb(filepath, **kwargs):
 
 class PDBParserError(InterfaceaError):
     """Exception specific to this submodule."""
-
-    pass
-
-
-class PDBParserWarning(InterfaceaWarning):
-    """Warning class specific to this submodule."""
 
     pass
 
@@ -198,10 +193,6 @@ class PDBParser:
         self._atomset.clear()
         self._in_model = True
 
-        if self.xyz and len(self.xyz[0]) == 3:  # first model
-            coordset = self.xyz[:]
-            self.xyz = [coordset]
-
         self.xyz.append([])
         self._curxyz = self.xyz[-1]
 
@@ -220,13 +211,15 @@ class PDBParser:
             self._terminate()
 
         # check all models have the same number of atoms
-        atoms_in_models = {len(xyz) for xyz in self.xyz}
-        assert (
-            len(atoms_in_models) == 1
-        ), f"Model '{self._nrmodels} has a different number of coordinates."
+        if len({len(xyz) for xyz in self.xyz}) != 1:
+            raise PDBParserError(
+                f"Model '{self._nrmodels}' has a different number of atoms."
+            )
 
     def _parse_coordinates(self, hetatm=False):
         """Parse an ATOM/HETATM record."""
+
+        _guess_element = guess_atom_element
 
         if self._print_debug:
             logger.debug(f"Parsing coordinate data at line {self.ln}")
@@ -238,7 +231,11 @@ class PDBParser:
             try:
                 elem = elements.ElementMapper[line[76:78].strip()]
             except KeyError:
-                elem = self._guess_element(fullname)
+                elem = _guess_element(fullname)
+                if self._print_debug:
+                    logger.debug(
+                        f"Auto-assigned element {elem.symbol} for atom {fullname}"
+                    )
 
             metadata = dict(
                 hetatm=hetatm,
@@ -268,41 +265,3 @@ class PDBParser:
     def _parse_HETATM(self):
         """Parse a HETATM record."""
         self._parse_coordinates(hetatm=True)
-
-    # Auxiliary Methods
-    def _guess_element(self, fullname):
-        """Infer the atomic element from the atom name.
-
-        Adapted from Biopython"s Atom.py code.
-
-        Arguments
-        ---------
-            fullname : str
-                the full 4-char string defined in the PDB file.
-
-        Returns
-        -------
-            Element object or elements.Unknown if ambiguous/unsuccessful.
-
-        """
-
-        stripped_name = fullname.strip()
-
-        if fullname[0].isalpha() and not fullname[2:].isdigit():
-            putative_elem = stripped_name
-        elif stripped_name[0].isdigit():  # e.g. 1HE2
-            putative_elem = stripped_name[1]
-        else:
-            putative_elem = stripped_name[0]
-
-        element = elements.ElementMapper.get(putative_elem.capitalize())
-        if element is None:
-            warnings.warn(
-                f"Could not assign element for atom {repr(fullname)} at line {self.ln}",
-                PDBParserWarning,
-            )
-            element = element.Unknown
-
-        if self._print_debug:
-            logger.debug(f"Auto-assigned element {element.symbol} for atom {fullname}")
-        return element

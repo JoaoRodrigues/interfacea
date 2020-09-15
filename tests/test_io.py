@@ -19,6 +19,7 @@
 
 from interfacea.exceptions import InterfaceaWarning
 from interfacea.io import read
+from interfacea.io.helpers import guess_atom_element
 
 import pytest
 
@@ -47,3 +48,24 @@ def test_reading_1ctf_with_topology(datadir):
 
     with pytest.warns(InterfaceaWarning, match="Ignoring provided topology"):
         read(datadir / "1ctf.pdb", topology=str(datadir / "1ctf.pdb"))
+
+
+# Helpers
+def test_guess_element_from_atom_name():
+    """Guess element from atom name."""
+
+    answers = {
+        " CA ": "C",
+        "CA  ": "X",  # until we add calcium, unknown maps to X
+        " N  ": "N",
+        "HH21": "H",
+        "1HE1": "H",
+    }
+
+    for name, element in answers.items():
+        if element == "X":
+            with pytest.warns(InterfaceaWarning, match="Could not assign"):
+                e = guess_atom_element(name)
+        else:
+            e = guess_atom_element(name)
+        assert e.symbol == element
