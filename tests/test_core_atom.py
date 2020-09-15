@@ -102,6 +102,32 @@ def test_atom_equality():
     assert not a == "string"
 
 
+def test_atom_residue():
+    """Print atom residue information (if available)."""
+
+    a = Atom(name="N", chain="A", resname="GLY", resid=32, icode="A")
+    assert a.residue == "Residue GLY32[A] of chain A"
+    a.icode = None
+    assert a.residue == "Residue GLY32 of chain A"
+    a.chain = None
+    assert a.residue == "Residue GLY32"
+    a.chain = "A"
+    a.resname = None
+    assert a.residue == "Residue 32 of chain A"
+
+
+def test_atom_copy():
+    """Make copies of an Atom."""
+
+    import copy
+
+    a = Atom(name="N", chain="A", resid=32)
+    shallow = copy.copy(a)
+
+    assert a == shallow
+    assert a is not shallow
+
+
 def test_str_dunder():
     """Pretty printing works."""
 

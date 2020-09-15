@@ -47,6 +47,33 @@ def test_load_structure(pdb1ggr):
     assert s.raw_coords.shape == (3, 3595, 3)
 
 
+def test_copy_structure(pdb1ggr):
+    """Copy structure."""
+
+    parser = pdb1ggr
+    s = Structure(topology=parser.topology, xyzdata=parser.xyz)
+
+    s2 = copy.copy(s)
+    assert s is not s2
+    assert s == s2
+    assert s.topology is s2.topology
+    assert s.raw_coords is s2.raw_coords
+
+    s2 = copy.deepcopy(s)
+    assert s is not s2
+    assert s == s2
+    assert s.topology is not s2.topology
+    assert s.raw_coords is not s2.raw_coords
+
+
+def test_iter_structure(pdb1ggr):
+    """Iterate over structure atoms."""
+
+    parser = pdb1ggr
+    s = Structure(topology=parser.topology, xyzdata=parser.xyz)
+    assert list(s) == s.topology.atoms
+
+
 def test_select_model(pdb1ggr):
     """Select between models in a structure."""
 

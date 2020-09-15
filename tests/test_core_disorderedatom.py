@@ -123,9 +123,46 @@ def test_comparison():
     da_copy = copy.deepcopy(da)
     da_copy.select("A")
 
-    assert da != da_copy  # DisorderedAtom to DisorderedAtom
     assert da_copy == a1  # DisorderedAtom to Atom
     assert not (da == "string")  # DisorderedAtom to something else
+
+    assert da != da_copy  # DisorderedAtom with diff selected
+    da_copy.select("B")
+    da_copy["A"].name = "N"
+    assert da != da_copy  # DisorderedAtom with child with different properties
+    da_copy.delete("B")
+    assert da != da_copy  # DisorderedAtom with different number of children
+
+
+def test_shallow_copy():
+    """Make a shallow copy of the DisorderedAtom."""
+
+    a1 = Atom(name="CA", altloc="A", occupancy=0.3)
+    a2 = Atom(name="CA", altloc="B", occupancy=0.7)
+
+    da = DisorderedAtom()
+    da.add(a1)
+    da.add(a2)
+
+    da_copy = copy.copy(da)
+    assert da is not da_copy
+    assert da["A"] is a1 and da["B"] is a2
+
+
+def test_deepcopy_copy():
+    """Make a deepcopy copy of the DisorderedAtom."""
+
+    a1 = Atom(name="CA", altloc="A", occupancy=0.3)
+    a2 = Atom(name="CA", altloc="B", occupancy=0.7)
+
+    da = DisorderedAtom()
+    da.add(a1)
+    da.add(a2)
+
+    da_copy = copy.deepcopy(da)
+    assert da is not da_copy
+    assert da_copy["A"] is not a1 and da_copy["B"] is not a2
+    assert da_copy["A"] == a1 and da_copy["B"] == a2
 
 
 def test_delete_altloc():
