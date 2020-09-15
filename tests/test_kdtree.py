@@ -87,13 +87,7 @@ def test_kdtree_find_neighbors_distances(pdb1ggr):
     kdt = KDTree(pdb1ggr)
     nb = kdt.find_neighbors(pt, radius=2.0, distances=True)
 
-    expected = {
-        "CA": 0.00,
-        "HA": 1.08,
-        "N": 1.46,
-        "C": 1.51,
-        "CB": 1.55
-    }
+    expected = {"CA": 0.00, "HA": 1.08, "N": 1.46, "C": 1.51, "CB": 1.55}
 
     assert len(nb) == 5
     for (a, d) in nb:
